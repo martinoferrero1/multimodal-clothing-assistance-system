@@ -1,4 +1,5 @@
-from typing import Literal, TypedDict, Any
+from typing import Literal
+from typing_extensions import TypedDict
 from shared.base_state import BaseState
 
 OUTFIT_MAKER_FLOW_ID = "outfit_maker"

@@ -1,4 +1,5 @@
 import json
+from langgraph.prebuilt import InjectedState
 from langchain_core.tools import tool
 import uuid
 from agents.main_supervisor_agent.state import SupervisorState, OUTFIT_MAKER_FLOW_ID, SupervisorStateKeys, FlowSnapshotKeys
@@ -6,6 +7,7 @@ from agents.outfit_maker_agent.state import OutfitMakerStateKeys
 from agents.outfit_maker_agent.graph import OutfitMakerGraph
 from shared.base_state import BaseStateKeys
 from langgraph.graph.state import CompiledStateGraph
+from typing import Annotated
 
 RESULT_CONTENT_KEY = "content"
 RESULT_FINISHED_KEY = "finished"
@@ -29,7 +31,7 @@ def run_expert_flow(state: SupervisorState, flow_id: str, graph: CompiledStateGr
         expert_state = initialize_expert_state()
         # concateno estado general para cualquier experto
         expert_state[BaseStateKeys.SETTINGS] = state[BaseStateKeys.SETTINGS]
-        expert_state[BaseStateKeys.MESSAGES] = state[BaseStateKeys.MESSAGES][-1]
+        expert_state[BaseStateKeys.MESSAGES] = [state[BaseStateKeys.MESSAGES][-1]]
         expert_state[BaseStateKeys.ERRORS] = None
         expert_state[BaseStateKeys.FINISHED] = False
     else:
@@ -48,38 +50,65 @@ def run_expert_flow(state: SupervisorState, flow_id: str, graph: CompiledStateGr
     })
 
 @tool
-def outfit_maker_expert_agent(state: SupervisorState) -> str:
+def outfit_maker_expert_agent(state: Annotated[SupervisorState, InjectedState]) -> str:
     """
-    Delegate the conversation to the outfit styling expert.
+    Delegate the user request to the outfit maker expert agent.
+
+    Use this tool when the user wants help creating, combining, or choosing
+    clothing outfits. This includes styling advice, outfit suggestions,
+    or recommendations on how to combine garments for a specific occasion,
+    season, or preference.
     """
     print("\nDelegating to Outfit Maker Expert Agent ---")
     graph = OutfitMakerGraph().get_graph()
+    print("Estado del supervisor en la tool del outfit maker: ", state)
     initialize_expert_state = lambda: {
-        OutfitMakerStateKeys.OUTFIT_PREFERENCES: state[BaseStateKeys.MESSAGES][-1].content,
+        OutfitMakerStateKeys.OUTFIT_PREFERENCES: next(
+            msg.content
+            for msg in reversed(state[BaseStateKeys.MESSAGES])
+            if msg.type == "human"
+        ),
         OutfitMakerStateKeys.CLOTHES_SOLICITATIONS: None
     }
 
     return run_expert_flow(state, OUTFIT_MAKER_FLOW_ID, graph, initialize_expert_state)
 
 @tool
-def buy_expert_agent(state: SupervisorState) -> str:
+def buy_expert_agent(state: Annotated[SupervisorState, InjectedState]) -> str:
+    """
+    Delegate the user request to the buying expert agent.
+
+    Use this tool when the user wants to purchase clothing items, find
+    products to buy, or receive recommendations for items available for
+    purchase.
+    """
     print("\nDelegating to Buy Expert Agent ---")
     # ESTE LO IMPLEMENTO MAS ADELANTE
 
     return None
 
 @tool
-def order_expert_agent(state: SupervisorState) -> str:
+def order_expert_agent(state: Annotated[SupervisorState, InjectedState]) -> str:
+    """
+    Delegate the user request to the order management expert agent.
+
+    Use this tool when the user asks about the status of an order, wants
+    to track a purchase, review previous orders, cancel an order, or manage
+    an existing purchase.
+    """
     print("\nDelegating to Order Expert Agent ---")
     # ESTE LO IMPLEMENTO MAS ADELANTE
 
     return None
 
 @tool
-def clarification_tool(state: SupervisorState) -> str:
+def clarification_tool(state: Annotated[SupervisorState, InjectedState]) -> str:
     """
-    Generates a message to the user asking them to clarify their request
-    when the intent is unclear.
+    Ask the user to clarify their request.
+
+    Use this tool when the user message is ambiguous, incomplete,
+    or the supervisor cannot confidently determine which expert
+    agent should handle the request.
     """
 
     return json.dumps({
@@ -89,10 +118,13 @@ def clarification_tool(state: SupervisorState) -> str:
     })
 
 @tool
-def end_conversation_tool(state: SupervisorState) -> str:
+def end_conversation_tool(state: Annotated[SupervisorState, InjectedState]) -> str:
     """
-    Generates a message to the user confirming the end of the conversation
-    when the user explicitly wants to finish.
+    End the conversation with the user.
+
+    Use this tool when the user explicitly indicates that they want
+    to finish the conversation, such as saying goodbye or confirming
+    that they no longer need assistance.
     """
 
     return json.dumps({

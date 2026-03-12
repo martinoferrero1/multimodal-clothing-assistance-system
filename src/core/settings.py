@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, model_validator
+from pydantic_settings import BaseSettings
+from pydantic import model_validator
 from schemas.provider import Provider
 from typing import Optional
 

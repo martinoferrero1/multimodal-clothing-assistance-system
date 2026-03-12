@@ -9,7 +9,7 @@ from shared.base_state import BaseStateKeys
 from utils.models import get_llm_model
 from utils.error_handling import safe_node
 from utils.prompts import build_prompt
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from .state import FlowSnapshotKeys, SupervisorState, SupervisorStateKeys
 from tools.supervisor_tools import supervisor_tools, RESULT_CONTENT_KEY, RESULT_FINISHED_KEY, RESULT_TOOL_KEY
 
@@ -21,8 +21,8 @@ class SupervisorGraph(BaseGraph):
     @safe_node("decide_expert")
     def _decide_expert_node(self, state: SupervisorState):
         sys_prompt = build_prompt(
-            base_prompt_path="../prompts/supervisor/system_prompt.txt",
-            examples_prompt_path="../prompts/supervisor/examples_system_prompt.txt",
+            base_prompt_path="src/prompts/supervisor/system_prompt.txt",
+            examples_prompt_path="src/prompts/supervisor/examples_system_prompt.txt",
             include_examples=state[BaseStateKeys.SETTINGS].INCLUDE_PROMPT_EXAMPLES
         )
         supervisor_llm = (
@@ -30,10 +30,9 @@ class SupervisorGraph(BaseGraph):
             .bind_tools(supervisor_tools)
         )
         messages = [SystemMessage(content=sys_prompt)] + state[BaseStateKeys.MESSAGES]
-        response = supervisor_llm.invoke(messages)
-        msg = SystemMessage(content=response["content"], tool_result=response)
+        response = supervisor_llm.invoke(messages) # ya es un AI Message
 
-        return {BaseStateKeys.MESSAGES: [msg],
+        return {BaseStateKeys.MESSAGES: [response],
                 SupervisorStateKeys.EVALUATING_UNCOMPREHENDED_MSG: False}
     
     @safe_node("process_tool_result")
@@ -48,7 +47,7 @@ class SupervisorGraph(BaseGraph):
             if stack:
                 stack.pop()
                 if stack:
-                    msg = SystemMessage(
+                    msg = AIMessage(
                         content="Your previous request finished. Which task would you like to continue?"
                     )
                     return {
@@ -63,7 +62,7 @@ class SupervisorGraph(BaseGraph):
                     }
 
         if content:
-            msg = SystemMessage(content=content)
+            msg = AIMessage(content=content)
             return {BaseStateKeys.MESSAGES: [msg],
                     SupervisorStateKeys.AWAITING_NEW_INTENT_CONFIRMATION: False,
                     SupervisorStateKeys.EVALUATING_UNCOMPREHENDED_MSG: False}
@@ -84,8 +83,8 @@ class SupervisorGraph(BaseGraph):
 
     def _should_continue(self, state: SupervisorState):
         last_message = state[BaseStateKeys.MESSAGES][-1]
-        tool_result = getattr(last_message, "tool_result", None)
-        if tool_result and tool_result.get("tool_calls"):
+        if getattr(last_message, "tool_calls", None):
+            print("Estado del supervisor en el should continue:", state)
             return "continue_to_experts"
 
         return "end_turn"

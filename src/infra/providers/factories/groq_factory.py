@@ -10,4 +10,6 @@ class GroqFactory(ProviderFactory):
 
     @classmethod
     def _build_llm(cls, llm_model: str, temperature: float = None) -> BaseChatModel:
-        return ChatGroq(model=llm_model, temperature=temperature)
+        if temperature is not None:
+            return ChatGroq(model=llm_model, temperature=temperature)
+        return ChatGroq(model=llm_model)

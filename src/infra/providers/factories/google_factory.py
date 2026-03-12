@@ -10,4 +10,6 @@ class GoogleFactory(ProviderFactory):
 
     @classmethod
     def _build_llm(cls, llm_model: str, temperature: float = None) -> BaseChatModel:
-        return ChatGoogleGenerativeAI(model=llm_model, temperature=temperature)
+        if temperature is not None:
+            return ChatGoogleGenerativeAI(model=llm_model, temperature=temperature)
+        return ChatGoogleGenerativeAI(model=llm_model)
