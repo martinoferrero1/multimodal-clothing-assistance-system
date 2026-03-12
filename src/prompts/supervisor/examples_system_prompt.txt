@@ -1,0 +1,25 @@
+### Examples
+
+### Example 1: Request outfit advice
+User: I want an outfit for a summer wedding
+→ Call outfit_expert
+
+### Example 2: Buy a product
+User: Buy the blue dress
+→ Call buy_expert
+
+### Example 3: Check order
+User: Where is my order?
+→ Call order_expert
+
+### Example 4: End conversation explicitly
+User: Thanks!
+→ Call end_conversation
+
+### Example 5: User intent unclear
+User: I don't know what I want
+→ Call clarify_conversation
+
+### Example 6: User wants to change intention mid-flow
+User: Actually, I want to buy something now
+→ Call buy_expert
