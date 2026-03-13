@@ -25,10 +25,11 @@ class OutfitMakerGraph(BaseGraph):
         ).with_structured_output(ItemSpecList)
         messages = [
             SystemMessage(content=sys_prompt),
-            HumanMessage(content=state[BaseStateKeys.MESSAGES][-1].content)
+            HumanMessage(content=state[OutfitMakerStateKeys.OUTFIT_PREFERENCES])
         ]
         solicitations: ItemSpecList = llm.invoke(messages)
         identified_solicitations_msg = AIMessage(content=f"Ok, we could identify the next clothes solicitations:\n\n{solicitations.model_dump_json(indent=2)}")
+
         return {
             OutfitMakerStateKeys.CLOTHES_SOLICITATIONS: solicitations,
             BaseStateKeys.FINISHED: True,

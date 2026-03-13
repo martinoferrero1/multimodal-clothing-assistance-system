@@ -31,18 +31,18 @@ def run_expert_flow(state: SupervisorState, flow_id: str, graph: CompiledStateGr
         expert_state = initialize_expert_state()
         # concateno estado general para cualquier experto
         expert_state[BaseStateKeys.SETTINGS] = state[BaseStateKeys.SETTINGS]
-        expert_state[BaseStateKeys.MESSAGES] = [state[BaseStateKeys.MESSAGES][-1]]
-        expert_state[BaseStateKeys.ERRORS] = None
+        expert_state[BaseStateKeys.MESSAGES] = []
+        expert_state[BaseStateKeys.ERRORS] = []
         expert_state[BaseStateKeys.FINISHED] = False
     else:
         config = {"configurable": {"thread_id": snapshot[FlowSnapshotKeys.THREAD_ID]}}
         expert_state = graph.get_state(config=config).values
-        expert_state[BaseStateKeys.MESSAGES].append(state[BaseStateKeys.MESSAGES][-1]) # le paso el ultimo mensaje del usuario al experto
+        expert_state[BaseStateKeys.MESSAGES] += state[BaseStateKeys.MESSAGES][-1] # le paso el último mensaje del usuario al experto para que lo procese
         graph.update_state(config=config, values=expert_state)
 
     total_expert_msgs_before = len(expert_state[BaseStateKeys.MESSAGES])
     result = graph.invoke(expert_state, config=config)
-
+    print(f"Resultado del experto {flow_id}: ", result)
     return json.dumps({
         RESULT_CONTENT_KEY: result[BaseStateKeys.MESSAGES][-1].content if len(result[BaseStateKeys.MESSAGES]) > total_expert_msgs_before else None,
         RESULT_FINISHED_KEY: result.get(BaseStateKeys.FINISHED, False),

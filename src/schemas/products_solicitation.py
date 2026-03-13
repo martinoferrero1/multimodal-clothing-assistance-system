@@ -1,10 +1,9 @@
 from __future__ import annotations
-from pydantic import BaseModel, RootModel
-from typing import List, Optional, Literal
 
-class ItemSpec(BaseModel):
-    kind: Literal["garment", "outfit"]
+from pydantic import BaseModel, Field
+from typing import List, Optional, Literal, Union, Annotated
 
+class BaseItemSpec(BaseModel):
     usage: Optional[str] = None
     years: Optional[List[int]] = None
     max_price: Optional[float] = None
@@ -14,7 +13,7 @@ class ItemSpec(BaseModel):
     base_colors: Optional[List[str]] = None
     secondary_colors: Optional[List[str]] = None
 
-class GarmentSpec(ItemSpec):
+class GarmentSpec(BaseItemSpec):
     kind: Literal["garment"] = "garment"
 
     master_categories: Optional[List[str]] = None
@@ -23,11 +22,17 @@ class GarmentSpec(ItemSpec):
     product_names: Optional[List[str]] = None
     images: Optional[dict] = None
 
-class OutfitSpec(ItemSpec):
+class OutfitSpec(BaseItemSpec):
     kind: Literal["outfit"] = "outfit"
+
+    items: List[GarmentSpec] = Field(
+        description="Garments that compose the outfit"
+    )
+
+ItemSpec = Annotated[
+    Union[GarmentSpec, OutfitSpec],
+    Field(discriminator="kind")
+]
+
+class ItemSpecList(BaseModel):
     items: List[ItemSpec]
-
-class ItemSpecList(RootModel[List[ItemSpec]]):
-    pass
-
-ItemSpec.model_rebuild()

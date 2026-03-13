@@ -4,40 +4,42 @@ User:
 I need a black leather jacket and white sneakers from Nike.
 
 Output:
-[
-  {
-    "kind": "garment",
-    "usage": null,
-    "years": null,
-    "max_price": null,
-    "gender": null,
-    "brands": null,
-    "seasons": null,
-    "base_colors": ["black"],
-    "secondary_colors": null,
-    "master_categories": null,
-    "sub_categories": null,
-    "article_types": ["leather jacket"],
-    "product_names": null,
-    "images": null
-  },
-  {
-    "kind": "garment",
-    "usage": null,
-    "years": null,
-    "max_price": null,
-    "gender": null,
-    "brands": ["Nike"],
-    "seasons": null,
-    "base_colors": ["white"],
-    "secondary_colors": null,
-    "master_categories": null,
-    "sub_categories": null,
-    "article_types": ["sneakers"],
-    "product_names": null,
-    "images": null
-  }
-]
+{
+  "items": [
+    {
+      "kind": "garment",
+      "usage": null,
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": null,
+      "base_colors": ["black"],
+      "secondary_colors": null,
+      "master_categories": null,
+      "sub_categories": null,
+      "article_types": ["leather jacket"],
+      "product_names": null,
+      "images": null
+    },
+    {
+      "kind": "garment",
+      "usage": null,
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": ["Nike"],
+      "seasons": null,
+      "base_colors": ["white"],
+      "secondary_colors": null,
+      "master_categories": null,
+      "sub_categories": null,
+      "article_types": ["sneakers"],
+      "product_names": null,
+      "images": null
+    }
+  ]
+}
 
 ### Example 2
 
@@ -45,37 +47,39 @@ User:
 Create a summer outfit to match my Adidas Ultraboost sneakers.
 
 Output:
-[
-  {
-    "kind": "outfit",
-    "usage": null,
-    "years": null,
-    "max_price": null,
-    "gender": null,
-    "brands": null,
-    "seasons": ["summer"],
-    "base_colors": null,
-    "secondary_colors": null,
-    "items": [
-      {
-        "kind": "garment",
-        "usage": null,
-        "years": null,
-        "max_price": null,
-        "gender": null,
-        "brands": ["Adidas"],
-        "seasons": null,
-        "base_colors": null,
-        "secondary_colors": null,
-        "master_categories": null,
-        "sub_categories": null,
-        "article_types": ["sneakers"],
-        "product_names": ["Ultraboost"],
-        "images": null
-      }
-    ]
-  }
-]
+{
+  "items": [
+    {
+      "kind": "outfit",
+      "usage": null,
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": ["summer"],
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": [
+        {
+          "kind": "garment",
+          "usage": null,
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": ["Adidas"],
+          "seasons": null,
+          "base_colors": null,
+          "secondary_colors": null,
+          "master_categories": null,
+          "sub_categories": null,
+          "article_types": ["sneakers"],
+          "product_names": ["Ultraboost"],
+          "images": null
+        }
+      ]
+    }
+  ]
+}
 
 ### Example 3
 
@@ -83,20 +87,39 @@ User:
 I want a winter outfit for 2022 under 300 dollars.
 
 Output:
-[
-  {
-    "kind": "outfit",
-    "usage": null,
-    "years": [2022],
-    "max_price": 300,
-    "gender": null,
-    "brands": null,
-    "seasons": ["winter"],
-    "base_colors": null,
-    "secondary_colors": null,
-    "items": []
-  }
-]
+{
+  "items": [
+    {
+      "kind": "outfit",
+      "usage": null,
+      "years": [2022],
+      "max_price": 300,
+      "gender": null,
+      "brands": null,
+      "seasons": ["winter"],
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": [
+        {
+          "kind": "garment",
+          "usage": null,
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": null,
+          "seasons": ["winter"],
+          "base_colors": null,
+          "secondary_colors": null,
+          "master_categories": null,
+          "sub_categories": null,
+          "article_types": null,
+          "product_names": null,
+          "images": null
+        }
+      ]
+    }
+  ]
+}
 
 ### Example 4
 
@@ -104,33 +127,52 @@ User:
 I need black boots and also a formal outfit for a wedding.
 
 Output:
-[
-  {
-    "kind": "garment",
-    "usage": null,
-    "years": null,
-    "max_price": null,
-    "gender": null,
-    "brands": null,
-    "seasons": null,
-    "base_colors": ["black"],
-    "secondary_colors": null,
-    "master_categories": null,
-    "sub_categories": null,
-    "article_types": ["boots"],
-    "product_names": null,
-    "images": null
-  },
-  {
-    "kind": "outfit",
-    "usage": "Formal wedding",
-    "years": null,
-    "max_price": null,
-    "gender": null,
-    "brands": null,
-    "seasons": null,
-    "base_colors": null,
-    "secondary_colors": null,
-    "items": []
-  }
-]
+{
+  "items": [
+    {
+      "kind": "garment",
+      "usage": null,
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": null,
+      "base_colors": ["black"],
+      "secondary_colors": null,
+      "master_categories": null,
+      "sub_categories": null,
+      "article_types": ["boots"],
+      "product_names": null,
+      "images": null
+    },
+    {
+      "kind": "outfit",
+      "usage": "Formal wedding",
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": null,
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": [
+        {
+          "kind": "garment",
+          "usage": "Formal wedding",
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": null,
+          "seasons": null,
+          "base_colors": null,
+          "secondary_colors": null,
+          "master_categories": null,
+          "sub_categories": null,
+          "article_types": null,
+          "product_names": null,
+          "images": null
+        }
+      ]
+    }
+  ]
+}
