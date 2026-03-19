@@ -63,6 +63,26 @@ The "items" field inside an OutfitSpec must contain GarmentSpec objects represen
 
 Do not include OutfitSpec objects inside another OutfitSpec.
 
+ATTRIBUTE INHERITANCE RULE
+
+OutfitSpec fields MUST NOT be automatically copied into the GarmentSpec items inside the outfit.
+
+Each GarmentSpec must be evaluated independently.
+
+- Do NOT propagate attributes from the OutfitSpec into its garments.
+- Do NOT copy fields like usage, years, brands, seasons, colors, etc. from the outfit to the garments by default.
+- Each garment should only contain fields that are explicitly specified or clearly implied for that specific garment.
+
+INCLUSION RULE FOR GARMENTS
+
+A field inside a GarmentSpec should be included (i.e., not null) ONLY IF:
+
+1. The user explicitly specifies that attribute for that garment, OR
+2. The attribute is clearly and uniquely associated with that specific garment (not the outfit as a whole).
+
+Otherwise:
+- The field must be set to null in the GarmentSpec, even if the OutfitSpec has a value for that field.
+
 GARMENT VS OUTFIT SEPARATION
 
 If the user says:

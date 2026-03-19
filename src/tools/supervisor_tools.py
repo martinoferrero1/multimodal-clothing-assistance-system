@@ -9,7 +9,7 @@ from shared.base_state import BaseStateKeys
 from langgraph.graph.state import CompiledStateGraph
 from typing import Annotated
 
-RESULT_CONTENT_KEY = "content"
+RESULT_RESPONSE_KEY = "response"
 RESULT_FINISHED_KEY = "finished"
 RESULT_TOOL_KEY = "tool"
 
@@ -44,7 +44,7 @@ def run_expert_flow(state: SupervisorState, flow_id: str, graph: CompiledStateGr
     result = graph.invoke(expert_state, config=config)
     print(f"Resultado del experto {flow_id}: ", result)
     return json.dumps({
-        RESULT_CONTENT_KEY: result[BaseStateKeys.MESSAGES][-1].content if len(result[BaseStateKeys.MESSAGES]) > total_expert_msgs_before else None,
+        RESULT_RESPONSE_KEY: result[BaseStateKeys.MESSAGES][-1].content if len(result[BaseStateKeys.MESSAGES]) > total_expert_msgs_before else None,
         RESULT_FINISHED_KEY: result.get(BaseStateKeys.FINISHED, False),
         RESULT_TOOL_KEY: flow_id
     })
@@ -112,7 +112,7 @@ def clarification_tool(state: Annotated[SupervisorState, InjectedState]) -> str:
     """
 
     return json.dumps({
-        RESULT_CONTENT_KEY: "I didn't understand your request. Could you please clarify what you want to do?",
+        RESULT_RESPONSE_KEY: "I didn't understand your request. Could you please clarify what you want to do?",
         RESULT_FINISHED_KEY: False,
         RESULT_TOOL_KEY: "clarification"
     })
@@ -128,7 +128,7 @@ def end_conversation_tool(state: Annotated[SupervisorState, InjectedState]) -> s
     """
 
     return json.dumps({
-        RESULT_CONTENT_KEY: "Thank you! If you need more help, feel free to come back anytime.",
+        RESULT_RESPONSE_KEY: "Thank you! If you need more help, feel free to come back anytime.",
         RESULT_FINISHED_KEY: True,
         RESULT_TOOL_KEY: "end"
     })

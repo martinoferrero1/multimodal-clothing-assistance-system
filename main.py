@@ -1,10 +1,12 @@
+import json
 import uuid
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from agents.main_supervisor_agent.graph import SupervisorGraph
 from agents.main_supervisor_agent.state import SupervisorStateKeys
 from shared.base_state import BaseStateKeys
 from core.settings import Settings
 from dotenv import load_dotenv
+from tools.supervisor_tools import RESULT_RESPONSE_KEY
 
 def main():
     load_dotenv()
@@ -33,13 +35,16 @@ def main():
         )
         print("Errors: ", result.get(BaseStateKeys.ERRORS, []))
         messages = result.get(BaseStateKeys.MESSAGES, [])
-        response = None
+        content = None
         for msg in reversed(messages):
-            if getattr(msg, "content", None):
-                response = msg.content
+            content = getattr(msg, "content", None)
+            if content and isinstance(msg, ToolMessage):
+                print("el content es: ", content)
+                content = json.loads(content).get(RESULT_RESPONSE_KEY, None)
+            if content:
                 break
-        if response:
-            print(f"Assistant: {response}\n")
+        if content:
+            print(f"Assistant:\n{content}\n")
         else:
             print("Assistant: (no response)\n")
 

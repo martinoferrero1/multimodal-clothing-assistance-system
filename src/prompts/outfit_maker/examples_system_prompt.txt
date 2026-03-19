@@ -107,7 +107,7 @@ Output:
           "max_price": null,
           "gender": null,
           "brands": null,
-          "seasons": ["winter"],
+          "seasons": null,
           "base_colors": null,
           "secondary_colors": null,
           "master_categories": null,
@@ -158,7 +158,7 @@ Output:
       "items": [
         {
           "kind": "garment",
-          "usage": "Formal wedding",
+          "usage": null,
           "years": null,
           "max_price": null,
           "gender": null,
@@ -169,6 +169,62 @@ Output:
           "master_categories": null,
           "sub_categories": null,
           "article_types": null,
+          "product_names": null,
+          "images": null
+        }
+      ]
+    }
+  ]
+}
+
+### Example 5
+
+User:
+Create a tennis outfit with clay court shoes and a white t-shirt.
+
+Output:
+{
+  "items": [
+    {
+      "kind": "outfit",
+      "usage": "playing tennis",
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": null,
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": [
+        {
+          "kind": "garment",
+          "usage": "playing tennis on clay court",
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": null,
+          "seasons": null,
+          "base_colors": null,
+          "secondary_colors": null,
+          "master_categories": null,
+          "sub_categories": null,
+          "article_types": ["shoes"],
+          "product_names": null,
+          "images": null
+        },
+        {
+          "kind": "garment",
+          "usage": null,
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": null,
+          "seasons": null,
+          "base_colors": ["white"],
+          "secondary_colors": null,
+          "master_categories": null,
+          "sub_categories": null,
+          "article_types": ["t-shirt"],
           "product_names": null,
           "images": null
         }

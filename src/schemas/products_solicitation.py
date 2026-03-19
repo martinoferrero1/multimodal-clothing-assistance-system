@@ -14,7 +14,7 @@ class BaseItemSpec(BaseModel):
     secondary_colors: Optional[List[str]] = None
 
 class GarmentSpec(BaseItemSpec):
-    kind: Literal["garment"] = "garment"
+    kind: Literal["garment"] = "garment" # No subo el kind a BaseItemSpec porque en un principio lo abstrai pero por distintas cuestiones el modelo tenia problemas para discriminar el tipo de item
 
     master_categories: Optional[List[str]] = None
     sub_categories: Optional[List[str]] = None

@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 from schemas.products_solicitation import ItemSpecList
 from shared.base_state import BaseStateKeys
+from utils.product_solicitations import format_solicitation
 from utils.prompts import build_prompt
 from utils.error_handling import safe_node
 from utils.models import get_llm_model
@@ -28,7 +29,8 @@ class OutfitMakerGraph(BaseGraph):
             HumanMessage(content=state[OutfitMakerStateKeys.OUTFIT_PREFERENCES])
         ]
         solicitations: ItemSpecList = llm.invoke(messages)
-        identified_solicitations_msg = AIMessage(content=f"Ok, we could identify the next clothes solicitations:\n\n{solicitations.model_dump_json(indent=2)}")
+        #identified_solicitations_msg = AIMessage(content=f"Ok, we could identify the next clothes solicitations:\n\n{solicitations.model_dump_json(indent=2)}")
+        identified_solicitations_msg = AIMessage(content=format_solicitation(solicitations))
 
         return {
             OutfitMakerStateKeys.CLOTHES_SOLICITATIONS: solicitations,

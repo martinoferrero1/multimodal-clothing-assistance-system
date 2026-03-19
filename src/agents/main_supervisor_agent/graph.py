@@ -1,5 +1,4 @@
 import json
-
 from agents.base_graph import BaseGraph
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
@@ -11,7 +10,7 @@ from utils.error_handling import safe_node
 from utils.prompts import build_prompt
 from langchain_core.messages import AIMessage, SystemMessage
 from .state import FlowSnapshotKeys, SupervisorState, SupervisorStateKeys
-from tools.supervisor_tools import supervisor_tools, RESULT_CONTENT_KEY, RESULT_FINISHED_KEY, RESULT_TOOL_KEY
+from tools.supervisor_tools import supervisor_tools, RESULT_RESPONSE_KEY, RESULT_FINISHED_KEY, RESULT_TOOL_KEY
 
 class SupervisorGraph(BaseGraph):
 
@@ -39,7 +38,6 @@ class SupervisorGraph(BaseGraph):
     def _process_tool_result_node(self, state: SupervisorState):
         last_message = state[BaseStateKeys.MESSAGES][-1]
         tool_result = json.loads(last_message.content)
-        content = tool_result.get(RESULT_CONTENT_KEY)
         finished = tool_result.get(RESULT_FINISHED_KEY)
         stack = state[SupervisorStateKeys.FLOW_STACK]
 
@@ -61,9 +59,8 @@ class SupervisorGraph(BaseGraph):
                     SupervisorStateKeys.EVALUATING_UNCOMPREHENDED_MSG: False
                     }
 
-        if content:
-            msg = AIMessage(content=content)
-            return {BaseStateKeys.MESSAGES: [msg],
+        if tool_result.get(RESULT_RESPONSE_KEY, None):
+            return {
                     SupervisorStateKeys.AWAITING_NEW_INTENT_CONFIRMATION: False,
                     SupervisorStateKeys.EVALUATING_UNCOMPREHENDED_MSG: False}
 
