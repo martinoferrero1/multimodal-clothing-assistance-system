@@ -1,0 +1,177 @@
+### Example 1
+
+User message: "I want to buy clothes"
+Has existing specs: false
+Summary: ""
+Recent messages: []
+
+Output:
+{
+  "intent": "provide_specifications",
+  "has_enough_information": false
+}
+
+
+### Example 2
+
+User message: "I want a black dress"
+Has existing specs: false
+Summary: ""
+Recent messages: []
+
+Output:
+{
+  "intent": "provide_specifications",
+  "has_enough_information": true
+}
+
+
+### Example 3
+
+User message: "yes"
+Has existing specs: true
+Summary: ""
+Recent messages:
+- user: "I want a black dress and white sneakers"
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+Black dress and white sneakers"
+
+Output:
+{
+  "intent": "confirm",
+  "has_enough_information": false
+}
+
+
+### Example 4
+
+User message: "yes but make it black"
+Has existing specs: true
+Summary: ""
+Recent messages:
+- user: "I want a blue dress and white sneakers"
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+Blue dress and white sneakers"
+
+Output:
+{
+  "intent": "request_modification",
+  "has_enough_information": true
+}
+
+
+### Example 5
+
+User message: "change it"
+Has existing specs: true
+Summary: ""
+Recent messages:
+- user: "I want a black dress and white sneakers"
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+Black dress and white sneakers"
+
+Output:
+{
+  "intent": "request_modification",
+  "has_enough_information": false
+}
+
+
+### Example 6
+
+User message: "Do you have leather jackets?"
+Has existing specs: false
+Summary: ""
+Recent messages: []
+
+Output:
+{
+  "intent": "unclear",
+  "has_enough_information": false
+}
+
+
+### Example 7
+
+User message: "yes"
+Has existing specs: true
+Summary: "User requested a blue dress for 2025. The ai asked for confirmation. The user requested to add modern Nike sneakers. The ai summarized the request as a blue dress for 2025 and modern Nike sneakers for 2026 and asked for confirmation."
+Recent messages:
+- user: "Do you have leather jackets?"
+- ai: "Yes, we do offer leather jackets."
+- user: "Ok, I want one"
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+Blue dress for 2025, modern Nike sneakers for 2026, and a leather jacket"
+
+Output:
+{
+  "intent": "confirm",
+  "has_enough_information": false
+}
+
+
+### Example 8
+
+User message: "ok add one of those"
+Has existing specs: true
+Summary: "User asked for a black dress and then requested it."
+Recent messages:
+- user: "Do you have leather jackets?"
+- ai: "Yes, we do offer leather jackets."
+
+Output:
+{
+  "intent": "request_modification",
+  "has_enough_information": true
+}
+
+
+### Example 9
+
+User message: "I don't like it"
+Has existing specs: true
+Summary: ""
+Recent messages:
+- user: "I want a black dress"
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+Black dress"
+
+Output:
+{
+  "intent": "reject",
+  "has_enough_information": false
+}
+
+
+### Example 10
+
+User message: "never mind"
+Has existing specs: true
+Summary: ""
+Recent messages:
+- user: "I want a black dress"
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+Black dress"
+
+Output:
+{
+  "intent": "cancel",
+  "has_enough_information": false
+}
+
+
+### Example 11
+
+User message: "hmm"
+Has existing specs: true
+Summary: ""
+Recent messages:
+- user: "I want a black dress"
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+Black dress"
+
+Output:
+{
+  "intent": "unclear",
+  "has_enough_information": false
+}

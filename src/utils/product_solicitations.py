@@ -1,4 +1,4 @@
-from schemas.products_solicitation import ItemSpecList
+from schemas.outfit_maker.products_solicitation import ItemSpecList
 
 def format_solicitation(item_spec_list: ItemSpecList) -> str:
     FIELD_LABELS = {
@@ -103,3 +103,21 @@ def format_solicitation(item_spec_list: ItemSpecList) -> str:
             output_lines.append("")
 
     return "\n".join(output_lines).strip()
+
+def build_modifications_extraction_input(solicitations_history: list[str], current_extraction: ItemSpecList, current_msg: str) -> str:
+    modifications_list = solicitations_history[1:]
+    modifications_list = "\n".join(f"- {h}" for h in modifications_list) if modifications_list else "None"
+
+    return f"""
+Original request:
+{solicitations_history[0]}
+
+Current specifications (this is the base state to update):
+{current_extraction}
+
+Modification history:
+{modifications_list}
+
+Latest user message (apply this change):
+{current_msg}
+"""

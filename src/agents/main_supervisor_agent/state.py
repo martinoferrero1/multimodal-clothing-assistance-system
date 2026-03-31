@@ -1,27 +1,27 @@
-from typing import Literal
-from typing_extensions import TypedDict
+import operator
+from typing import List, Literal
+from typing_extensions import Annotated, TypedDict
+from schemas.supervisor_decision import SupervisorDecision
 from shared.base_state import BaseState
 
-OUTFIT_MAKER_FLOW_ID = "outfit_maker"
-BUY_FLOW_ID = "buy"
-ORDER_FLOW_ID = "order"
+OUTFIT_MAKER_FLOW_ID = "outfit_expert"
+BUY_FLOW_ID = "buy_expert"
+ORDER_FLOW_ID = "order_expert"
 
 class FlowSnapshot(TypedDict):
-    flow_id: Literal["outfit_maker", "buy", "order"] # el typed dict solo acepta literales en el tipado, por eso pongo las constantes por afuera
+    flow_id: Literal["outfit_expert", "buy_expert", "order_expert"] # el typed dict solo acepta literales en el tipado, por eso pongo las constantes por afuera
     thread_id: str
-    awaiting_user_answer: bool
+
+FlowSnapshotState = Annotated[List[FlowSnapshot], lambda old, new: new] # dado que los snapshots tambien se eliminan, entonces no puedo usar operator.add
 
 class SupervisorState(BaseState):
-    flow_stack: list[FlowSnapshot]
-    awaiting_new_intent_confirmation: bool
+    flow_stack: FlowSnapshotState
     evaluating_uncomprehended_msg: bool
 
 class SupervisorStateKeys:
     FLOW_STACK = "flow_stack"
-    AWAITING_NEW_INTENT_CONFIRMATION = "awaiting_new_intent_confirmation"
     EVALUATING_UNCOMPREHENDED_MSG = "evaluating_uncomprehended_msg"
 
 class FlowSnapshotKeys:
     FLOW_ID = "flow_id"
     THREAD_ID = "thread_id"
-    AWAITING_USER_ANSWER = "awaiting_user_answer"
