@@ -1,9 +1,9 @@
 
-from core.settings import Settings
+from core.settings import settings
 from langchain_core.language_models.chat_models import BaseChatModel
 from schemas.provider import Provider
 
-def get_llm_model(settings: Settings, is_supervisor: bool = False) -> BaseChatModel:
+def get_llm_model(is_supervisor: bool = False) -> BaseChatModel:
     provider = settings.LLM_SUPERVISOR_PROVIDER if is_supervisor else settings.LLM_SUB_AGENTS_PROVIDER
     provider = provider.lower()
     if provider == Provider.google:
