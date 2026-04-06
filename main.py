@@ -1,16 +1,14 @@
 import uuid
 from langgraph.types import Command
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from agents.main_supervisor_agent.graph import SupervisorGraph
-from agents.main_supervisor_agent.state import SupervisorStateKeys
-from shared.base_state import BaseStateKeys
-from core.settings import Settings
+from state import StateKeys, SumaryKeys
 from dotenv import load_dotenv
+from utils.models import get_llm_model
 
 
 def main():
     load_dotenv()
-    settings = Settings()
     graph = SupervisorGraph().get_graph()
     thread_id = str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
@@ -18,42 +16,97 @@ def main():
     print("Assistant ready. Type 'exit' to quit.\n")
 
     #user_input = input("User: ")
-    user_input = "I want two special outfits (create an outfit). One of them is for my wedding, I need a blue dress from the last year. But also I want an outfit for playing tennis. It needs to have a pair of sneakers with red as main color but also blue in a secondary grade. And also it needs a t-shirt, but not much expensive, I can pay a maximum of 25 USD for that"
+    user_input = "I want two special outfits. One of them is for my wedding, I need a blue dress from the last year. But also I want an outfit for playing tennis. It needs to have a pair of sneakers with red as main color but also blue in a secondary grade. And also it needs a t-shirt, but not much expensive, I can pay a maximum of 25 USD for that"
     if user_input.lower() not in {"exit", "quit"}:
         result = graph.invoke(
                 {
-                    BaseStateKeys.SETTINGS: settings,
-                    BaseStateKeys.MESSAGES: [HumanMessage(content=user_input)],
-                    BaseStateKeys.ERRORS: [],
-                    BaseStateKeys.FINISHED: False,
-                    BaseStateKeys.CURRENT_RESPONSE_MSG: None,
-                    BaseStateKeys.LAST_MESSAGES_CONTEXT: [],
-                    BaseStateKeys.PREVIOUS_SUMMARY: None,
-                    SupervisorStateKeys.FLOW_STACK: [],
-                    SupervisorStateKeys.EVALUATING_UNCOMPREHENDED_MSG: False
+                    StateKeys.MESSAGES: [HumanMessage(content=user_input)],
+                    StateKeys.ERRORS: [],
+                    StateKeys.PREVIOUS_SUMMARY: {SumaryKeys.CONTENT: None, SumaryKeys.POS_MSGS_COUNT: 1},
+                    StateKeys.UNCLEAR_MSG: False,
+                    StateKeys.CLOTH_SOLICITATIONS: None,
+                    StateKeys.CURRENT_SPECIALIST: None
                 },
                 config=config
             )
         while True:
-            print("Errors: ", result.get(BaseStateKeys.ERRORS, []))
-            response = result.get(BaseStateKeys.CURRENT_RESPONSE_MSG)
-            if response:
-                print(f"Assistant:\n{response.content}\n")
-            else:
-                print("Assistant: (no response)\n")
-            
+            print("Workflow errors: ", result.get(StateKeys.ERRORS, []))
+            response = result.get(StateKeys.MESSAGES, [])[-1] if result.get(StateKeys.MESSAGES, []) else None
+            print(response.content if response else "No response from the agent.")
             user_input = input("User: ")
             if user_input.lower() in {"exit", "quit"}:
                 break
-            
-            #graph.update_state(config=config, values={
-                #BaseStateKeys.MESSAGES: [HumanMessage(content=user_input)],
-            #})
-            print("el resultado del asistente es: ", result)
-            result = graph.invoke(
-                Command(update={BaseStateKeys.MESSAGES: [HumanMessage(content=user_input)]}),
-                config=config
-            )
+            pos_msgs = result[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.POS_MSGS_COUNT]
+            if pos_msgs == 6:
+                summarizer_sys_prompt = """
+You are a summarization agent.
+
+Your task is to generate a concise summary of a conversation.
+
+# INPUT CONTEXT
+
+You receive:
+
+- previous_summary: A summary of the conversation so far (may be empty or null).
+- recent_messages: The last 6 messages of the conversation, alternating between Human and AI (Human, AI, Human, AI, Human, AI).
+
+# OBJECTIVE
+
+Create a short summary that captures:
+
+- What the user asked or requested
+- What the assistant responded
+- The overall progression of the conversation
+
+# IMPORTANT GUIDELINES
+
+- Keep the summary under 400 characters
+- Be concise but informative
+- Do NOT include unnecessary details
+- Do NOT repeat messages verbatim
+- Use natural language
+
+# CONTEXT HANDLING
+
+- If previous_summary exists:
+  - Use it to maintain continuity
+  - You may briefly reference what was happening before
+  - Merge it with the new information naturally
+
+- If there is no clear connection between previous_summary and recent_messages:
+  - Focus primarily on recent_messages
+
+# BEHAVIOR RULES
+
+- Summarize interactions as pairs when possible (user intent + assistant response)
+- Focus on meaningful actions, decisions, and clarifications
+- Avoid listing messages one by one
+- Avoid redundancy
+
+# OUTPUT
+
+Return ONLY the summary as plain text. No JSON. No extra formatting.
+"""
+                llm = get_llm_model(is_supervisor=False).with_structured_output(str)
+                recent_messages = result[StateKeys.MESSAGES][-6:]
+                summary: str = llm.invoke(
+                    SystemMessage(content=summarizer_sys_prompt),
+                    SystemMessage(content=f"previous_summary: {result[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT]}"),
+                    *recent_messages
+                )
+                result = graph.invoke(
+                    Command(update={StateKeys.MESSAGES: [HumanMessage(content=user_input)],
+                                    StateKeys.PREVIOUS_SUMMARY: {
+                                        SumaryKeys.CONTENT: summary,
+                                        SumaryKeys.POS_MSGS_COUNT: 1
+                                    }}),
+                    config=config
+                )
+            else:
+                result = graph.invoke(
+                    Command(update={StateKeys.MESSAGES: [HumanMessage(content=user_input)]}),
+                    config=config
+                )
 
 if __name__ == "__main__":
     main()

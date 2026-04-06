@@ -1,7 +1,9 @@
 ### Example 1
 
-User:
-I need a black leather jacket and white sneakers from Nike.
+existing_specs: ""
+summary: ""
+Messages:
+- human: "I need a black leather jacket and white sneakers from Nike."
 
 Output:
 {
@@ -41,12 +43,9 @@ Output:
   ]
 }
 
-### Example 2
+### Example 2 -> Important: Case of modification required
 
-User:
-Create a summer outfit to match my Adidas Ultraboost sneakers.
-
-Output:
+existing_specs:
 {
   "items": [
     {
@@ -80,11 +79,61 @@ Output:
     }
   ]
 }
+summary: "The user had previously inquired about purchase methods and whether they sold Adidas shoes. The system responded that payment methods included card and cash, and that they were currently selling Adidas."
+Messages:
+- human: "Create a summer outfit to match my Adidas Ultraboost sneakers."
+- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
+          Outfit:
+            - Season: Summer
+            - Clothing items required:
+                - Sneakers:
+                  - Brand: Adidas
+                  - Product name: Ultraboost"
+- human: "Ok but make it for 2024"
+
+Output:
+{
+  "items": [
+    {
+      "kind": "outfit",
+      "usage": null,
+      "years": 2024,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": ["summer"],
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": [
+        {
+          "kind": "garment",
+          "usage": null,
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": ["Adidas"],
+          "seasons": null,
+          "base_colors": null,
+          "secondary_colors": null,
+          "master_categories": null,
+          "sub_categories": null,
+          "article_types": ["sneakers"],
+          "product_names": ["Ultraboost"],
+          "images": null
+        }
+      ]
+    }
+  ]
+}
 
 ### Example 3
 
-User:
-I want a winter outfit for 2022 under 300 dollars.
+existing_specs: ""
+summary: ""
+Messages:
+- human: "Where are you located?"
+- ai: "Hello, we are located at 520 Sarmiento Street, Tandil"
+- human: "I want a winter outfit for 2022 under 300 dollars"
 
 Output:
 {
@@ -123,8 +172,12 @@ Output:
 
 ### Example 4
 
-User:
-I need black boots and also a formal outfit for a wedding.
+existing_specs: ""
+summary: ""
+Messages:
+- human: "Hi!"
+- ai: "Hi, how are you? Thanks for visiting us, how can we help you?"
+- human: "I need black boots and also a formal outfit for a wedding."
 
 Output:
 {
@@ -179,8 +232,10 @@ Output:
 
 ### Example 5
 
-User:
-Create a tennis outfit with clay court shoes and a white t-shirt.
+existing_specs: ""
+summary: ""
+Messages:
+- human: "Create a tennis outfit with clay court shoes and a white t-shirt."
 
 Output:
 {
