@@ -12,7 +12,7 @@ def safe_node(node_name: str):
             try:
                 return func(self, state)
             except Exception as e:
-                if node_name == "decide_specialist":
+                if node_name == "orchestator_planner":
                     next = "ask_for_feedback"
                 else:
                     next = END

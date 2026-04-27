@@ -1,0 +1,139 @@
+# EXAMPLES
+
+## Example 1 — Business (multiple questions)
+
+summary:
+User previously asked about store location and got an answer.
+
+recent_messages:
+User: "Do you accept Mercado Pago?"
+AI: "We offer several payment methods."
+User: "And do you ship internationally?"
+
+Output:
+{
+  "plan": ["business_qa", "final_response"],
+  "business_qa_queries": [
+    "Do you accept Mercado Pago?",
+    "Do you ship internationally?"
+  ],
+  "outfit_search_intents": null,
+  "custom_answer": null,
+  "use_default_clarification": false
+}
+
+---
+
+## Example 2 — New outfit
+
+summary:
+User was exploring casual outfits.
+
+recent_messages:
+User: "I want something comfortable"
+AI: "Sure, what style?"
+User: "A dark casual outfit for a night out"
+
+Output:
+{
+  "plan": ["extract_outfit_request", "search_products", "build_outfit", "final_response"],
+  "business_qa_queries": null,
+  "outfit_search_intents": [
+    "Build a dark casual outfit for a night out."
+  ],
+  "custom_answer": null,
+  "use_default_clarification": false
+}
+
+---
+
+## Example 3 — Refinement (NO modify node)
+
+summary:
+User already received an outfit with sneakers.
+
+recent_messages:
+User: "That looks good"
+AI: "Glad you liked it!"
+User: "Make it more formal and remove the sneakers"
+
+Output:
+{
+  "plan": ["extract_outfit_request", "search_products", "build_outfit", "final_response"],
+  "business_qa_queries": null,
+  "outfit_search_intents": [
+    "Update the current outfit to be more formal and remove sneakers."
+  ],
+  "custom_answer": null,
+  "use_default_clarification": false
+}
+
+---
+
+## Example 4 — Mixed
+
+summary:
+User asked about outfits earlier.
+
+recent_messages:
+User: "Can you suggest something stylish?"
+AI: "Of course!"
+User: "Do you accept Mercado Pago and build me something elegant for dinner"
+
+Output:
+{
+  "plan": ["business_qa", "extract_outfit_request", "search_products", "build_outfit", "final_response"],
+  "business_qa_queries": [
+    "Do you accept Mercado Pago?"
+  ],
+  "outfit_search_intents": [
+    "Build an elegant outfit for a dinner."
+  ],
+  "custom_answer": null,
+  "use_default_clarification": false
+}
+
+---
+
+## Example 5 — Multiple outfits
+
+summary:
+User wants options for different occasions.
+
+recent_messages:
+User: "I need help choosing outfits"
+AI: "Sure, tell me more"
+User: "Give me one for a wedding and one for a casual day"
+
+Output:
+{
+  "plan": ["extract_outfit_request", "search_products", "build_outfit", "final_response"],
+  "business_qa_queries": null,
+  "outfit_search_intents": [
+    "Build a formal outfit for a wedding.",
+    "Build a casual daytime outfit."
+  ],
+  "custom_answer": null,
+  "use_default_clarification": false
+}
+
+---
+
+## Example 6 — Thanks
+
+summary:
+User completed outfit selection.
+
+recent_messages:
+User: "That works perfectly"
+AI: "Great choice!"
+User: "Thanks!"
+
+Output:
+{
+  "plan": [],
+  "business_qa_queries": null,
+  "outfit_search_intents": null,
+  "custom_answer": "You're welcome!",
+  "use_default_clarification": false
+}

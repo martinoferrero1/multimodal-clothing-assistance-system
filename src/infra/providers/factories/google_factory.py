@@ -1,5 +1,5 @@
 from typing import ClassVar
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from infra.providers.factories.base_factory import ProviderFactory
 from langchain_core.language_models.chat_models import BaseChatModel
 from schemas.provider import Provider
@@ -13,3 +13,7 @@ class GoogleFactory(ProviderFactory):
         if temperature is not None:
             return ChatGoogleGenerativeAI(model=llm_model, temperature=temperature)
         return ChatGoogleGenerativeAI(model=llm_model)
+
+    @classmethod
+    def _build_embedding(cls, embedding_model: str):
+        return GoogleGenerativeAIEmbeddings(model=embedding_model)

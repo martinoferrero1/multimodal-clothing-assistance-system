@@ -1,8 +1,15 @@
-### Example 1
+### Example 1 — Multiple garments (new request)
 
-existing_specs: ""
+search_intents:
+[
+  "Find a black leather jacket and white sneakers from Nike."
+]
+
+current_solicitation: null
+
 summary: ""
-Messages:
+
+recent_messages:
 - human: "I need a black leather jacket and white sneakers from Nike."
 
 Output:
@@ -43,9 +50,16 @@ Output:
   ]
 }
 
-### Example 2 -> Important: Case of modification required
+---
 
-existing_specs:
+### Example 2 — Update existing outfit (modification)
+
+search_intents:
+[
+  "Update the current outfit to be for 2024."
+]
+
+current_solicitation:
 {
   "items": [
     {
@@ -79,16 +93,13 @@ existing_specs:
     }
   ]
 }
-summary: "The user had previously inquired about purchase methods and whether they sold Adidas shoes. The system responded that payment methods included card and cash, and that they were currently selling Adidas."
-Messages:
+
+summary:
+"The user wanted a summer outfit built around Adidas Ultraboost sneakers."
+
+recent_messages:
 - human: "Create a summer outfit to match my Adidas Ultraboost sneakers."
-- ai: "Ok! Here's a summary of your request, please confirm if it's what you are looking for:
-          Outfit:
-            - Season: Summer
-            - Clothing items required:
-                - Sneakers:
-                  - Brand: Adidas
-                  - Product name: Ultraboost"
+- ai: "Here is the summary of your request..."
 - human: "Ok but make it for 2024"
 
 Output:
@@ -126,13 +137,23 @@ Output:
   ]
 }
 
-### Example 3
+---
 
-existing_specs: ""
-summary: ""
-Messages:
+### Example 3 — Ignore business + extract outfit
+
+search_intents:
+[
+  "Build a winter outfit for 2022 under 300 dollars."
+]
+
+current_solicitation: null
+
+summary:
+"The user asked about store location and received an answer."
+
+recent_messages:
 - human: "Where are you located?"
-- ai: "Hello, we are located at 520 Sarmiento Street, Tandil"
+- ai: "We are located at 520 Sarmiento Street, Tandil"
 - human: "I want a winter outfit for 2022 under 300 dollars"
 
 Output:
@@ -170,13 +191,23 @@ Output:
   ]
 }
 
-### Example 4
+---
 
-existing_specs: ""
+### Example 4 — Mixed garment + outfit
+
+search_intents:
+[
+  "Find black boots",
+  "Build a formal outfit for a wedding"
+]
+
+current_solicitation: null
+
 summary: ""
-Messages:
+
+recent_messages:
 - human: "Hi!"
-- ai: "Hi, how are you? Thanks for visiting us, how can we help you?"
+- ai: "Hello! How can I help you?"
 - human: "I need black boots and also a formal outfit for a wedding."
 
 Output:
@@ -200,7 +231,7 @@ Output:
     },
     {
       "kind": "outfit",
-      "usage": "Formal wedding",
+      "usage": "formal wedding",
       "years": null,
       "max_price": null,
       "gender": null,
@@ -230,19 +261,41 @@ Output:
   ]
 }
 
-### Example 5
+---
 
-existing_specs: ""
-summary: ""
-Messages:
-- human: "Create a tennis outfit with clay court shoes and a white t-shirt."
+### Example 5 — CRITICAL: New request overrides previous (RESET)
+
+search_intents:
+[
+  "Find a hoodie"
+]
+
+current_solicitation:
+{
+  "items": [
+    {
+      "kind": "garment",
+      "base_colors": ["black"],
+      "article_types": ["sneakers"],
+      "brands": ["Nike"]
+    }
+  ]
+}
+
+summary:
+"The user was previously looking for black Nike sneakers."
+
+recent_messages:
+- human: "I want black Nike sneakers"
+- ai: "Got it"
+- human: "Actually I want a hoodie now"
 
 Output:
 {
   "items": [
     {
-      "kind": "outfit",
-      "usage": "playing tennis",
+      "kind": "garment",
+      "usage": null,
       "years": null,
       "max_price": null,
       "gender": null,
@@ -250,40 +303,62 @@ Output:
       "seasons": null,
       "base_colors": null,
       "secondary_colors": null,
+      "master_categories": null,
+      "sub_categories": null,
+      "article_types": ["hoodie"],
+      "product_names": null,
+      "images": null
+    }
+  ]
+}
+
+---
+
+### Example 6 — Outfit refinement (NOT reset)
+
+search_intents:
+[
+  "Update the current outfit to remove sneakers and make it more formal"
+]
+
+current_solicitation:
+{
+  "items": [
+    {
+      "kind": "outfit",
+      "usage": "casual",
       "items": [
         {
           "kind": "garment",
-          "usage": "playing tennis on clay court",
-          "years": null,
-          "max_price": null,
-          "gender": null,
-          "brands": null,
-          "seasons": null,
-          "base_colors": null,
-          "secondary_colors": null,
-          "master_categories": null,
-          "sub_categories": null,
-          "article_types": ["shoes"],
-          "product_names": null,
-          "images": null
-        },
-        {
-          "kind": "garment",
-          "usage": null,
-          "years": null,
-          "max_price": null,
-          "gender": null,
-          "brands": null,
-          "seasons": null,
-          "base_colors": ["white"],
-          "secondary_colors": null,
-          "master_categories": null,
-          "sub_categories": null,
-          "article_types": ["t-shirt"],
-          "product_names": null,
-          "images": null
+          "article_types": ["sneakers"]
         }
       ]
+    }
+  ]
+}
+
+summary:
+"The user previously received a casual outfit."
+
+recent_messages:
+- human: "That looks good"
+- ai: "Glad you like it"
+- human: "Make it more formal and remove sneakers"
+
+Output:
+{
+  "items": [
+    {
+      "kind": "outfit",
+      "usage": "formal",
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": null,
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": []
     }
   ]
 }

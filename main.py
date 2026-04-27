@@ -5,6 +5,7 @@ from agents.main_supervisor_agent.graph import SupervisorGraph
 from state import StateKeys, SumaryKeys
 from dotenv import load_dotenv
 from utils.models import get_llm_model
+from scripts.seed_db import seed_catalog
 
 
 def main():
@@ -16,7 +17,8 @@ def main():
     print("Assistant ready. Type 'exit' to quit.\n")
 
     #user_input = input("User: ")
-    user_input = "I want two special outfits. One of them is for my wedding, I need a blue dress from the last year. But also I want an outfit for playing tennis. It needs to have a pair of sneakers with red as main color but also blue in a secondary grade. And also it needs a t-shirt, but not much expensive, I can pay a maximum of 25 USD for that"
+    #user_input = "I want two special outfits. One of them is for my wedding, I need a blue dress from the last year. But also I want an outfit for playing tennis. It needs to have a pair of sneakers with red as main color but also blue in a secondary grade. And also it needs a t-shirt, but not much expensive, I can pay a maximum of 25 USD for that"
+    user_input = "I want men shoes, with grey as main color, and if possible, from FILA" # construir descripcion simil a Men,Footwear,Shoes,Sports Shoes,Grey,Fall,2011,Sports,Fila Men Destiny Grey Sports Shoes,FILA
     if user_input.lower() not in {"exit", "quit"}:
         result = graph.invoke(
                 {
@@ -24,8 +26,15 @@ def main():
                     StateKeys.ERRORS: [],
                     StateKeys.PREVIOUS_SUMMARY: {SumaryKeys.CONTENT: None, SumaryKeys.POS_MSGS_COUNT: 1},
                     StateKeys.UNCLEAR_MSG: False,
-                    StateKeys.CLOTH_SOLICITATIONS: None,
-                    StateKeys.CURRENT_SPECIALIST: None
+                    StateKeys.PLAN: [],
+                    StateKeys.CURRENT_STEP_INDEX: None,
+                    StateKeys.BUSINESS_QA_QUERIES: None,
+                    StateKeys.OUTFIT_SEARCH_INTENTS: None,
+                    StateKeys.BUSINESS_ANSWERS: None,
+                    StateKeys.CURRENT_OUTFIT_REQUEST: None,
+                    StateKeys.PRODUCT_CANDIDATES: None,
+                    StateKeys.CURRENT_OUTFIT: None,
+                    StateKeys.FINAL_ANSWER: None
                 },
                 config=config
             )
@@ -109,4 +118,5 @@ Return ONLY the summary as plain text. No JSON. No extra formatting.
                 )
 
 if __name__ == "__main__":
+    seed_catalog()
     main()

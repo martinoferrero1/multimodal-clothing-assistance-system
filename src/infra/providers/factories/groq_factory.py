@@ -13,3 +13,7 @@ class GroqFactory(ProviderFactory):
         if temperature is not None:
             return ChatGroq(model=llm_model, temperature=temperature)
         return ChatGroq(model=llm_model)
+
+    @classmethod
+    def _build_embedding(cls, embedding_model: str):
+        raise ValueError("Groq does not provide an embeddings model in this project. Use EMBEDDINGS_PROVIDER=google.")

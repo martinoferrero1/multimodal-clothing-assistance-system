@@ -12,13 +12,13 @@ class Gender(Base):
 class MasterCategory(Base):
     __tablename__ = 'master_categories'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
     subcategories: Mapped[list["SubCategory"]] = relationship("SubCategory", back_populates="master_category", cascade="all, delete-orphan")
 
 class SubCategory(Base):
     __tablename__ = 'sub_categories'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
     master_category_id: Mapped[int] = mapped_column(ForeignKey('master_categories.id'), nullable=False)
     master_category: Mapped["MasterCategory"] = relationship("MasterCategory", back_populates="subcategories")
     article_types: Mapped[list["ArticleType"]] = relationship("ArticleType", back_populates="sub_category", cascade="all, delete-orphan")
@@ -26,19 +26,19 @@ class SubCategory(Base):
 class ArticleType(Base):
     __tablename__ = 'article_types'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
     sub_category_id: Mapped[int] = mapped_column(ForeignKey('sub_categories.id'), nullable=False)
     sub_category: Mapped["SubCategory"] = relationship("SubCategory", back_populates="article_types")
 
 class Color(Base):
     __tablename__ = 'colors'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
 
 class Brand(Base):
     __tablename__ = 'brands'
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
 
 class Season(Base):
     __tablename__ = 'seasons'
@@ -49,14 +49,14 @@ class Product(Base):
     __tablename__ = 'products'
     __table_args__ = (
         CheckConstraint('price > 0', name='check_price_positive'),
-        CheckConstraint('availability >= 0', name='check_availability_non_negative'),
+        #CheckConstraint('availability >= 0', name='check_availability_non_negative'),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     product_display_name: Mapped[str] = mapped_column(String, nullable=False)
     year: Mapped[int] = mapped_column(Integer, nullable=True)
     usage: Mapped[str] = mapped_column(String, nullable=True)
-    availability: Mapped[int] = mapped_column(Integer, nullable=False)
+    #availability: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     
     gender_id: Mapped[int] = mapped_column(ForeignKey('genders.id'), nullable=False)

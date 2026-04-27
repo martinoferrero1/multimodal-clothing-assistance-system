@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from db.models import Base
+from infra.db.models import Base
 from core.metaclasses.singleton_meta import SingletonMeta
 
 class Database(metaclass=SingletonMeta):
