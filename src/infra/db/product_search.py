@@ -142,6 +142,9 @@ def _score_product(
     else:
         score += _text_similarity(_request_search_text(garment), _product_search_text(product)) * SEMANTIC_WEIGHT
 
+    score += _soft_match(garment.master_categories, [_name(product.master_category)], 1.0)
+    score += _soft_match(garment.sub_categories, [_name(product.sub_category)], 1.3)
+    score += _soft_match(garment.article_types, [_name(product.article_type)], 1.8)
     score += _soft_match(garment.base_colors, [_name(product.base_colour)], 1.6)
     score += _soft_match(garment.secondary_colors, [_name(product.colour1), _name(product.colour2)], 1.0)
     score += _soft_match([garment.gender] if garment.gender else None, [_name(product.gender)], 0.9)

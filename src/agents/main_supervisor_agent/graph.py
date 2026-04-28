@@ -11,6 +11,7 @@ from state import State, StateKeys, SumaryKeys
 from utils.models import get_llm_model
 from utils.error_handling import safe_node
 from utils.prompts import build_prompt
+from utils.catalog_taxonomy import taxonomy_prompt_reference
 from langchain_core.messages import SystemMessage
 from langchain_core.messages import AIMessage
 from typing import Any
@@ -84,15 +85,23 @@ class SupervisorGraph(BaseGraph):
         context = {
             "search_intents": state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []),
             "current_solicitation": current_request.model_dump() if current_request else None,
-            "summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT]
+            "summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
         }
         recent_messages = state[StateKeys.MESSAGES][-5:] if len(state[StateKeys.MESSAGES]) >= 5 else state[StateKeys.MESSAGES]
         messages = [
             SystemMessage(content=sys_prompt),
+            SystemMessage(
+                content=(
+                    "Catalog taxonomy reference for garment categorization. "
+                    "Use only these exact master_categories, sub_categories, and article_types values "
+                    f"when they can be identified:\n{taxonomy_prompt_reference()}"
+                )
+            ),
             SystemMessage(content=f"Context for extraction: {json.dumps(context, indent=2)}"),
             *recent_messages
         ]
         solicitations: ItemSpecList = llm.invoke(messages)
+        print("Search intents extracted: ", state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []))
         print(f"Extracted outfit request: {solicitations}")
         return {StateKeys.CURRENT_OUTFIT_REQUEST: solicitations}
         

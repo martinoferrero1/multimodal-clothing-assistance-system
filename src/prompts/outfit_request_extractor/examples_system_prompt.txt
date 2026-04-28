@@ -1,8 +1,8 @@
-### Example 1 — Multiple garments (new request)
+### Example 1 - New request with exact taxonomy path
 
 search_intents:
 [
-  "Find a black leather jacket and white sneakers from Nike."
+  "Find a black jacket and white sports shoes from Nike."
 ]
 
 current_solicitation: null
@@ -10,7 +10,7 @@ current_solicitation: null
 summary: ""
 
 recent_messages:
-- human: "I need a black leather jacket and white sneakers from Nike."
+- human: "I need a black jacket and white sports shoes from Nike."
 
 Output:
 {
@@ -25,9 +25,9 @@ Output:
       "seasons": null,
       "base_colors": ["black"],
       "secondary_colors": null,
-      "master_categories": null,
-      "sub_categories": null,
-      "article_types": ["leather jacket"],
+      "master_categories": ["Apparel"],
+      "sub_categories": ["Topwear"],
+      "article_types": ["Jackets"],
       "product_names": null,
       "images": null
     },
@@ -41,9 +41,9 @@ Output:
       "seasons": null,
       "base_colors": ["white"],
       "secondary_colors": null,
-      "master_categories": null,
-      "sub_categories": null,
-      "article_types": ["sneakers"],
+      "master_categories": ["Footwear"],
+      "sub_categories": ["Shoes"],
+      "article_types": ["Sports Shoes"],
       "product_names": null,
       "images": null
     }
@@ -52,153 +52,11 @@ Output:
 
 ---
 
-### Example 2 — Update existing outfit (modification)
+### Example 2 - Article type has priority over a broader conflicting label
 
 search_intents:
 [
-  "Update the current outfit to be for 2024."
-]
-
-current_solicitation:
-{
-  "items": [
-    {
-      "kind": "outfit",
-      "usage": null,
-      "years": null,
-      "max_price": null,
-      "gender": null,
-      "brands": null,
-      "seasons": ["summer"],
-      "base_colors": null,
-      "secondary_colors": null,
-      "items": [
-        {
-          "kind": "garment",
-          "usage": null,
-          "years": null,
-          "max_price": null,
-          "gender": null,
-          "brands": ["Adidas"],
-          "seasons": null,
-          "base_colors": null,
-          "secondary_colors": null,
-          "master_categories": null,
-          "sub_categories": null,
-          "article_types": ["sneakers"],
-          "product_names": ["Ultraboost"],
-          "images": null
-        }
-      ]
-    }
-  ]
-}
-
-summary:
-"The user wanted a summer outfit built around Adidas Ultraboost sneakers."
-
-recent_messages:
-- human: "Create a summer outfit to match my Adidas Ultraboost sneakers."
-- ai: "Here is the summary of your request..."
-- human: "Ok but make it for 2024"
-
-Output:
-{
-  "items": [
-    {
-      "kind": "outfit",
-      "usage": null,
-      "years": 2024,
-      "max_price": null,
-      "gender": null,
-      "brands": null,
-      "seasons": ["summer"],
-      "base_colors": null,
-      "secondary_colors": null,
-      "items": [
-        {
-          "kind": "garment",
-          "usage": null,
-          "years": null,
-          "max_price": null,
-          "gender": null,
-          "brands": ["Adidas"],
-          "seasons": null,
-          "base_colors": null,
-          "secondary_colors": null,
-          "master_categories": null,
-          "sub_categories": null,
-          "article_types": ["sneakers"],
-          "product_names": ["Ultraboost"],
-          "images": null
-        }
-      ]
-    }
-  ]
-}
-
----
-
-### Example 3 — Ignore business + extract outfit
-
-search_intents:
-[
-  "Build a winter outfit for 2022 under 300 dollars."
-]
-
-current_solicitation: null
-
-summary:
-"The user asked about store location and received an answer."
-
-recent_messages:
-- human: "Where are you located?"
-- ai: "We are located at 520 Sarmiento Street, Tandil"
-- human: "I want a winter outfit for 2022 under 300 dollars"
-
-Output:
-{
-  "items": [
-    {
-      "kind": "outfit",
-      "usage": null,
-      "years": [2022],
-      "max_price": 300,
-      "gender": null,
-      "brands": null,
-      "seasons": ["winter"],
-      "base_colors": null,
-      "secondary_colors": null,
-      "items": [
-        {
-          "kind": "garment",
-          "usage": null,
-          "years": null,
-          "max_price": null,
-          "gender": null,
-          "brands": null,
-          "seasons": null,
-          "base_colors": null,
-          "secondary_colors": null,
-          "master_categories": null,
-          "sub_categories": null,
-          "article_types": null,
-          "product_names": null,
-          "images": null
-        }
-      ]
-    }
-  ]
-}
-
----
-
-### Example 4 — Mixed garment + outfit
-
-search_intents:
-[
-  "Find black boots",
-  "Build a formal outfit for a wedding"
+  "Find a white shoe-like accessory."
 ]
 
 current_solicitation: null
@@ -206,9 +64,7 @@ current_solicitation: null
 summary: ""
 
 recent_messages:
-- human: "Hi!"
-- ai: "Hello! How can I help you?"
-- human: "I need black boots and also a formal outfit for a wedding."
+- human: "I want a white shoe, even if it's just as an accessory."
 
 Output:
 {
@@ -221,74 +77,32 @@ Output:
       "gender": null,
       "brands": null,
       "seasons": null,
-      "base_colors": ["black"],
+      "base_colors": ["white"],
       "secondary_colors": null,
-      "master_categories": null,
-      "sub_categories": null,
-      "article_types": ["boots"],
+      "master_categories": ["Footwear"],
+      "sub_categories": ["Shoes"],
+      "article_types": ["Sports Shoes"],
       "product_names": null,
       "images": null
-    },
-    {
-      "kind": "outfit",
-      "usage": "formal wedding",
-      "years": null,
-      "max_price": null,
-      "gender": null,
-      "brands": null,
-      "seasons": null,
-      "base_colors": null,
-      "secondary_colors": null,
-      "items": [
-        {
-          "kind": "garment",
-          "usage": null,
-          "years": null,
-          "max_price": null,
-          "gender": null,
-          "brands": null,
-          "seasons": null,
-          "base_colors": null,
-          "secondary_colors": null,
-          "master_categories": null,
-          "sub_categories": null,
-          "article_types": null,
-          "product_names": null,
-          "images": null
-        }
-      ]
     }
   ]
 }
 
 ---
 
-### Example 5 — CRITICAL: New request overrides previous (RESET)
+### Example 3 - Vague upper garment request
 
 search_intents:
 [
-  "Find a hoodie"
+  "Find something to wear on top."
 ]
 
-current_solicitation:
-{
-  "items": [
-    {
-      "kind": "garment",
-      "base_colors": ["black"],
-      "article_types": ["sneakers"],
-      "brands": ["Nike"]
-    }
-  ]
-}
+current_solicitation: null
 
-summary:
-"The user was previously looking for black Nike sneakers."
+summary: ""
 
 recent_messages:
-- human: "I want black Nike sneakers"
-- ai: "Got it"
-- human: "Actually I want a hoodie now"
+- human: "I want something to wear on top."
 
 Output:
 {
@@ -303,9 +117,9 @@ Output:
       "seasons": null,
       "base_colors": null,
       "secondary_colors": null,
-      "master_categories": null,
-      "sub_categories": null,
-      "article_types": ["hoodie"],
+      "master_categories": ["Apparel"],
+      "sub_categories": ["Topwear"],
+      "article_types": null,
       "product_names": null,
       "images": null
     }
@@ -314,11 +128,49 @@ Output:
 
 ---
 
-### Example 6 — Outfit refinement (NOT reset)
+### Example 4 - Vague accessory request
 
 search_intents:
 [
-  "Update the current outfit to remove sneakers and make it more formal"
+  "Find an accessory."
+]
+
+current_solicitation: null
+
+summary: ""
+
+recent_messages:
+- human: "I want an accessory."
+
+Output:
+{
+  "items": [
+    {
+      "kind": "garment",
+      "usage": null,
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": null,
+      "base_colors": null,
+      "secondary_colors": null,
+      "master_categories": ["Accessories"],
+      "sub_categories": null,
+      "article_types": null,
+      "product_names": null,
+      "images": null
+    }
+  ]
+}
+
+---
+
+### Example 5 - Update existing outfit without resetting it
+
+search_intents:
+[
+  "Update the current outfit to make the shoes black."
 ]
 
 current_solicitation:
@@ -327,10 +179,29 @@ current_solicitation:
     {
       "kind": "outfit",
       "usage": "casual",
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": ["summer"],
+      "base_colors": null,
+      "secondary_colors": null,
       "items": [
         {
           "kind": "garment",
-          "article_types": ["sneakers"]
+          "usage": null,
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": ["Nike"],
+          "seasons": null,
+          "base_colors": ["white"],
+          "secondary_colors": null,
+          "master_categories": ["Footwear"],
+          "sub_categories": ["Shoes"],
+          "article_types": ["Sports Shoes"],
+          "product_names": null,
+          "images": null
         }
       ]
     }
@@ -338,19 +209,93 @@ current_solicitation:
 }
 
 summary:
-"The user previously received a casual outfit."
+"The user wanted a casual summer outfit with Nike sports shoes."
 
 recent_messages:
-- human: "That looks good"
-- ai: "Glad you like it"
-- human: "Make it more formal and remove sneakers"
+- human: "Create a casual summer outfit with Nike sports shoes."
+- ai: "Got it."
+- human: "Ok, make the shoes black."
 
 Output:
 {
   "items": [
     {
       "kind": "outfit",
-      "usage": "formal",
+      "usage": "casual",
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": ["summer"],
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": [
+        {
+          "kind": "garment",
+          "usage": null,
+          "years": null,
+          "max_price": null,
+          "gender": null,
+          "brands": ["Nike"],
+          "seasons": null,
+          "base_colors": ["black"],
+          "secondary_colors": null,
+          "master_categories": ["Footwear"],
+          "sub_categories": ["Shoes"],
+          "article_types": ["Sports Shoes"],
+          "product_names": null,
+          "images": null
+        }
+      ]
+    }
+  ]
+}
+
+---
+
+### Example 6 - New request overrides previous one completely
+
+search_intents:
+[
+  "Find a sweatshirt."
+]
+
+current_solicitation:
+{
+  "items": [
+    {
+      "kind": "garment",
+      "usage": null,
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": ["Nike"],
+      "seasons": null,
+      "base_colors": ["black"],
+      "secondary_colors": null,
+      "master_categories": ["Footwear"],
+      "sub_categories": ["Shoes"],
+      "article_types": ["Sports Shoes"],
+      "product_names": null,
+      "images": null
+    }
+  ]
+}
+
+summary:
+"The user was previously looking for black Nike sports shoes."
+
+recent_messages:
+- human: "I want black Nike sports shoes."
+- ai: "Got it."
+- human: "Actually, I want a sweatshirt now."
+
+Output:
+{
+  "items": [
+    {
+      "kind": "garment",
+      "usage": null,
       "years": null,
       "max_price": null,
       "gender": null,
@@ -358,7 +303,11 @@ Output:
       "seasons": null,
       "base_colors": null,
       "secondary_colors": null,
-      "items": []
+      "master_categories": ["Apparel"],
+      "sub_categories": ["Topwear"],
+      "article_types": ["Sweatshirts"],
+      "product_names": null,
+      "images": null
     }
   ]
 }

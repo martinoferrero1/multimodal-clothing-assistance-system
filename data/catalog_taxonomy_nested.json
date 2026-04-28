@@ -1,0 +1,280 @@
+{
+  "Accessories": {
+    "Accessories": [
+      "Accessory Gift Set",
+      "Hair Accessory",
+      "Key chain",
+      "Messenger Bag",
+      "Travel Accessory",
+      "Water Bottle"
+    ],
+    "Bags": [
+      "Backpacks",
+      "Clutches",
+      "Duffel Bag",
+      "Handbags",
+      "Laptop Bag",
+      "Messenger Bag",
+      "Mobile Pouch",
+      "Rucksacks",
+      "Tablet Sleeve",
+      "Travel Accessory",
+      "Trolley Bag",
+      "Waist Pouch",
+      "Wallets"
+    ],
+    "Belts": [
+      "Belts",
+      "Tshirts"
+    ],
+    "Cufflinks": [
+      "Cufflinks",
+      "Ties and Cufflinks"
+    ],
+    "Eyewear": [
+      "Sunglasses"
+    ],
+    "Gloves": [
+      "Gloves"
+    ],
+    "Headwear": [
+      "Caps",
+      "Hat",
+      "Headband"
+    ],
+    "Jewellery": [
+      "Bangle",
+      "Bracelet",
+      "Earrings",
+      "Jewellery Set",
+      "Necklace and Chains",
+      "Pendant",
+      "Ring"
+    ],
+    "Mufflers": [
+      "Mufflers"
+    ],
+    "Perfumes": [
+      "Perfume and Body Mist"
+    ],
+    "Scarves": [
+      "Scarves"
+    ],
+    "Shoe Accessories": [
+      "Shoe Accessories",
+      "Shoe Laces"
+    ],
+    "Socks": [
+      "Socks"
+    ],
+    "Sports Accessories": [
+      "Wristbands"
+    ],
+    "Stoles": [
+      "Stoles"
+    ],
+    "Ties": [
+      "Ties"
+    ],
+    "Umbrellas": [
+      "Umbrellas"
+    ],
+    "Wallets": [
+      "Wallets"
+    ],
+    "Watches": [
+      "Watches"
+    ],
+    "Water Bottle": [
+      "Water Bottle"
+    ]
+  },
+  "Apparel": {
+    "Apparel Set": [
+      "Clothing Set",
+      "Kurta Sets",
+      "Swimwear"
+    ],
+    "Bottomwear": [
+      "Capris",
+      "Churidar",
+      "Jeans",
+      "Jeggings",
+      "Leggings",
+      "Patiala",
+      "Rain Trousers",
+      "Salwar",
+      "Salwar and Dupatta",
+      "Shorts",
+      "Skirts",
+      "Stockings",
+      "Swimwear",
+      "Tights",
+      "Track Pants",
+      "Tracksuits",
+      "Trousers"
+    ],
+    "Dress": [
+      "Dresses",
+      "Jumpsuit"
+    ],
+    "Innerwear": [
+      "Boxers",
+      "Bra",
+      "Briefs",
+      "Camisoles",
+      "Innerwear Vests",
+      "Shapewear",
+      "Trunk"
+    ],
+    "Loungewear and Nightwear": [
+      "Baby Dolls",
+      "Bath Robe",
+      "Lounge Pants",
+      "Lounge Shorts",
+      "Lounge Tshirts",
+      "Night suits",
+      "Nightdress",
+      "Robe",
+      "Shorts"
+    ],
+    "Saree": [
+      "Sarees"
+    ],
+    "Socks": [
+      "Booties"
+    ],
+    "Topwear": [
+      "Belts",
+      "Blazers",
+      "Dresses",
+      "Dupatta",
+      "Jackets",
+      "Kurtas",
+      "Kurtis",
+      "Lehenga Choli",
+      "Nehru Jackets",
+      "Rain Jacket",
+      "Rompers",
+      "Shirts",
+      "Shrug",
+      "Suits",
+      "Suspenders",
+      "Sweaters",
+      "Sweatshirts",
+      "Tops",
+      "Tshirts",
+      "Tunics",
+      "Waistcoat"
+    ]
+  },
+  "Footwear": {
+    "Flip Flops": [
+      "Flip Flops"
+    ],
+    "Sandal": [
+      "Flip Flops",
+      "Sandals",
+      "Sports Sandals"
+    ],
+    "Shoes": [
+      "Casual Shoes",
+      "Flats",
+      "Formal Shoes",
+      "Heels",
+      "Sandals",
+      "Sports Shoes"
+    ]
+  },
+  "Free Items": {
+    "Free Gifts": [
+      "Backpacks",
+      "Clutches",
+      "Free Gifts",
+      "Handbags",
+      "Laptop Bag",
+      "Scarves",
+      "Ties",
+      "Wallets"
+    ],
+    "Vouchers": [
+      "Ipad"
+    ]
+  },
+  "Home": {
+    "Home Furnishing": [
+      "Cushion Covers"
+    ]
+  },
+  "Personal Care": {
+    "Bath and Body": [
+      "Body Lotion",
+      "Body Wash and Scrub",
+      "Nail Essentials"
+    ],
+    "Beauty Accessories": [
+      "Beauty Accessory"
+    ],
+    "Eyes": [
+      "Eyeshadow",
+      "Kajal and Eyeliner",
+      "Mascara"
+    ],
+    "Fragrance": [
+      "Deodorant",
+      "Fragrance Gift Set",
+      "Perfume and Body Mist"
+    ],
+    "Hair": [
+      "Hair Colour"
+    ],
+    "Lips": [
+      "Lip Care",
+      "Lip Gloss",
+      "Lip Liner",
+      "Lip Plumper",
+      "Lipstick"
+    ],
+    "Makeup": [
+      "Compact",
+      "Concealer",
+      "Eyeshadow",
+      "Foundation and Primer",
+      "Highlighter and Blush",
+      "Kajal and Eyeliner",
+      "Makeup Remover"
+    ],
+    "Nails": [
+      "Nail Polish"
+    ],
+    "Perfumes": [
+      "Perfume and Body Mist"
+    ],
+    "Skin": [
+      "Body Lotion",
+      "Face Moisturisers",
+      "Face Scrub and Exfoliator",
+      "Face Serum and Gel",
+      "Mask and Peel"
+    ],
+    "Skin Care": [
+      "Eye Cream",
+      "Face Moisturisers",
+      "Face Scrub and Exfoliator",
+      "Face Wash and Cleanser",
+      "Mask and Peel",
+      "Mens Grooming Kit",
+      "Sunscreen",
+      "Toner"
+    ]
+  },
+  "Sporting Goods": {
+    "Sports Equipment": [
+      "Basketballs",
+      "Footballs"
+    ],
+    "Wristbands": [
+      "Wristbands"
+    ]
+  }
+}
