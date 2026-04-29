@@ -52,6 +52,16 @@ class FinalResponseSection(BaseModel):
     title: Optional[str] = None
 
 
+class FinalResponseDraftSection(BaseModel):
+    type: Literal["text", "outfit_recommendations", "garment_recommendations"]
+    content: Optional[str] = None
+    title: Optional[str] = None
+
+
+class FinalResponseDraft(BaseModel):
+    sections: List[FinalResponseDraftSection] = Field(default_factory=list)
+
+
 class FinalResponsePayload(BaseModel):
     message: str
     sections: List[FinalResponseSection] = Field(default_factory=list)

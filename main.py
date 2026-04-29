@@ -36,7 +36,8 @@ def main():
                     StateKeys.CURRENT_OUTFIT_REQUEST: None,
                     StateKeys.PRODUCT_CANDIDATES: None,
                     StateKeys.CURRENT_OUTFIT: None,
-                    StateKeys.FINAL_ANSWER: None
+                    StateKeys.FINAL_ANSWER: None,
+                    StateKeys.FINAL_RESPONSE_PAYLOAD: None
                 },
                 config=config
             )
@@ -44,6 +45,7 @@ def main():
             print("Workflow errors: ", result.get(StateKeys.ERRORS, []))
             response = result.get(StateKeys.MESSAGES, [])[-1] if result.get(StateKeys.MESSAGES, []) else None
             print(response.content if response else "No response from the agent.")
+            print(f"Final Response Payload: {response.additional_kwargs.get('final_response_payload')}" if response else "No final response payload.")
             user_input = input("User: ")
             if user_input.lower() in {"exit", "quit"}:
                 break
