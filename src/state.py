@@ -1,8 +1,11 @@
-from typing import Annotated, List, Optional
-from typing_extensions import TypedDict
+from typing import Annotated, List, Optional, TypedDict
 from langchain_core.messages import BaseMessage
 import operator
 from schemas.outfit_maker.product_solicitation import ItemSpecList
+from schemas.outfit_maker.recommendation_response import (
+    FinalResponsePayload,
+    RecommendationBundle,
+)
 from schemas.orchestator_decision import NodeName
 
 MessagesState = Annotated[List[BaseMessage], operator.add]
@@ -34,8 +37,9 @@ class State(TypedDict):
     business_answers: Optional[List[dict]]
     current_outfit_request: ItemSpecList | None
     product_candidates: Optional[List[dict]]
-    current_outfit: Optional[dict]
+    current_outfit: RecommendationBundle | None
     final_answer: Optional[str]
+    final_response_payload: FinalResponsePayload | None
 
 class StateKeys:
     MESSAGES = "messages"
@@ -51,6 +55,7 @@ class StateKeys:
     PRODUCT_CANDIDATES = "product_candidates"
     CURRENT_OUTFIT = "current_outfit"
     FINAL_ANSWER = "final_answer"
+    FINAL_RESPONSE_PAYLOAD = "final_response_payload"
 
 
 class SumaryKeys:

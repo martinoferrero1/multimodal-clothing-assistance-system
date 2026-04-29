@@ -4,7 +4,15 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 from core.settings import settings
-from schemas.outfit_maker.product_solicitation import ItemSpecList
+from schemas.outfit_maker.product_solicitation import GarmentSpec, ItemSpecList, OutfitSpec
+from schemas.outfit_maker.recommendation_response import (
+    FinalResponsePayload,
+    FinalResponseSection,
+    GarmentRecommendation,
+    OutfitRecommendation,
+    ProductRecommendation,
+    RecommendationBundle,
+)
 from schemas.orchestator_decision import OrchestatorDecision
 from infra.db.product_search import search_product_candidates
 from state import State, StateKeys, SumaryKeys
@@ -125,28 +133,283 @@ class SupervisorGraph(BaseGraph):
     def _build_outfit_node(self, state: State) -> dict[StateKeys, Any]:
         print("\nBuilding outfit from product candidates ---")
 
-        return {StateKeys.CURRENT_OUTFIT: {
-            "items": state.get(StateKeys.PRODUCT_CANDIDATES, [])
-        }}
+        recommendations = self._build_recommendation_bundle(
+            state.get(StateKeys.PRODUCT_CANDIDATES, []) or []
+        )
+        return {StateKeys.CURRENT_OUTFIT: recommendations}
 
     @safe_node("final_response")
     def _final_response_node(self, state: State) -> dict[StateKeys, Any]:
         print("\nProducing final response ---")
 
-        product_candidates = state.get(StateKeys.PRODUCT_CANDIDATES, []) or []
-        found_count = sum(self._count_candidates(item) for item in product_candidates)
-        message = (
-            f"I found {found_count} product options for your request."
-            if found_count
-            else "I couldn't find product options that match your request."
+        recommendations = state.get(StateKeys.CURRENT_OUTFIT) or self._build_recommendation_bundle(
+            state.get(StateKeys.PRODUCT_CANDIDATES, []) or []
+        )
+        business_answer_texts = self._extract_business_answer_texts(
+            state.get(StateKeys.BUSINESS_ANSWERS, []) or []
+        )
+        response_payload = self._build_final_response_payload(
+            recommendations=recommendations,
+            business_answer_texts=business_answer_texts,
         )
 
-        return {StateKeys.MESSAGES: [AIMessage(content=message)]}
+        return {
+            StateKeys.FINAL_ANSWER: response_payload.message,
+            StateKeys.FINAL_RESPONSE_PAYLOAD: response_payload,
+            StateKeys.MESSAGES: [
+                AIMessage(
+                    content=response_payload.message,
+                    additional_kwargs={
+                        "final_response_payload": response_payload.model_dump(mode="json")
+                    },
+                )
+            ],
+        }
 
-    def _count_candidates(self, item: dict[str, Any]) -> int:
-        if "candidates" in item:
-            return len(item["candidates"])
-        return sum(len(garment.get("candidates", [])) for garment in item.get("items", []))
+    def _build_recommendation_bundle(
+        self,
+        product_candidates: list[dict[str, Any]],
+    ) -> RecommendationBundle:
+        garments: list[GarmentRecommendation] = []
+        outfits: list[OutfitRecommendation] = []
+
+        for item in product_candidates:
+            if item.get("kind") == "outfit":
+                outfits.append(self._build_outfit_recommendation(item))
+                continue
+            garments.append(self._build_garment_recommendation(item))
+
+        return RecommendationBundle(garments=garments, outfits=outfits)
+
+    def _build_outfit_recommendation(self, outfit_candidate: dict[str, Any]) -> OutfitRecommendation:
+        selected_items = [
+            self._build_garment_recommendation(garment_candidate)
+            for garment_candidate in outfit_candidate.get("items", [])
+        ]
+        outfit_request_data = dict(outfit_candidate.get("request") or {})
+        outfit_request_data["kind"] = "outfit"
+        outfit_request_data["items"] = [
+            garment_candidate.get("request", {})
+            for garment_candidate in outfit_candidate.get("items", [])
+        ]
+        request = OutfitSpec(**outfit_request_data)
+        return OutfitRecommendation(
+            request=request,
+            items=selected_items,
+            summary_label=self._build_outfit_label(request),
+        )
+
+    def _build_garment_recommendation(
+        self,
+        garment_candidate: dict[str, Any],
+    ) -> GarmentRecommendation:
+        request = GarmentSpec(**garment_candidate.get("request", {}))
+        candidates = garment_candidate.get("candidates", []) or []
+        best_match = self._build_product_recommendation(candidates[0]) if candidates else None
+
+        return GarmentRecommendation(
+            request=request,
+            best_match=best_match,
+            total_candidates=len(candidates),
+            summary_label=self._build_garment_label(request, best_match),
+        )
+
+    def _build_product_recommendation(
+        self,
+        product_data: dict[str, Any],
+    ) -> ProductRecommendation:
+        return ProductRecommendation(**product_data)
+
+    def _extract_business_answer_texts(self, business_answers: list[dict[str, Any]]) -> list[str]:
+        texts: list[str] = []
+        for answer in business_answers:
+            if not isinstance(answer, dict):
+                texts.append(str(answer))
+                continue
+
+            for key in ("answer", "content", "response", "text", "message"):
+                value = answer.get(key)
+                if isinstance(value, str) and value.strip():
+                    texts.append(value.strip())
+                    break
+
+        return texts
+
+    def _build_final_response_payload(
+        self,
+        recommendations: RecommendationBundle,
+        business_answer_texts: list[str],
+    ) -> FinalResponsePayload:
+        sections: list[FinalResponseSection] = []
+
+        if business_answer_texts:
+            sections.append(
+                FinalResponseSection(
+                    type="text",
+                    content=" ".join(business_answer_texts),
+                )
+            )
+
+        if recommendations.outfits or recommendations.garments:
+            sections.append(
+                FinalResponseSection(
+                    type="text",
+                    content=self._build_recommendation_intro(recommendations),
+                )
+            )
+
+            if recommendations.outfits:
+                sections.append(
+                    FinalResponseSection(
+                        type="outfit_recommendations",
+                        title="Recommended outfits",
+                    )
+                )
+
+            if recommendations.garments:
+                sections.append(
+                    FinalResponseSection(
+                        type="garment_recommendations",
+                        title="Recommended garments",
+                    )
+                )
+
+            sections.append(
+                FinalResponseSection(
+                    type="text",
+                    content="If you want, I can refine these picks by color, budget, season, or occasion.",
+                )
+            )
+        elif not business_answer_texts:
+            sections.append(
+                FinalResponseSection(
+                    type="text",
+                    content="I couldn't find matching garments for your request yet.",
+                )
+            )
+
+        message = self._render_response_text(sections, recommendations)
+        return FinalResponsePayload(
+            message=message,
+            sections=sections,
+            recommendations=recommendations,
+            business_answer_texts=business_answer_texts,
+        )
+
+    def _build_recommendation_intro(self, recommendations: RecommendationBundle) -> str:
+        parts: list[str] = []
+        if recommendations.outfits:
+            parts.append(
+                "For each requested outfit, I combined the top match for every garment into a first draft recommendation."
+            )
+        if recommendations.garments:
+            parts.append(
+                "For standalone garments, I selected the single best match available right now."
+            )
+        return " ".join(parts)
+
+    def _render_response_text(
+        self,
+        sections: list[FinalResponseSection],
+        recommendations: RecommendationBundle,
+    ) -> str:
+        rendered_sections: list[str] = []
+
+        for section in sections:
+            if section.type == "text" and section.content:
+                rendered_sections.append(section.content.strip())
+                continue
+
+            if section.type == "outfit_recommendations" and recommendations.outfits:
+                rendered_sections.append(self._render_outfit_recommendations(recommendations.outfits))
+                continue
+
+            if section.type == "garment_recommendations" and recommendations.garments:
+                rendered_sections.append(self._render_garment_recommendations(recommendations.garments))
+
+        return "\n\n".join(section for section in rendered_sections if section).strip()
+
+    def _render_outfit_recommendations(
+        self,
+        outfits: list[OutfitRecommendation],
+    ) -> str:
+        lines = ["Recommended outfits:"]
+
+        for index, outfit in enumerate(outfits, start=1):
+            lines.append(f"{index}. {outfit.summary_label}")
+            for garment in outfit.items:
+                lines.append(f"- {garment.summary_label}: {self._render_product_match(garment.best_match)}")
+
+        return "\n".join(lines)
+
+    def _render_garment_recommendations(
+        self,
+        garments: list[GarmentRecommendation],
+    ) -> str:
+        lines = ["Recommended garments:"]
+
+        for index, garment in enumerate(garments, start=1):
+            lines.append(f"{index}. {garment.summary_label}: {self._render_product_match(garment.best_match)}")
+
+        return "\n".join(lines)
+
+    def _render_product_match(self, match: ProductRecommendation | None) -> str:
+        if match is None:
+            return "No match found."
+
+        descriptors = [match.product_display_name]
+        extra_parts: list[str] = []
+
+        if match.brand:
+            extra_parts.append(match.brand)
+        if match.base_colour:
+            extra_parts.append(match.base_colour)
+        if match.price is not None:
+            extra_parts.append(f"${match.price:.2f}")
+
+        if extra_parts:
+            descriptors.append(f"({', '.join(extra_parts)})")
+
+        return " ".join(descriptors)
+
+    def _build_garment_label(
+        self,
+        request: GarmentSpec,
+        best_match: ProductRecommendation | None,
+    ) -> str:
+        article_type = self._first_value(request.article_types)
+        product_name = self._first_value(request.product_names)
+        base_color = self._first_value(request.base_colors)
+
+        if product_name:
+            label = product_name
+        elif article_type:
+            label = article_type
+        elif best_match and best_match.article_type:
+            label = best_match.article_type
+        else:
+            label = "Garment"
+
+        if base_color:
+            return f"{base_color} {label}".strip()
+        return label.strip()
+
+    def _build_outfit_label(self, request: OutfitSpec) -> str:
+        usage = request.usage
+        season = self._first_value(request.seasons)
+
+        if usage and season:
+            return f"{season} {usage} outfit"
+        if usage:
+            return f"{usage} outfit"
+        if season:
+            return f"{season} outfit"
+        return "Outfit recommendation"
+
+    def _first_value(self, values: list[str] | None) -> str | None:
+        if not values:
+            return None
+        return values[0]
     
     @safe_node("ask_for_feedback")
     def _ask_for_feedback_node(self, state: State):
