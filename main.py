@@ -21,7 +21,11 @@ def main():
     #user_input = "I want men shoes, with grey as main color, and if possible, from FILA" # construir descripcion simil a Men,Footwear,Shoes,Sports Shoes,Grey,Fall,2011,Sports,Fila Men Destiny Grey Sports Shoes,FILA
     #user_input = "I want the men destiny pair of shoes, do you have it?"
     #user_input = "I want two special outfits. One of them is for my wedding, where I need a dress, I prefered it to be red, and also a formal necklace. But also I want an outfit for playing tennis. It needs to have a pair of sneakers, a t-shirt from Nike or Puma, and a pair of shorts"
-    user_input = "What are the paymens methods you accept?"
+    #user_input = "What are the paymens methods you accept?"
+    user_input = """
+What are the payment methods you accept?
+Also I want two special outfits. One of them is for my wedding, where I need a dress, I prefered it to be red, and also a formal necklace. But also I want an outfit for playing tennis. It needs to have a pair of sneakers, a t-shirt from Nike or Puma, and a pair of shorts
+"""
     if user_input.lower() not in {"exit", "quit"}:
         result = graph.invoke(
                 {

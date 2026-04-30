@@ -4,6 +4,10 @@ from schemas.provider import Provider
 from typing import Optional
 
 class Settings(BaseSettings):
+    DATABASE_URL: str = "sqlite:///catalog.db"
+    DATABASE_ECHO: bool = False
+    LANGGRAPH_CHECKPOINT_DATABASE_URL: Optional[str] = None
+
     GOOGLE_LLM_MODEL: Optional[str] = None
     GROQ_LLM_MODEL: Optional[str] = None
 

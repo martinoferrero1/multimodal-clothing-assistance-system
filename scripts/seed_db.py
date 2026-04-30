@@ -1,5 +1,6 @@
 from pathlib import Path
 import pandas as pd
+from sqlalchemy import select, func
 
 from infra.db.database import Database
 from infra.db.models import (
@@ -24,6 +25,9 @@ def get_or_create(session, model, **kwargs):
 def seed_catalog():
     print("CSV path:", CSV_PATH.resolve())
     print("CSV exists:", CSV_PATH.exists())
+    if not CSV_PATH.exists():
+        print("Catalog CSV not found. Skipping seed.")
+        return
 
     df = pd.read_csv(CSV_PATH)
     print("Rows:", len(df))
@@ -32,6 +36,11 @@ def seed_catalog():
     db = Database()
 
     with db.get_session() as session:
+        existing_products = session.scalar(select(func.count(Product.id))) or 0
+        if existing_products > 0:
+            print(f"Catalog already seeded with {existing_products} products. Skipping seed.")
+            return
+
         for _, row in df.iterrows():
             gender = get_or_create(session, Gender, name=str(row["gender"]))
             master = get_or_create(session, MasterCategory, name=str(row["masterCategory"]))

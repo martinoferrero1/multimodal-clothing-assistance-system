@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg[binary]
+pandas
+numpy
+faiss-cpu
+pydantic
+pydantic-settings
+python-dotenv
+email-validator
+langchain-core
+langchain-groq
+langchain-google-genai
+langgraph
+langgraph-checkpoint-postgres
+langgraph-checkpoint-sqlite

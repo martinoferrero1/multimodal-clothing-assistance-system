@@ -22,7 +22,8 @@ from utils.prompts import build_prompt
 
 
 class SupervisorGraph(BaseGraph):
-    def __init__(self) -> None:
+    def __init__(self, checkpointer=None) -> None:
+        self._checkpointer = checkpointer
         self._business_qa_service = get_business_qa_service()
         self._outfit_recommendation_service = OutfitRecommendationService()
         self._final_response_service = FinalResponseService()
@@ -190,6 +191,10 @@ class SupervisorGraph(BaseGraph):
         return {
             StateKeys.FINAL_ANSWER: response_payload.message,
             StateKeys.FINAL_RESPONSE_PAYLOAD: response_payload,
+            StateKeys.PREVIOUS_SUMMARY: {
+                SumaryKeys.CONTENT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
+                SumaryKeys.POS_MSGS_COUNT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.POS_MSGS_COUNT] + 1,
+            },
             StateKeys.MESSAGES: [
                 AIMessage(
                     content=response_payload.message,
@@ -224,7 +229,7 @@ class SupervisorGraph(BaseGraph):
         workflow.add_edge("final_response", "plan_router")
         workflow.add_edge("ask_for_feedback", "orchestator_planner")
 
-        checkpointer = MemorySaver()
+        checkpointer = self._checkpointer or MemorySaver()
 
         return workflow.compile(
             checkpointer=checkpointer,
@@ -232,4 +237,11 @@ class SupervisorGraph(BaseGraph):
         )
 
     def _get_graph_key(self) -> str:
-        return "supervisor"
+        if self._checkpointer is None:
+            return "supervisor:memory"
+        return (
+            "supervisor:"
+            f"{type(self._checkpointer).__module__}."
+            f"{type(self._checkpointer).__name__}:"
+            f"{id(self._checkpointer)}"
+        )

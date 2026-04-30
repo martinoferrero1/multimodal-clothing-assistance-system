@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: clothing_assistant
+      POSTGRES_USER: clothing_assistant
+      POSTGRES_PASSWORD: clothing_assistant
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clothing_assistant -d clothing_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://clothing_assistant:clothing_assistant@db:5432/clothing_assistant
+      LANGGRAPH_CHECKPOINT_DATABASE_URL: postgresql://clothing_assistant:clothing_assistant@db:5432/clothing_assistant
+      GOOGLE_LLM_MODEL: ${GOOGLE_LLM_MODEL}
+      GROQ_LLM_MODEL: ${GROQ_LLM_MODEL}
+      GOOGLE_EMBEDDING_MODEL: ${GOOGLE_EMBEDDING_MODEL}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      LLM_SUB_AGENTS_PROVIDER: ${LLM_SUB_AGENTS_PROVIDER}
+      LLM_SUPERVISOR_PROVIDER: ${LLM_SUPERVISOR_PROVIDER}
+      EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER}
+      INCLUDE_PROMPT_EXAMPLES: ${INCLUDE_PROMPT_EXAMPLES}
+    ports:
+      - "8000:8000"
+    volumes:
+      - business_knowledge_index:/app/data/business_knowledge_index
+
+volumes:
+  postgres_data:
+  business_knowledge_index:
