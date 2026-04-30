@@ -22,6 +22,14 @@ class Settings(BaseSettings):
 
     INCLUDE_PROMPT_EXAMPLES: Optional[bool] = None
 
+    BUSINESS_KNOWLEDGE_DIR: str = "data/business_knowledge"
+    BUSINESS_KNOWLEDGE_GLOB: str = "*.knowledge.md"
+    BUSINESS_FAISS_INDEX_DIR: str = "data/business_knowledge_index"
+    BUSINESS_RAG_CHUNK_SIZE: int = 700
+    BUSINESS_RAG_CHUNK_OVERLAP: int = 120
+    BUSINESS_RAG_TOP_K: int = 4
+    BUSINESS_RAG_MIN_SCORE: float = 0.2
+
     def _check_api_key_and_model(self, provider: str, model: Optional[str], api_key: Optional[str], is_embedding_provider: bool = False):
         if is_embedding_provider:
             if model is None:

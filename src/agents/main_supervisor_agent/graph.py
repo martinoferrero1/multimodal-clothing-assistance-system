@@ -1,70 +1,98 @@
-from agents.base_graph import BaseGraph
-from langgraph.graph import StateGraph, START
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.types import Command
-from core.settings import settings
-from schemas.outfit_maker.product_solicitation import GarmentSpec, ItemSpecList, OutfitSpec
-from schemas.outfit_maker.recommendation_response import (
-    FinalResponseDraft,
-    FinalResponseDraftSection,
-    FinalResponsePayload,
-    FinalResponseSection,
-    GarmentRecommendation,
-    OutfitRecommendation,
-    ProductRecommendation,
-    RecommendationBundle,
-)
-from schemas.orchestator_decision import OrchestatorDecision
-from infra.db.product_search import search_product_candidates
-from state import State, StateKeys, SumaryKeys
-from utils.models import get_llm_model
-from utils.error_handling import safe_node
-from utils.prompts import build_prompt
-from utils.catalog_taxonomy import taxonomy_prompt_reference
-from langchain_core.messages import SystemMessage
-from langchain_core.messages import AIMessage
-from typing import Any
 import json
+from typing import Any
+
+from agents.base_graph import BaseGraph
+from core.settings import settings
+from infra.db.product_search import search_product_candidates
+from langchain_core.messages import AIMessage, SystemMessage
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
+from schemas.orchestator_decision import NodeName, OrchestatorDecision
+from schemas.outfit_maker.product_solicitation import ItemSpecList
+from services.business_qa.rag_service import get_business_qa_service
+from services.final_response_service import FinalResponseService
+from services.outfit_recommendation_service import OutfitRecommendationService
+from state import State, StateKeys, SumaryKeys
+from utils.catalog_taxonomy import taxonomy_prompt_reference
+from utils.error_handling import safe_node
+from utils.models import get_llm_model
+from utils.prompts import build_prompt
+
 
 class SupervisorGraph(BaseGraph):
+    def __init__(self) -> None:
+        self._business_qa_service = get_business_qa_service()
+        self._outfit_recommendation_service = OutfitRecommendationService()
+        self._final_response_service = FinalResponseService()
 
     @safe_node("orchestator_planner")
     def _orchestator_node(self, state: State) -> Command:
         sys_prompt = build_prompt(
             base_prompt_path="src/prompts/orchestator_planner/system_prompt.txt",
             examples_prompt_path="src/prompts/orchestator_planner/examples_system_prompt.txt",
-            include_examples=settings.INCLUDE_PROMPT_EXAMPLES
+            include_examples=settings.INCLUDE_PROMPT_EXAMPLES,
         )
         supervisor_llm = get_llm_model(is_supervisor=True).with_structured_output(OrchestatorDecision)
         messages = [SystemMessage(content=sys_prompt)] + state[StateKeys.MESSAGES]
         response: OrchestatorDecision = supervisor_llm.invoke(messages)
 
         if response.plan:
-            return Command(goto="plan_router", 
-                            update={StateKeys.PLAN: response.plan,
-                                    StateKeys.CURRENT_STEP_INDEX: 0
-                            })
+            uses_outfit_flow = any(
+                node in response.plan
+                for node in (
+                    NodeName.EXTRACT_OUTFIT_REQUEST,
+                    NodeName.SEARCH_PRODUCTS,
+                    NodeName.BUILD_OUTFIT,
+                )
+            )
+            return Command(
+                goto="plan_router",
+                update={
+                    StateKeys.PLAN: response.plan,
+                    StateKeys.CURRENT_STEP_INDEX: 0,
+                    StateKeys.BUSINESS_QA_QUERIES: response.business_qa_queries,
+                    StateKeys.OUTFIT_SEARCH_INTENTS: response.outfit_search_intents,
+                    StateKeys.BUSINESS_ANSWERS: None,
+                    StateKeys.PRODUCT_CANDIDATES: None if uses_outfit_flow else None,
+                    StateKeys.CURRENT_OUTFIT: None if uses_outfit_flow else None,
+                    StateKeys.FINAL_ANSWER: None,
+                    StateKeys.FINAL_RESPONSE_PAYLOAD: None,
+                },
+            )
 
         if response.custom_answer is not None:
-            return Command(goto="ask_for_feedback",
-                            update={StateKeys.MESSAGES: [AIMessage(content=response.custom_answer)],
-                                    StateKeys.PREVIOUS_SUMMARY: {
-                                        SumaryKeys.CONTENT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
-                                        SumaryKeys.POS_MSGS_COUNT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.POS_MSGS_COUNT] + 1
-                            }})
-        
+            return Command(
+                goto="ask_for_feedback",
+                update={
+                    StateKeys.MESSAGES: [AIMessage(content=response.custom_answer)],
+                    StateKeys.PREVIOUS_SUMMARY: {
+                        SumaryKeys.CONTENT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
+                        SumaryKeys.POS_MSGS_COUNT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.POS_MSGS_COUNT] + 1,
+                    },
+                },
+            )
+
         if response.use_default_clarification:
-            return Command(goto="ask_for_feedback",
-                           update={StateKeys.UNCLEAR_MSG: True,
-                                   StateKeys.MESSAGES: [AIMessage(content="Sorry, but I didn't understand your last message. Could you clarify your answer a little?")],
-                                   StateKeys.PREVIOUS_SUMMARY: {
-                                        SumaryKeys.CONTENT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
-                                        SumaryKeys.POS_MSGS_COUNT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.POS_MSGS_COUNT] + 1
-                            }})
-        
+            return Command(
+                goto="ask_for_feedback",
+                update={
+                    StateKeys.UNCLEAR_MSG: True,
+                    StateKeys.MESSAGES: [
+                        AIMessage(
+                            content="Sorry, but I didn't understand your last message. Could you clarify your answer a little?"
+                        )
+                    ],
+                    StateKeys.PREVIOUS_SUMMARY: {
+                        SumaryKeys.CONTENT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
+                        SumaryKeys.POS_MSGS_COUNT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.POS_MSGS_COUNT] + 1,
+                    },
+                },
+            )
+
         raise ValueError("Invalid response from orchestator planner agent")
-    
+
     @safe_node("plan_router")
     def _plan_router_node(self, state: State) -> Command:
         print("\nRouting according to the orchestator plan ---")
@@ -76,19 +104,18 @@ class SupervisorGraph(BaseGraph):
 
         next_node = plan[current_step_index]
         print(f"Next node in the plan: {next_node}")
-        return Command(goto=getattr(next_node, "value", next_node), update={
-            StateKeys.CURRENT_STEP_INDEX: current_step_index + 1
-        })
+        return Command(
+            goto=getattr(next_node, "value", next_node),
+            update={StateKeys.CURRENT_STEP_INDEX: current_step_index + 1},
+        )
 
     @safe_node("extract_outfit_request")
     def _extract_outfit_request_node(self, state: State) -> dict[StateKeys, Any]:
         print("\nExtracting outfit request from user messages ---")
-        base_prompt_path = "src/prompts/outfit_request_extractor/system_prompt.txt"
-        examples_prompt_path = "src/prompts/outfit_request_extractor/examples_system_prompt.txt"
         sys_prompt = build_prompt(
-            base_prompt_path=base_prompt_path,
-            examples_prompt_path=examples_prompt_path,
-            include_examples=settings.INCLUDE_PROMPT_EXAMPLES
+            base_prompt_path="src/prompts/outfit_request_extractor/system_prompt.txt",
+            examples_prompt_path="src/prompts/outfit_request_extractor/examples_system_prompt.txt",
+            include_examples=settings.INCLUDE_PROMPT_EXAMPLES,
         )
         llm = get_llm_model(is_supervisor=False).with_structured_output(ItemSpecList)
         current_request = state.get(StateKeys.CURRENT_OUTFIT_REQUEST)
@@ -97,7 +124,11 @@ class SupervisorGraph(BaseGraph):
             "current_solicitation": current_request.model_dump() if current_request else None,
             "summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
         }
-        recent_messages = state[StateKeys.MESSAGES][-5:] if len(state[StateKeys.MESSAGES]) >= 5 else state[StateKeys.MESSAGES]
+        recent_messages = (
+            state[StateKeys.MESSAGES][-5:]
+            if len(state[StateKeys.MESSAGES]) >= 5
+            else state[StateKeys.MESSAGES]
+        )
         messages = [
             SystemMessage(content=sys_prompt),
             SystemMessage(
@@ -108,34 +139,33 @@ class SupervisorGraph(BaseGraph):
                 )
             ),
             SystemMessage(content=f"Context for extraction: {json.dumps(context, indent=2)}"),
-            *recent_messages
+            *recent_messages,
         ]
         solicitations: ItemSpecList = llm.invoke(messages)
         print("Search intents extracted: ", state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []))
         print(f"Extracted outfit request: {solicitations}")
         return {StateKeys.CURRENT_OUTFIT_REQUEST: solicitations}
-        
+
     @safe_node("search_products")
     def _search_products_node(self, state: State) -> dict[StateKeys, Any]:
         print("\nSearching products in the database according to the outfit request ---")
-
-        product_candidates = search_product_candidates(
-            state.get(StateKeys.CURRENT_OUTFIT_REQUEST)
-        )
+        product_candidates = search_product_candidates(state.get(StateKeys.CURRENT_OUTFIT_REQUEST))
         print(f"Found product candidates: {product_candidates}")
         return {StateKeys.PRODUCT_CANDIDATES: product_candidates}
-    
-    @safe_node("business_qa")
-    def _business_qa_node(self, state: State): # temporal, falta implementar!
-        print("\nAnswering business questions ---")
 
-        return {}
+    @safe_node("business_qa")
+    def _business_qa_node(self, state: State) -> dict[StateKeys, Any]:
+        print("\nAnswering business questions ---")
+        answers = self._business_qa_service.answer_queries(
+            queries=state.get(StateKeys.BUSINESS_QA_QUERIES),
+            conversation_summary=state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
+        )
+        return {StateKeys.BUSINESS_ANSWERS: answers}
 
     @safe_node("build_outfit")
     def _build_outfit_node(self, state: State) -> dict[StateKeys, Any]:
         print("\nBuilding outfit from product candidates ---")
-
-        recommendations = self._build_recommendation_bundle(
+        recommendations = self._outfit_recommendation_service.build_recommendation_bundle(
             state.get(StateKeys.PRODUCT_CANDIDATES, []) or []
         )
         return {StateKeys.CURRENT_OUTFIT: recommendations}
@@ -144,16 +174,17 @@ class SupervisorGraph(BaseGraph):
     def _final_response_node(self, state: State) -> dict[StateKeys, Any]:
         print("\nProducing final response ---")
 
-        recommendations = state.get(StateKeys.CURRENT_OUTFIT) or self._build_recommendation_bundle(
-            state.get(StateKeys.PRODUCT_CANDIDATES, []) or []
-        )
-        business_answer_texts = self._extract_business_answer_texts(
-            state.get(StateKeys.BUSINESS_ANSWERS, []) or []
-        )
-        response_payload = self._build_final_response_payload(
+        recommendations = state.get(StateKeys.CURRENT_OUTFIT)
+        if recommendations is None:
+            recommendations = self._outfit_recommendation_service.build_recommendation_bundle(
+                state.get(StateKeys.PRODUCT_CANDIDATES, []) or []
+            )
+
+        business_answers = state.get(StateKeys.BUSINESS_ANSWERS) or []
+        response_payload = self._final_response_service.build_final_response_payload(
             state=state,
             recommendations=recommendations,
-            business_answer_texts=business_answer_texts,
+            business_answers=business_answers,
         )
 
         return {
@@ -163,432 +194,16 @@ class SupervisorGraph(BaseGraph):
                 AIMessage(
                     content=response_payload.message,
                     additional_kwargs={
-                        "final_response_payload": response_payload.model_dump(mode="json")
+                        "final_response_payload": response_payload.model_dump(mode="json"),
                     },
                 )
             ],
         }
 
-    def _build_recommendation_bundle(
-        self,
-        product_candidates: list[dict[str, Any]],
-    ) -> RecommendationBundle:
-        garments: list[GarmentRecommendation] = []
-        outfits: list[OutfitRecommendation] = []
-
-        for item in product_candidates:
-            if item.get("kind") == "outfit":
-                outfits.append(self._build_outfit_recommendation(item))
-                continue
-            garments.append(self._build_garment_recommendation(item))
-
-        return RecommendationBundle(garments=garments, outfits=outfits)
-
-    def _build_outfit_recommendation(self, outfit_candidate: dict[str, Any]) -> OutfitRecommendation:
-        selected_items = [
-            self._build_garment_recommendation(garment_candidate)
-            for garment_candidate in outfit_candidate.get("items", [])
-        ]
-        outfit_request_data = dict(outfit_candidate.get("request") or {})
-        outfit_request_data["kind"] = "outfit"
-        outfit_request_data["items"] = [
-            garment_candidate.get("request", {})
-            for garment_candidate in outfit_candidate.get("items", [])
-        ]
-        request = OutfitSpec(**outfit_request_data)
-        return OutfitRecommendation(
-            request=request,
-            items=selected_items,
-            summary_label=self._build_outfit_label(request),
-        )
-
-    def _build_garment_recommendation(
-        self,
-        garment_candidate: dict[str, Any],
-    ) -> GarmentRecommendation:
-        request = GarmentSpec(**garment_candidate.get("request", {}))
-        candidates = garment_candidate.get("candidates", []) or []
-        best_match = self._build_product_recommendation(candidates[0]) if candidates else None
-
-        return GarmentRecommendation(
-            request=request,
-            best_match=best_match,
-            total_candidates=len(candidates),
-            summary_label=self._build_garment_label(request, best_match),
-        )
-
-    def _build_product_recommendation(
-        self,
-        product_data: dict[str, Any],
-    ) -> ProductRecommendation:
-        return ProductRecommendation(**product_data)
-
-    def _extract_business_answer_texts(self, business_answers: list[dict[str, Any]]) -> list[str]:
-        texts: list[str] = []
-        for answer in business_answers:
-            if not isinstance(answer, dict):
-                texts.append(str(answer))
-                continue
-
-            for key in ("answer", "content", "response", "text", "message"):
-                value = answer.get(key)
-                if isinstance(value, str) and value.strip():
-                    texts.append(value.strip())
-                    break
-
-        return texts
-
-    def _build_final_response_payload(
-        self,
-        state: State,
-        recommendations: RecommendationBundle,
-        business_answer_texts: list[str],
-    ) -> FinalResponsePayload:
-        draft = self._generate_final_response_draft(
-            state=state,
-            recommendations=recommendations,
-            business_answer_texts=business_answer_texts,
-        )
-        sections = self._normalize_final_response_sections(
-            draft_sections=draft.sections,
-            recommendations=recommendations,
-            business_answer_texts=business_answer_texts,
-        )
-        message = self._render_response_text(sections, recommendations)
-        return FinalResponsePayload(
-            message=message,
-            sections=sections,
-            recommendations=recommendations,
-            business_answer_texts=business_answer_texts,
-        )
-
-    def _generate_final_response_draft(
-        self,
-        state: State,
-        recommendations: RecommendationBundle,
-        business_answer_texts: list[str],
-    ) -> FinalResponseDraft:
-        sys_prompt = build_prompt(
-            base_prompt_path="src/prompts/final_response_writer/system_prompt.txt",
-            examples_prompt_path=None,
-            include_examples=False,
-        )
-        llm = get_llm_model(is_supervisor=False).with_structured_output(FinalResponseDraft)
-        recent_messages = state[StateKeys.MESSAGES][-6:] if len(state[StateKeys.MESSAGES]) >= 6 else state[StateKeys.MESSAGES]
-        context = {
-            "previous_summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
-            "business_answers": business_answer_texts,
-            "available_recommendations": self._serialize_recommendations_for_writer(recommendations),
-            "instructions": {
-                "outfit_placeholder_required": bool(recommendations.outfits),
-                "garment_placeholder_required": bool(recommendations.garments),
-            },
-        }
-
-        return llm.invoke([
-            SystemMessage(content=sys_prompt),
-            SystemMessage(content=f"Context for final response writing: {json.dumps(context, indent=2)}"),
-            *recent_messages,
-        ])
-
-    def _serialize_recommendations_for_writer(
-        self,
-        recommendations: RecommendationBundle,
-    ) -> dict[str, Any]:
-        return {
-            "outfits": [
-                {
-                    "summary_label": outfit.summary_label,
-                    "items": [
-                        {
-                            "summary_label": garment.summary_label,
-                            "best_match_name": garment.best_match.product_display_name if garment.best_match else None,
-                            "best_match_brand": garment.best_match.brand if garment.best_match else None,
-                            "best_match_color": garment.best_match.base_colour if garment.best_match else None,
-                            "best_match_price": garment.best_match.price if garment.best_match else None,
-                        }
-                        for garment in outfit.items
-                    ],
-                }
-                for outfit in recommendations.outfits
-            ],
-            "garments": [
-                {
-                    "summary_label": garment.summary_label,
-                    "best_match_name": garment.best_match.product_display_name if garment.best_match else None,
-                    "best_match_brand": garment.best_match.brand if garment.best_match else None,
-                    "best_match_color": garment.best_match.base_colour if garment.best_match else None,
-                    "best_match_price": garment.best_match.price if garment.best_match else None,
-                }
-                for garment in recommendations.garments
-            ],
-        }
-
-    def _normalize_final_response_sections(
-        self,
-        draft_sections: list[FinalResponseDraftSection],
-        recommendations: RecommendationBundle,
-        business_answer_texts: list[str],
-    ) -> list[FinalResponseSection]:
-        sections: list[FinalResponseSection] = []
-        has_outfit_placeholder = False
-        has_garment_placeholder = False
-
-        for draft_section in draft_sections:
-            if draft_section.type == "text":
-                content = (draft_section.content or "").strip()
-                if content:
-                    sections.append(FinalResponseSection(type="text", content=content))
-                continue
-
-            if draft_section.type == "outfit_recommendations":
-                if recommendations.outfits:
-                    has_outfit_placeholder = True
-                    sections.append(
-                        FinalResponseSection(
-                            type="outfit_recommendations",
-                            title=draft_section.title or "Recommended outfits",
-                        )
-                    )
-                continue
-
-            if draft_section.type == "garment_recommendations":
-                if recommendations.garments:
-                    has_garment_placeholder = True
-                    sections.append(
-                        FinalResponseSection(
-                            type="garment_recommendations",
-                            title=draft_section.title or "Recommended garments",
-                        )
-                    )
-
-        if not sections:
-            sections = self._default_final_response_sections(recommendations, business_answer_texts)
-
-        if recommendations.outfits and not has_outfit_placeholder:
-            sections = self._insert_placeholder_before_closing_text(
-                sections,
-                FinalResponseSection(type="outfit_recommendations", title="Recommended outfits"),
-            )
-
-        if recommendations.garments and not has_garment_placeholder:
-            sections = self._insert_placeholder_before_closing_text(
-                sections,
-                FinalResponseSection(type="garment_recommendations", title="Recommended garments"),
-            )
-
-        if sections and sections[0].type != "text":
-            intro = self._default_intro_text(recommendations, business_answer_texts)
-            sections.insert(0, FinalResponseSection(type="text", content=intro))
-
-        if not sections or sections[-1].type != "text":
-            sections.append(
-                FinalResponseSection(
-                    type="text",
-                    content="If you want, I can refine these picks further by color, budget, season, or occasion.",
-                )
-            )
-
-        return sections
-
-    def _default_final_response_sections(
-        self,
-        recommendations: RecommendationBundle,
-        business_answer_texts: list[str],
-    ) -> list[FinalResponseSection]:
-        sections: list[FinalResponseSection] = []
-        intro = self._default_intro_text(recommendations, business_answer_texts)
-        if intro:
-            sections.append(FinalResponseSection(type="text", content=intro))
-
-        if recommendations.outfits:
-            sections.append(
-                FinalResponseSection(type="outfit_recommendations", title="Recommended outfits")
-            )
-
-        if recommendations.garments:
-            sections.append(
-                FinalResponseSection(type="garment_recommendations", title="Recommended garments")
-            )
-
-        if recommendations.outfits or recommendations.garments:
-            sections.append(
-                FinalResponseSection(
-                    type="text",
-                    content="If you want, I can refine these picks further by color, budget, season, or occasion.",
-                )
-            )
-
-        if not sections:
-            sections.append(
-                FinalResponseSection(
-                    type="text",
-                    content="I couldn't find a strong match for your request yet.",
-                )
-            )
-
-        return sections
-
-    def _default_intro_text(
-        self,
-        recommendations: RecommendationBundle,
-        business_answer_texts: list[str],
-    ) -> str:
-        intro_parts: list[str] = []
-
-        if business_answer_texts:
-            intro_parts.append(" ".join(business_answer_texts))
-
-        if recommendations.outfits and recommendations.garments:
-            intro_parts.append(
-                "I put together a first pass with complete outfits plus a few standalone garment picks."
-            )
-        elif recommendations.outfits:
-            intro_parts.append(
-                "I put together a first pass of outfit recommendations using the best current match for each garment in every outfit."
-            )
-        elif recommendations.garments:
-            intro_parts.append(
-                "I selected the best standalone garment matches I could find for your request."
-            )
-
-        if intro_parts:
-            return " ".join(intro_parts).strip()
-
-        return "I couldn't find a strong match for your request yet."
-
-    def _insert_placeholder_before_closing_text(
-        self,
-        sections: list[FinalResponseSection],
-        placeholder: FinalResponseSection,
-    ) -> list[FinalResponseSection]:
-        if not sections:
-            return [placeholder]
-        if len(sections) >= 1 and sections[-1].type == "text":
-            return sections[:-1] + [placeholder, sections[-1]]
-        return [*sections, placeholder]
-
-    def _render_response_text(
-        self,
-        sections: list[FinalResponseSection],
-        recommendations: RecommendationBundle,
-    ) -> str:
-        rendered_sections: list[str] = []
-
-        for section in sections:
-            if section.type == "text" and section.content:
-                rendered_sections.append(section.content.strip())
-                continue
-
-            if section.type == "outfit_recommendations" and recommendations.outfits:
-                rendered_sections.append(
-                    self._render_outfit_recommendations(
-                        recommendations.outfits,
-                        title=section.title,
-                    )
-                )
-                continue
-
-            if section.type == "garment_recommendations" and recommendations.garments:
-                rendered_sections.append(
-                    self._render_garment_recommendations(
-                        recommendations.garments,
-                        title=section.title,
-                    )
-                )
-
-        return "\n\n".join(section for section in rendered_sections if section).strip()
-
-    def _render_outfit_recommendations(
-        self,
-        outfits: list[OutfitRecommendation],
-        title: str | None = None,
-    ) -> str:
-        lines = [title or "Recommended outfits:"]
-
-        for index, outfit in enumerate(outfits, start=1):
-            lines.append(f"{index}. {outfit.summary_label}")
-            for garment in outfit.items:
-                lines.append(f"- {garment.summary_label}: {self._render_product_match(garment.best_match)}")
-
-        return "\n".join(lines)
-
-    def _render_garment_recommendations(
-        self,
-        garments: list[GarmentRecommendation],
-        title: str | None = None,
-    ) -> str:
-        lines = [title or "Recommended garments:"]
-
-        for index, garment in enumerate(garments, start=1):
-            lines.append(f"{index}. {garment.summary_label}: {self._render_product_match(garment.best_match)}")
-
-        return "\n".join(lines)
-
-    def _render_product_match(self, match: ProductRecommendation | None) -> str:
-        if match is None:
-            return "No match found."
-
-        descriptors = [match.product_display_name]
-        extra_parts: list[str] = []
-
-        if match.brand:
-            extra_parts.append(match.brand)
-        if match.base_colour:
-            extra_parts.append(match.base_colour)
-        if match.price is not None:
-            extra_parts.append(f"${match.price:.2f}")
-
-        if extra_parts:
-            descriptors.append(f"({', '.join(extra_parts)})")
-
-        return " ".join(descriptors)
-
-    def _build_garment_label(
-        self,
-        request: GarmentSpec,
-        best_match: ProductRecommendation | None,
-    ) -> str:
-        article_type = self._first_value(request.article_types)
-        product_name = self._first_value(request.product_names)
-        base_color = self._first_value(request.base_colors)
-
-        if product_name:
-            label = product_name
-        elif article_type:
-            label = article_type
-        elif best_match and best_match.article_type:
-            label = best_match.article_type
-        else:
-            label = "Garment"
-
-        if base_color:
-            return f"{base_color} {label}".strip()
-        return label.strip()
-
-    def _build_outfit_label(self, request: OutfitSpec) -> str:
-        usage = request.usage
-        season = self._first_value(request.seasons)
-
-        if usage and season:
-            return f"{season} {usage} outfit"
-        if usage:
-            return f"{usage} outfit"
-        if season:
-            return f"{season} outfit"
-        return "Outfit recommendation"
-
-    def _first_value(self, values: list[str] | None) -> str | None:
-        if not values:
-            return None
-        return values[0]
-    
     @safe_node("ask_for_feedback")
-    def _ask_for_feedback_node(self, state: State):
+    def _ask_for_feedback_node(self, state: State) -> dict[StateKeys, Any]:
         print("\nAsking for user feedback on the system response ---")
-
         return {}
-
 
     def _build_graph(self) -> CompiledStateGraph:
         workflow = StateGraph(State)
@@ -613,7 +228,7 @@ class SupervisorGraph(BaseGraph):
 
         return workflow.compile(
             checkpointer=checkpointer,
-            interrupt_after=["ask_for_feedback"]
+            interrupt_after=["ask_for_feedback"],
         )
 
     def _get_graph_key(self) -> str:

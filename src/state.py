@@ -1,6 +1,7 @@
 from typing import Annotated, List, Optional, TypedDict
 from langchain_core.messages import BaseMessage
 import operator
+from schemas.business_qa import BusinessAnswer
 from schemas.outfit_maker.product_solicitation import ItemSpecList
 from schemas.outfit_maker.recommendation_response import (
     FinalResponsePayload,
@@ -34,7 +35,7 @@ class State(TypedDict):
     outfit_search_intents: Optional[List[str]]
 
     # Outputs from later nodes
-    business_answers: Optional[List[dict]]
+    business_answers: Optional[List[BusinessAnswer]]
     current_outfit_request: ItemSpecList | None
     product_candidates: Optional[List[dict]]
     current_outfit: RecommendationBundle | None
