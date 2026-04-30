@@ -11,7 +11,7 @@ from services.business_qa.document_loader import (
     KnowledgeDocument,
     get_business_knowledge_document_loader,
 )
-from utils.models import get_embedding_model
+from utils.models import get_embedding_model, get_embedding_model_identifier
 
 
 class BusinessKnowledgeIngestionService:
@@ -31,10 +31,12 @@ class BusinessKnowledgeIngestionService:
             return None
 
         current_signature = self._document_signature_payload(documents)
+        current_embedding = get_embedding_model_identifier()
         manifest = self._load_manifest()
         if (
             manifest is not None
             and manifest.get("signature") == current_signature
+            and manifest.get("embedding") == current_embedding
             and self._index_path().exists()
         ):
             return manifest
@@ -46,6 +48,7 @@ class BusinessKnowledgeIngestionService:
         chunks = self._document_loader.build_chunks(documents)
         manifest = {
             "signature": self._document_signature_payload(documents),
+            "embedding": get_embedding_model_identifier(),
             "chunk_count": len(chunks),
             "chunks": [
                 {

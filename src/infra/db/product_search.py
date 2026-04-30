@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from infra.db.database import Database
 from infra.db.models import Product
 from schemas.outfit_maker.product_solicitation import GarmentSpec, ItemSpec, ItemSpecList, OutfitSpec
-from utils.models import get_embedding_model
+from utils.models import get_embedding_model, get_embedding_model_identifier
 
 
 DEFAULT_OPTIONS_PER_ITEM = 8
@@ -19,7 +19,7 @@ PRODUCT_POOL_LIMIT: int | None = None
 EMBEDDING_BATCH_SIZE = 96
 SEMANTIC_WEIGHT = 8.0
 
-_PRODUCT_EMBEDDING_CACHE: dict[int, tuple[str, list[float]]] = {}
+_PRODUCT_EMBEDDING_CACHE: dict[tuple[str, int], tuple[str, list[float]]] = {}
 
 
 def search_product_candidates(
@@ -173,10 +173,12 @@ def _semantic_similarity_scores(query: str, products: list[Product]) -> dict[int
 
 
 def _get_product_embeddings(embedding_model, products: list[Product]) -> dict[int, list[float]]:
+    embedding_identifier = get_embedding_model_identifier()
     missing_products: list[Product] = []
     for product in products:
         text = _product_search_text(product)
-        cached = _PRODUCT_EMBEDDING_CACHE.get(product.id)
+        cache_key = (embedding_identifier, product.id)
+        cached = _PRODUCT_EMBEDDING_CACHE.get(cache_key)
         if cached is None or cached[0] != text:
             missing_products.append(product)
 
@@ -185,12 +187,13 @@ def _get_product_embeddings(embedding_model, products: list[Product]) -> dict[in
         texts = [_product_search_text(product) for product in batch]
         embeddings = _embed_documents(embedding_model, texts)
         for product, text, embedding in zip(batch, texts, embeddings):
-            _PRODUCT_EMBEDDING_CACHE[product.id] = (text, embedding)
+            cache_key = (embedding_identifier, product.id)
+            _PRODUCT_EMBEDDING_CACHE[cache_key] = (text, embedding)
 
     return {
-        product.id: _PRODUCT_EMBEDDING_CACHE[product.id][1]
+        product.id: _PRODUCT_EMBEDDING_CACHE[(embedding_identifier, product.id)][1]
         for product in products
-        if product.id in _PRODUCT_EMBEDDING_CACHE
+        if (embedding_identifier, product.id) in _PRODUCT_EMBEDDING_CACHE
     }
 
 

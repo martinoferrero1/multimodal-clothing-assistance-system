@@ -4,8 +4,21 @@ from infra.providers.factories.base_factory import ProviderFactory
 from langchain_core.language_models.chat_models import BaseChatModel
 from schemas.provider import Provider
 
+
+class _GoogleRetrievalEmbeddings:
+    def __init__(self, model: str) -> None:
+        self.model = model
+        self._client = GoogleGenerativeAIEmbeddings(model=model)
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return self._client.embed_documents(texts, task_type="retrieval_document")
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._client.embed_query(text, task_type="retrieval_query")
+
+
 class GoogleFactory(ProviderFactory):
-    
+
     _provider: ClassVar[Provider] = Provider.google
 
     @classmethod
@@ -16,4 +29,27 @@ class GoogleFactory(ProviderFactory):
 
     @classmethod
     def _build_embedding(cls, embedding_model: str):
-        return GoogleGenerativeAIEmbeddings(model=embedding_model)
+        normalized_model = cls.normalize_embedding_model_name(embedding_model)
+        return _GoogleRetrievalEmbeddings(model=normalized_model)
+
+    @staticmethod
+    def normalize_embedding_model_name(embedding_model: str) -> str:
+        raw_model = (embedding_model or "").strip()
+        if not raw_model:
+            return "models/gemini-embedding-001"
+
+        aliases = {
+            "text-embedding-004": "models/gemini-embedding-001",
+            "models/text-embedding-004": "models/gemini-embedding-001",
+            "embedding-001": "models/embedding-001",
+            "models/embedding-001": "models/embedding-001",
+            "gemini-embedding-001": "models/gemini-embedding-001",
+            "models/gemini-embedding-001": "models/gemini-embedding-001",
+        }
+        normalized = aliases.get(raw_model)
+        if normalized is not None:
+            return normalized
+
+        if "/" not in raw_model:
+            return f"models/{raw_model}"
+        return raw_model

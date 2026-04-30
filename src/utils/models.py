@@ -31,3 +31,15 @@ def get_embedding_model():
         return GroqFactory.get_embedding_model_instance(settings.GROQ_EMBEDDING_MODEL)
     else:
         raise ValueError(f"Unsupported embeddings provider: {provider}")
+
+
+def get_embedding_model_identifier() -> str:
+    provider = settings.EMBEDDINGS_PROVIDER.lower()
+    if provider == Provider.google:
+        from infra.providers.factories.google_factory import GoogleFactory
+        model = GoogleFactory.normalize_embedding_model_name(settings.GOOGLE_EMBEDDING_MODEL)
+        return f"{provider}:{model}"
+    elif provider == Provider.groq:
+        return f"{provider}:{settings.GROQ_EMBEDDING_MODEL}"
+    else:
+        raise ValueError(f"Unsupported embeddings provider: {provider}")
