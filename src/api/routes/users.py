@@ -1,75 +1,54 @@
 from __future__ import annotations
 
-from api.dependencies import get_db_session
-from api.route_helpers import serialize_conversation
-from api.schemas import ConversationCreate, ConversationRead, UserCreate, UserRead
-from fastapi import APIRouter, Depends, HTTPException, status
-from infra.db.chat_models import ChatUser, Conversation
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from api.dependencies import (
+    get_auth_service,
+    get_conversation_service,
+    get_current_user,
+    get_db_session,
+)
+from api.schemas import ConversationCreate, ConversationRead, UserRead
+from fastapi import APIRouter, Depends, status
+from infra.db.chat_models import ChatUser
+from services.auth_service import AuthenticationService
+from services.conversation_service import ConversationService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-
-@router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def create_user(payload: UserCreate, session: Session = Depends(get_db_session)) -> ChatUser:
-    user = ChatUser(
-        display_name=payload.display_name.strip(),
-        email=str(payload.email).lower() if payload.email else None,
-    )
-    session.add(user)
-    try:
-        session.commit()
-    except Exception as exc:
-        session.rollback()
-        raise HTTPException(status_code=400, detail="Could not create user.") from exc
-    session.refresh(user)
-    return user
+@router.get("/me", response_model=UserRead)
+async def get_me(current_user: ChatUser = Depends(get_current_user)) -> UserRead:
+    return UserRead.model_validate(current_user)
 
 
 @router.get("/{user_id}", response_model=UserRead)
-def get_user(user_id: str, session: Session = Depends(get_db_session)) -> ChatUser:
-    user = session.get(ChatUser, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-    return user
+async def get_user(
+    user_id: str,
+    current_user: ChatUser = Depends(get_current_user),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> UserRead:
+    auth_service.ensure_same_user(current_user.id, user_id)
+    return UserRead.model_validate(current_user)
 
 
 @router.post(
-    "/{user_id}/conversations",
+    "/me/conversations",
     response_model=ConversationRead,
     status_code=status.HTTP_201_CREATED,
 )
-def create_conversation(
-    user_id: str,
+async def create_conversation(
     payload: ConversationCreate,
-    session: Session = Depends(get_db_session),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> ConversationRead:
-    user = session.get(ChatUser, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    conversation = Conversation(
-        user_id=user_id,
-        title=(payload.title or "New conversation").strip() or "New conversation",
-    )
-    session.add(conversation)
-    session.commit()
-    session.refresh(conversation)
-    return serialize_conversation(session, conversation)
+    return await conversation_service.create_conversation(session, current_user.id, payload)
 
 
-@router.get("/{user_id}/conversations", response_model=list[ConversationRead])
-def list_user_conversations(user_id: str, session: Session = Depends(get_db_session)) -> list[ConversationRead]:
-    user = session.get(ChatUser, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    query = (
-        select(Conversation)
-        .where(Conversation.user_id == user_id)
-        .order_by(Conversation.updated_at.desc(), Conversation.created_at.desc())
-    )
-    conversations = list(session.scalars(query).all())
-    return [serialize_conversation(session, conversation) for conversation in conversations]
+@router.get("/me/conversations", response_model=list[ConversationRead])
+async def list_user_conversations(
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
+) -> list[ConversationRead]:
+    return await conversation_service.list_user_conversations(session, current_user.id)

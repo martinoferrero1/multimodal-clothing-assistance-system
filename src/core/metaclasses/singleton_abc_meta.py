@@ -1,9 +1,9 @@
 from abc import ABCMeta
-from threading import Lock
+from threading import RLock
 
 class SingletonABCMeta(ABCMeta):
     _instances = {}
-    _lock = Lock()
+    _lock = RLock()
 
     def __call__(cls, *args, **kwargs):
         with cls._lock:

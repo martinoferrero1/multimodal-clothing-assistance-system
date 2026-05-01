@@ -4,6 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+import faiss
+import numpy
+
+from core.metaclasses.singleton_meta import SingletonMeta
 from core.settings import settings
 from services.business_qa.document_loader import (
     BusinessKnowledgeDocumentLoader,
@@ -14,7 +18,7 @@ from services.business_qa.document_loader import (
 from utils.models import get_embedding_model, get_embedding_model_identifier
 
 
-class BusinessKnowledgeIngestionService:
+class BusinessKnowledgeIngestionService(metaclass=SingletonMeta):
     def __init__(
         self,
         document_loader: BusinessKnowledgeDocumentLoader | None = None,
@@ -65,12 +69,11 @@ class BusinessKnowledgeIngestionService:
         index_dir.mkdir(parents=True, exist_ok=True)
 
         if chunks:
-            faiss_module = self._require_faiss()
             vectors = self._embed_chunks(chunks)
             vector_matrix = self._to_normalized_matrix(vectors)
-            index = faiss_module.IndexFlatIP(vector_matrix.shape[1])
+            index = faiss.IndexFlatIP(vector_matrix.shape[1])
             index.add(vector_matrix)
-            faiss_module.write_index(index, str(self._index_path()))
+            faiss.write_index(index, str(self._index_path()))
 
         self._manifest_path().write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2),
@@ -86,9 +89,8 @@ class BusinessKnowledgeIngestionService:
         return [embedding_model.embed_query(text) for text in texts]
 
     def _to_normalized_matrix(self, vectors: list[list[float]]):
-        numpy_module = self._require_numpy()
-        matrix = numpy_module.array(vectors, dtype="float32")
-        norms = numpy_module.linalg.norm(matrix, axis=1, keepdims=True)
+        matrix = numpy.array(vectors, dtype="float32")
+        norms = numpy.linalg.norm(matrix, axis=1, keepdims=True)
         norms[norms == 0] = 1.0
         return matrix / norms
 
@@ -112,25 +114,6 @@ class BusinessKnowledgeIngestionService:
 
     def _manifest_path(self) -> Path:
         return self._index_dir() / "business_knowledge_manifest.json"
-
-    def _require_faiss(self):
-        try:
-            import faiss
-        except ModuleNotFoundError as exc:
-            raise RuntimeError(
-                "FAISS is not installed. Install `faiss-cpu` in the project environment to use business_qa retrieval."
-            ) from exc
-        return faiss
-
-    def _require_numpy(self):
-        try:
-            import numpy
-        except ModuleNotFoundError as exc:
-            raise RuntimeError(
-                "NumPy is not installed. Install `numpy` in the project environment to use business_qa retrieval."
-            ) from exc
-        return numpy
-
 
 _ingestion_service = BusinessKnowledgeIngestionService()
 

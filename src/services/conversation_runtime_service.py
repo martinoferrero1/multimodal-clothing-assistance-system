@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Iterable
 
 from agents.main_supervisor_agent.graph import SupervisorGraph
+from core.metaclasses.singleton_meta import SingletonMeta
 from infra.db.chat_models import ChatMessage, Conversation, MessageRole
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.types import Command
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from state import StateKeys, SumaryKeys
 from utils.models import get_llm_model
 
@@ -63,13 +66,14 @@ class ChatTurnResult:
     assistant_message: ChatMessage
 
 
-class ConversationRuntimeService:
+class ConversationRuntimeService(metaclass=SingletonMeta):
     def __init__(self, checkpointer) -> None:
         self._graph = SupervisorGraph(checkpointer=checkpointer).get_graph()
+        self._graph_lock = Lock()
 
-    def process_user_message(
+    async def process_user_message(
         self,
-        session: Session,
+        session: AsyncSession,
         conversation: Conversation,
         content: str,
     ) -> ChatTurnResult:
@@ -83,18 +87,18 @@ class ConversationRuntimeService:
             content=clean_content,
         )
         session.add(user_message)
-        session.flush()
+        await session.flush()
 
         if not conversation.title or conversation.title == "New conversation":
             conversation.title = self._conversation_title_from_message(clean_content)
 
         config = {"configurable": {"thread_id": conversation.id}}
-        if self._has_prior_checkpointed_turn(session, conversation.id):
-            workflow_input = self._build_resume_command(config, clean_content)
+        if await self._has_prior_checkpointed_turn(session, conversation.id):
+            workflow_input = await asyncio.to_thread(self._build_resume_command, config, clean_content)
         else:
             workflow_input = self._build_initial_state(clean_content)
 
-        result = self._graph.invoke(workflow_input, config=config)
+        result = await asyncio.to_thread(self._invoke_graph, workflow_input, config)
 
         assistant_reply = self._extract_assistant_reply(result)
         response_payload = assistant_reply.additional_kwargs.get("final_response_payload")
@@ -108,13 +112,18 @@ class ConversationRuntimeService:
             workflow_errors=workflow_errors or None,
         )
         session.add(assistant_message)
-        session.flush()
+        await session.flush()
 
-        self._sync_conversation_state_from_checkpoint(conversation, config)
-        session.commit()
-        session.refresh(conversation)
-        session.refresh(user_message)
-        session.refresh(assistant_message)
+        summary, summary_message_count = await asyncio.to_thread(
+            self._load_conversation_state_from_checkpoint,
+            config,
+        )
+        conversation.summary = summary
+        conversation.summary_message_count = summary_message_count
+        await session.commit()
+        await session.refresh(conversation)
+        await session.refresh(user_message)
+        await session.refresh(assistant_message)
 
         return ChatTurnResult(
             conversation=conversation,
@@ -144,7 +153,8 @@ class ConversationRuntimeService:
         }
 
     def _build_resume_command(self, config: dict[str, Any], content: str) -> Command:
-        snapshot = self._graph.get_state(config)
+        with self._graph_lock:
+            snapshot = self._graph.get_state(config)
         state_values = getattr(snapshot, "values", {}) or {}
         previous_summary = state_values.get(StateKeys.PREVIOUS_SUMMARY, {}) or {}
         pos_msgs_count = previous_summary.get(SumaryKeys.POS_MSGS_COUNT, 0)
@@ -199,8 +209,8 @@ class ConversationRuntimeService:
             return None
         return str(content).strip()[:400] or None
 
-    def _has_prior_checkpointed_turn(self, session: Session, conversation_id: str) -> bool:
-        assistant_count = session.scalar(
+    async def _has_prior_checkpointed_turn(self, session: AsyncSession, conversation_id: str) -> bool:
+        assistant_count = await session.scalar(
             select(func.count(ChatMessage.id)).where(
                 ChatMessage.conversation_id == conversation_id,
                 ChatMessage.role == MessageRole.ASSISTANT.value,
@@ -208,16 +218,22 @@ class ConversationRuntimeService:
         )
         return bool(assistant_count)
 
-    def _sync_conversation_state_from_checkpoint(
+    def _invoke_graph(self, workflow_input: dict | Command, config: dict[str, Any]) -> dict:
+        with self._graph_lock:
+            return self._graph.invoke(workflow_input, config=config)
+
+    def _load_conversation_state_from_checkpoint(
         self,
-        conversation: Conversation,
         config: dict[str, Any],
-    ) -> None:
-        snapshot = self._graph.get_state(config)
+    ) -> tuple[str | None, int]:
+        with self._graph_lock:
+            snapshot = self._graph.get_state(config)
         state_values = getattr(snapshot, "values", {}) or {}
         previous_summary = state_values.get(StateKeys.PREVIOUS_SUMMARY, {}) or {}
-        conversation.summary = previous_summary.get(SumaryKeys.CONTENT)
-        conversation.summary_message_count = previous_summary.get(SumaryKeys.POS_MSGS_COUNT, 0)
+        return (
+            previous_summary.get(SumaryKeys.CONTENT),
+            previous_summary.get(SumaryKeys.POS_MSGS_COUNT, 0),
+        )
 
     def _conversation_title_from_message(self, content: str) -> str:
         compact = " ".join(content.split())

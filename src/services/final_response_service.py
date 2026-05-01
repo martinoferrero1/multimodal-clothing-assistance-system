@@ -1,6 +1,7 @@
 import json
 from typing import Any
 
+from core.metaclasses.singleton_meta import SingletonMeta
 from langchain_core.messages import SystemMessage
 
 from schemas.business_qa import BusinessAnswer
@@ -19,7 +20,7 @@ from utils.models import get_llm_model
 from utils.prompts import build_prompt
 
 
-class FinalResponseService:
+class FinalResponseService(metaclass=SingletonMeta):
     def build_final_response_payload(
         self,
         state: State,

@@ -1,14 +1,17 @@
 import infra.db.chat_models  # noqa: F401
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker, Session
 from core.settings import settings
 from infra.db.models import Base
 from core.metaclasses.singleton_meta import SingletonMeta
 
+
 class Database(metaclass=SingletonMeta):
 
     def __init__(self, db_url: str | None = None):
         resolved_db_url = db_url or settings.DATABASE_URL
+        resolved_async_db_url = self._build_async_db_url(resolved_db_url)
         engine_kwargs = {
             "echo": settings.DATABASE_ECHO,
             "future": True,
@@ -17,6 +20,7 @@ class Database(metaclass=SingletonMeta):
             engine_kwargs["connect_args"] = {"check_same_thread": False}
 
         self.engine = create_engine(resolved_db_url, **engine_kwargs)
+        self.async_engine = create_async_engine(resolved_async_db_url, **engine_kwargs)
 
         self.SessionLocal = sessionmaker(
             bind=self.engine,
@@ -25,8 +29,43 @@ class Database(metaclass=SingletonMeta):
             expire_on_commit=False,
             class_=Session,
         )
+        self.AsyncSessionLocal = async_sessionmaker(
+            bind=self.async_engine,
+            autoflush=False,
+            expire_on_commit=False,
+            class_=AsyncSession,
+        )
 
         Base.metadata.create_all(self.engine)
+        self._ensure_chat_auth_schema()
 
     def get_session(self) -> Session:
         return self.SessionLocal()
+
+    def get_async_session(self) -> AsyncSession:
+        return self.AsyncSessionLocal()
+
+    async def dispose(self) -> None:
+        await self.async_engine.dispose()
+        self.engine.dispose()
+
+    def _build_async_db_url(self, db_url: str) -> str:
+        if db_url.startswith("sqlite:///") and not db_url.startswith("sqlite+aiosqlite:///"):
+            return db_url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+        if db_url.startswith("postgresql://"):
+            return db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        if db_url.startswith("postgres://"):
+            return db_url.replace("postgres://", "postgresql+psycopg://", 1)
+        return db_url
+
+    def _ensure_chat_auth_schema(self) -> None:
+        inspector = inspect(self.engine)
+        if not inspector.has_table("chat_users"):
+            return
+
+        column_names = {column["name"] for column in inspector.get_columns("chat_users")}
+        if "password_hash" in column_names:
+            return
+
+        with self.engine.begin() as connection:
+            connection.execute(text("ALTER TABLE chat_users ADD COLUMN password_hash VARCHAR(255)"))

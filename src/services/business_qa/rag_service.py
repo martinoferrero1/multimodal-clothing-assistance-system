@@ -9,6 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 import faiss
 import numpy
 
+from core.metaclasses.singleton_meta import SingletonMeta
 from core.settings import settings
 from schemas.business_qa import BusinessAnswer, BusinessAnswerDraft, BusinessQASource
 from services.business_qa.ingestion_service import (
@@ -25,7 +26,7 @@ class RetrievedChunk:
     score: float
 
 
-class BusinessQARagService:
+class BusinessQARagService(metaclass=SingletonMeta):
     def __init__(
         self,
         ingestion_service: BusinessKnowledgeIngestionService | None = None,

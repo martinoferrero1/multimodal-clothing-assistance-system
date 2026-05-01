@@ -5,9 +5,15 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-class UserCreate(BaseModel):
+class UserRegister(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
-    email: EmailStr | None = None
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
 
 
 class UserRead(BaseModel):
@@ -17,6 +23,17 @@ class UserRead(BaseModel):
     display_name: str
     email: EmailStr | None = None
     created_at: datetime
+
+
+class AuthToken(BaseModel):
+    access_token: str
+    token_type: str
+    expires_at: datetime
+
+
+class AuthResponse(BaseModel):
+    token: AuthToken
+    user: UserRead
 
 
 class ConversationCreate(BaseModel):

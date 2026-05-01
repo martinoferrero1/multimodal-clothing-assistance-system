@@ -1,5 +1,6 @@
 from typing import Any
 
+from core.metaclasses.singleton_meta import SingletonMeta
 from schemas.outfit_maker.product_solicitation import GarmentSpec, OutfitSpec
 from schemas.outfit_maker.recommendation_response import (
     GarmentRecommendation,
@@ -9,7 +10,7 @@ from schemas.outfit_maker.recommendation_response import (
 )
 
 
-class OutfitRecommendationService:
+class OutfitRecommendationService(metaclass=SingletonMeta):
     def build_recommendation_bundle(
         self,
         product_candidates: list[dict[str, Any]],
