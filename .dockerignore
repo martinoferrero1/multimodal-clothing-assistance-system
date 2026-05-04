@@ -9,5 +9,8 @@ __pycache__
 .ruff_cache
 .venv
 venv
+node_modules
+src/frontend/node_modules
+src/frontend/.next
 catalog.db
 data/business_knowledge_index
