@@ -4,9 +4,9 @@ from api.route_helpers import build_message_preview
 from api.schemas import ChatMessageRead, ChatTurnResponse, ConversationCreate, ConversationRead
 from core.metaclasses.singleton_meta import SingletonMeta
 from fastapi import HTTPException, status
-from infra.db.models.chat_models import ChatMessage, Conversation
+from infra.db.models.chat_models import ChatMessage, Conversation, MessageRole
 from services.conversation_runtime_service import ConversationRuntimeService
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,7 +69,11 @@ class ConversationService(metaclass=SingletonMeta):
         result = await session.scalars(
             select(ChatMessage)
             .where(ChatMessage.conversation_id == conversation_id)
-            .order_by(ChatMessage.created_at.asc(), ChatMessage.id.asc())
+            .order_by(
+                ChatMessage.created_at.asc(),
+                case((ChatMessage.role == MessageRole.USER.value, 0), else_=1).asc(),
+                ChatMessage.id.asc(),
+            )
         )
         messages = list(result.all())
         return [ChatMessageRead.model_validate(message) for message in messages]

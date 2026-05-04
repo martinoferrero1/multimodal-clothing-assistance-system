@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, case, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infra.db.models.base import Base
@@ -60,7 +60,11 @@ class Conversation(Base):
         "ChatMessage",
         back_populates="conversation",
         cascade="all, delete-orphan",
-        order_by="ChatMessage.created_at",
+        order_by=lambda: (
+            ChatMessage.created_at.asc(),
+            case((ChatMessage.role == MessageRole.USER.value, 0), else_=1).asc(),
+            ChatMessage.id.asc(),
+        ),
     )
 
 
@@ -79,6 +83,7 @@ class ChatMessage(Base):
     workflow_errors: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
     )

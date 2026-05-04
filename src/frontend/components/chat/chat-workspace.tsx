@@ -9,7 +9,6 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { useConversations } from "@/components/providers/conversation-provider";
 import { ApiError, getConversation, listMessages, sendMessage } from "@/lib/api-client";
 import {
-  buildConversationTitle,
   formatShortDate,
   formatShortTime,
   getRenderableAssistantParagraphs,
@@ -20,6 +19,32 @@ import type { ChatMessage, Conversation, FinalResponsePayload, ProductRecommenda
 type ChatWorkspaceProps = {
   conversationId: string;
 };
+
+function getRoleOrder(role: string) {
+  if (role === "user") {
+    return 0;
+  }
+  if (role === "assistant") {
+    return 1;
+  }
+  return 2;
+}
+
+function sortMessagesChronologically(items: ChatMessage[]) {
+  return [...items].sort((left, right) => {
+    const timeDifference = Date.parse(left.created_at) - Date.parse(right.created_at);
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
+
+    const roleDifference = getRoleOrder(left.role) - getRoleOrder(right.role);
+    if (roleDifference !== 0) {
+      return roleDifference;
+    }
+
+    return left.id.localeCompare(right.id);
+  });
+}
 
 export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const auth = useAuth();
@@ -67,7 +92,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           listMessages(auth.token, conversationId),
         ]);
         setConversation(currentConversation);
-        setMessages(currentMessages);
+        setMessages(sortMessagesChronologically(currentMessages));
       } catch (caughtError) {
         setError(
           caughtError instanceof ApiError
@@ -132,7 +157,11 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
       setMessages((current) => {
         const withoutPending = current.filter((message) => !message.pending);
-        return [...withoutPending, response.user_message, response.assistant_message];
+        return sortMessagesChronologically([
+          ...withoutPending,
+          response.user_message,
+          response.assistant_message,
+        ]);
       });
 
       await refreshConversations();
