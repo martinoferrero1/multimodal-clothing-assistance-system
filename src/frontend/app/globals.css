@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+:root {
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Garamond, Georgia, serif;
+  --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
+  --bg: #f7f1ea;
+  --bg-strong: #efe3d6;
+  --panel: rgba(255, 252, 247, 0.78);
+  --panel-strong: rgba(255, 249, 241, 0.94);
+  --line: rgba(91, 66, 43, 0.15);
+  --line-strong: rgba(91, 66, 43, 0.26);
+  --text: #1d1814;
+  --muted: #6d5a4b;
+  --accent: #8f4f2b;
+  --accent-soft: #dcbca4;
+  --accent-ink: #fffaf5;
+  --shadow: 0 30px 80px rgba(76, 47, 26, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(208, 162, 124, 0.18), transparent 36%),
+    linear-gradient(135deg, #f9f4ef 0%, #f3ece4 48%, #ebe0d5 100%);
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-sans), sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(143, 79, 43, 0.18);
+  color: var(--text);
+}
+
+.serif {
+  font-family: var(--font-serif), serif;
+}
+
+.glass {
+  background: var(--panel);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.glass-strong {
+  background: var(--panel-strong);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+}
+
+.hairline {
+  border: 1px solid var(--line);
+}
+
+.soft-shadow {
+  box-shadow: var(--shadow);
+}
+
+.page-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.scroll-muted {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(143, 79, 43, 0.28) transparent;
+}
+
+.scroll-muted::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scroll-muted::-webkit-scrollbar-thumb {
+  background: rgba(143, 79, 43, 0.24);
+  border-radius: 9999px;
+}
+
+.thread-fade {
+  mask-image: linear-gradient(to bottom, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in 0.45s ease-out both;
+}

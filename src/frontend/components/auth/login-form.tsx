@@ -1,0 +1,110 @@
+"use client";
+
+import { startTransition, useEffect, useState } from "react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+import { AuthShell } from "@/components/auth/auth-shell";
+import { ApiError } from "@/lib/api-client";
+import { useAuth } from "@/components/providers/auth-provider";
+
+export function LoginForm() {
+  const auth = useAuth();
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (auth.status === "authenticated") {
+      router.replace("/chat/new");
+    }
+  }, [auth.status, router]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await auth.signIn(email, password);
+      startTransition(() => {
+        router.replace("/chat/new");
+      });
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof ApiError ? caughtError.message : "We could not sign you in.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <AuthShell
+      title="Welcome back"
+      description="Sign in to continue exploring outfits and recommendations."
+      footerLabel="Don't have an account yet?"
+      footerHref="/register"
+      footerAction="Create one"
+    >
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        <label className="block space-y-3">
+          <span className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+            Email
+          </span>
+          <input
+            className="w-full rounded-[1.2rem] border border-[var(--line)] bg-white/60 px-5 py-4 outline-none transition focus:border-[var(--line-strong)]"
+            type="email"
+            placeholder="your-email@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+        </label>
+
+        <label className="block space-y-3">
+          <span className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+            Password
+          </span>
+          <div className="relative">
+            <input
+              className="w-full rounded-[1.2rem] border border-[var(--line)] bg-white/60 px-5 py-4 pr-14 outline-none transition focus:border-[var(--line-strong)]"
+              type={showPassword ? "text" : "password"}
+              placeholder="********"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              minLength={8}
+            />
+            <button
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--muted)] transition hover:text-[var(--text)]"
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </label>
+
+        {error ? (
+          <div className="rounded-[1rem] border border-[rgba(186,26,26,0.16)] bg-[rgba(255,234,229,0.8)] px-4 py-3 text-sm text-[#8c2616]">
+            {error}
+          </div>
+        ) : null}
+
+        <button
+          className="inline-flex w-full items-center justify-center gap-2 rounded-[1.2rem] bg-[var(--text)] px-5 py-4 text-sm font-semibold text-[var(--accent-ink)] transition hover:translate-y-[-1px] hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={submitting || auth.status === "loading"}
+          type="submit"
+        >
+          {submitting ? "Signing in..." : "Enter"}
+          <ArrowRight size={16} />
+        </button>
+      </form>
+    </AuthShell>
+  );
+}
