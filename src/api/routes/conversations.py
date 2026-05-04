@@ -11,7 +11,7 @@ from api.route_helpers import chunk_text, sse_event
 from api.schemas import ChatMessageRead, ChatTurnResponse, ConversationRead, MessageCreate
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from infra.db.chat_models import ChatUser
+from infra.db.models.chat_models import ChatUser
 from services.conversation_service import ConversationService
 from services.conversation_runtime_service import ConversationRuntimeService
 from sqlalchemy.ext.asyncio import AsyncSession

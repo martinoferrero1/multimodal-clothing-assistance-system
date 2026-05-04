@@ -1,8 +1,6 @@
 from sqlalchemy import ForeignKey, String, Integer, Float, CheckConstraint
-from sqlalchemy.orm import relationship, DeclarativeBase, mapped_column, Mapped
-
-class Base(DeclarativeBase):
-    pass
+from sqlalchemy.orm import relationship, mapped_column, Mapped
+from infra.db.models.base import Base
 
 class Gender(Base):
     __tablename__ = 'genders'

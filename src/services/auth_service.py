@@ -11,7 +11,7 @@ from api.schemas import AuthResponse, AuthToken, UserLogin, UserRead, UserRegist
 from core.metaclasses.singleton_meta import SingletonMeta
 from core.settings import settings
 from fastapi import HTTPException, status
-from infra.db.chat_models import ChatUser
+from infra.db.models.chat_models import ChatUser
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

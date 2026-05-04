@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from infra.db.database import Database
-from infra.db.models import Product
+from infra.db.models.catalog_models import Product
 from schemas.outfit_maker.product_solicitation import GarmentSpec, ItemSpec, ItemSpecList, OutfitSpec
 from utils.models import get_embedding_model, get_embedding_model_identifier
 

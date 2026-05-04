@@ -7,7 +7,7 @@ from typing import Any, Iterable
 
 from agents.main_supervisor_agent.graph import SupervisorGraph
 from core.metaclasses.singleton_meta import SingletonMeta
-from infra.db.chat_models import ChatMessage, Conversation, MessageRole
+from infra.db.models.chat_models import ChatMessage, Conversation, MessageRole
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.types import Command
 from sqlalchemy import func, select

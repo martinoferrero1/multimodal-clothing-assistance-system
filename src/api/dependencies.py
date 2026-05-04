@@ -5,7 +5,7 @@ from typing import AsyncIterator
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from infra.db.chat_models import ChatUser
+from infra.db.models.chat_models import ChatUser
 from infra.db.database import Database
 from services.auth_service import AuthenticationService
 from services.conversation_service import ConversationService

@@ -4,7 +4,7 @@ from api.route_helpers import build_message_preview
 from api.schemas import ChatMessageRead, ChatTurnResponse, ConversationCreate, ConversationRead
 from core.metaclasses.singleton_meta import SingletonMeta
 from fastapi import HTTPException, status
-from infra.db.chat_models import ChatMessage, Conversation
+from infra.db.models.chat_models import ChatMessage, Conversation
 from services.conversation_runtime_service import ConversationRuntimeService
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

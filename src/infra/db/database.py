@@ -1,9 +1,8 @@
-import infra.db.chat_models  # noqa: F401
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker, Session
 from core.settings import settings
-from infra.db.models import Base
+from infra.db.models.base import Base
 from core.metaclasses.singleton_meta import SingletonMeta
 
 

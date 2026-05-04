@@ -8,7 +8,7 @@ from api.dependencies import (
 )
 from api.schemas import ConversationCreate, ConversationRead, UserRead
 from fastapi import APIRouter, Depends, status
-from infra.db.chat_models import ChatUser
+from infra.db.models.chat_models import ChatUser
 from services.auth_service import AuthenticationService
 from services.conversation_service import ConversationService
 from sqlalchemy.ext.asyncio import AsyncSession

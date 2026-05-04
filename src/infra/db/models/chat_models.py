@@ -7,7 +7,7 @@ from enum import Enum
 from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from infra.db.models import Base
+from infra.db.models.base import Base
 
 
 class MessageRole(str, Enum):

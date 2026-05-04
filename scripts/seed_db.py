@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy import select, func
 
 from infra.db.database import Database
-from infra.db.models import (
+from infra.db.models.catalog_models import (
     Gender, MasterCategory, SubCategory, ArticleType,
     Color, Brand, Season, Product
 )
