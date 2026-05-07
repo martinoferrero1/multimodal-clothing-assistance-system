@@ -8,11 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useConversations } from "@/components/providers/conversation-provider";
 import { ApiError, getConversation, listMessages, sendMessage } from "@/lib/api-client";
-import {
-  formatShortDate,
-  formatShortTime,
-  getRenderableAssistantParagraphs,
-} from "@/lib/format";
+import { formatShortDate, formatShortTime } from "@/lib/format";
 import { readPreferences } from "@/lib/storage";
 import type { ChatMessage, Conversation, FinalResponsePayload, ProductRecommendation } from "@/lib/types";
 
@@ -46,6 +42,39 @@ function sortMessagesChronologically(items: ChatMessage[]) {
   });
 }
 
+function getProductImage(product: ProductRecommendation | null | undefined) {
+  if (!product) {
+    return null;
+  }
+
+  return (
+    product.images.default ||
+    product.images.front ||
+    product.images.search ||
+    product.images.top ||
+    null
+  );
+}
+
+function getProductMeta(product: ProductRecommendation | null | undefined) {
+  if (!product) {
+    return "No precise match yet";
+  }
+
+  return (
+    [product.brand, product.base_colour, product.article_type]
+      .filter(Boolean)
+      .join(" - ") || "Curated selection"
+  );
+}
+
+function getTextParagraphs(text: string | null | undefined) {
+  return (text ?? "")
+    .split(/\n{2,}/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+}
+
 export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const auth = useAuth();
   const router = useRouter();
@@ -59,6 +88,13 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const [showRecommendationPanel, setShowRecommendationPanel] = useState(
     () => readPreferences().showRecommendationPanel,
   );
+  const [selectedOutfitState, setSelectedOutfitState] = useState<{
+    messageId: string | null;
+    outfitIndex: number;
+  }>({
+    messageId: null,
+    outfitIndex: 0,
+  });
 
   useEffect(() => {
     function syncPreferences() {
@@ -107,9 +143,31 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     void loadConversation();
   }, [auth.token, conversationId]);
 
-  const latestPayload = [...messages]
-    .reverse()
-    .find((message) => message.role === "assistant" && message.final_response_payload)?.final_response_payload;
+  const latestRecommendationMessage = [...messages].reverse().find(
+    (message) =>
+      message.role === "assistant" &&
+      (message.final_response_payload?.recommendations.outfits.length ?? 0) > 0,
+  );
+
+  const selectedRecommendationMessage = messages.find(
+    (message) =>
+      message.id === selectedOutfitState.messageId &&
+      (message.final_response_payload?.recommendations.outfits.length ?? 0) > 0,
+  );
+  const hasValidSelectedOutfit =
+    !!selectedRecommendationMessage?.final_response_payload &&
+    selectedOutfitState.outfitIndex <
+      selectedRecommendationMessage.final_response_payload.recommendations.outfits.length;
+
+  const activeRecommendationMessage =
+    (hasValidSelectedOutfit ? selectedRecommendationMessage : null) ??
+    latestRecommendationMessage ??
+    null;
+  const activeRecommendationPayload = activeRecommendationMessage?.final_response_payload ?? null;
+  const activeOutfitIndex =
+    hasValidSelectedOutfit && activeRecommendationMessage?.id === selectedRecommendationMessage?.id
+      ? selectedOutfitState.outfitIndex
+      : 0;
 
   async function handleSend(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -183,6 +241,10 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     }
   }
 
+  function handleSelectOutfit(messageId: string, outfitIndex: number) {
+    setSelectedOutfitState({ messageId, outfitIndex });
+  }
+
   return (
     <section className="grid min-h-[calc(100vh-2rem)] gap-4 pb-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:pt-4">
       <div className="glass-strong hairline soft-shadow flex min-h-[75vh] flex-col rounded-[2rem]">
@@ -234,9 +296,6 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
               {messages.map((message) => {
                 const isUser = message.role === "user";
-                const assistantParagraphs = isUser
-                  ? []
-                  : getRenderableAssistantParagraphs(message);
 
                 return (
                   <div
@@ -256,25 +315,12 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                           {message.content}
                         </p>
                       ) : (
-                        <div className="space-y-3">
-                          {assistantParagraphs.map((paragraph, index) => (
-                            <p
-                              key={`${message.id}-${index}`}
-                              className="whitespace-pre-wrap text-sm leading-7"
-                            >
-                              {paragraph}
-                            </p>
-                          ))}
-                          {message.pending ? (
-                            <div className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
-                              <LoaderCircle
-                                size={14}
-                                className="animate-spin"
-                              />
-                              The assistant is thinking...
-                            </div>
-                          ) : null}
-                        </div>
+                        <AssistantMessageBody
+                          message={message}
+                          activeRecommendationMessageId={activeRecommendationMessage?.id ?? null}
+                          activeOutfitIndex={activeOutfitIndex}
+                          onSelectOutfit={handleSelectOutfit}
+                        />
                       )}
                     </div>
                   </div>
@@ -333,13 +379,20 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           </div>
 
           <div className="scroll-muted flex-1 space-y-6 overflow-y-auto p-6">
-            {!latestPayload ? (
+            {!activeRecommendationPayload ||
+            activeRecommendationPayload.recommendations.outfits.length === 0 ? (
               <div className="rounded-[1.6rem] border border-dashed border-[var(--line-strong)] bg-white/60 p-5 text-sm leading-7 text-[var(--muted)]">
-                As soon as the response includes recommendations, they will
-                appear in this panel.
+                Full outfit suggestions will appear here as soon as the
+                assistant recommends a complete look.
               </div>
             ) : (
-              <RecommendationContent payload={latestPayload} />
+              <RecommendationContent
+                payload={activeRecommendationPayload}
+                selectedOutfitIndex={activeOutfitIndex}
+                onSelectOutfit={(outfitIndex) =>
+                  handleSelectOutfit(activeRecommendationMessage?.id ?? "", outfitIndex)
+                }
+              />
             )}
           </div>
         </aside>
@@ -348,117 +401,368 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   );
 }
 
-function RecommendationContent({ payload }: { payload: FinalResponsePayload }) {
-  const products = payload.recommendations.garments
-    .map((garment) => garment.best_match)
-    .filter(Boolean) as ProductRecommendation[];
+function AssistantMessageBody({
+  message,
+  activeRecommendationMessageId,
+  activeOutfitIndex,
+  onSelectOutfit,
+}: {
+  message: ChatMessage;
+  activeRecommendationMessageId: string | null;
+  activeOutfitIndex: number;
+  onSelectOutfit: (messageId: string, outfitIndex: number) => void;
+}) {
+  const payload = message.final_response_payload;
 
-  const featuredProduct =
-    products[0] ??
-    payload.recommendations.outfits
-      .flatMap((outfit) => outfit.items.map((item) => item.best_match))
-      .find(Boolean) ??
-    null;
+  if (!payload) {
+    return (
+      <div className="space-y-3">
+        {getTextParagraphs(message.content).map((paragraph, index) => (
+          <p
+            key={`${message.id}-${index}`}
+            className="whitespace-pre-wrap text-sm leading-7"
+          >
+            {paragraph}
+          </p>
+        ))}
+        {message.pending ? (
+          <div className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
+            <LoaderCircle size={14} className="animate-spin" />
+            The assistant is thinking...
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
-  const featuredImage = featuredProduct
-    ? featuredProduct.images.default ||
-      featuredProduct.images.front ||
-      featuredProduct.images.search ||
-      featuredProduct.images.top ||
-      null
-    : null;
+  const sections =
+    payload.sections.length > 0
+      ? payload.sections
+      : [{ type: "text" as const, content: message.content, title: null }];
+
+  return (
+    <div className="space-y-4">
+      {sections.map((section, index) => {
+        if (section.type === "text" && section.content) {
+          return (
+            <div key={`${message.id}-text-${index}`} className="space-y-3">
+              {getTextParagraphs(section.content).map((paragraph, paragraphIndex) => (
+                <p
+                  key={`${message.id}-text-${index}-${paragraphIndex}`}
+                  className="whitespace-pre-wrap text-sm leading-7"
+                >
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          );
+        }
+
+        if (
+          section.type === "product_highlights" ||
+          section.type === "garment_recommendations"
+        ) {
+          return (
+            <ProductHighlightsSection
+              key={`${message.id}-products-${index}`}
+              payload={payload}
+              title={section.title || "Featured products"}
+            />
+          );
+        }
+        
+        if (section.type === "outfit_recommendations") {
+          return (
+            <OutfitRecommendationsSection
+              key={`${message.id}-outfits-${index}`}
+              messageId={message.id}
+              payload={payload}
+              title={section.title || "Recommended outfits"}
+              activeRecommendationMessageId={activeRecommendationMessageId}
+              activeOutfitIndex={activeOutfitIndex}
+              onSelectOutfit={onSelectOutfit}
+            />
+          );
+        }
+
+        return null;
+      })}
+
+      {message.pending ? (
+        <div className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
+          <LoaderCircle size={14} className="animate-spin" />
+          The assistant is thinking...
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProductHighlightsSection({
+  payload,
+  title,
+}: {
+  payload: FinalResponsePayload;
+  title: string;
+}) {
+  const groups = payload.recommendations.product_highlights ?? [];
+
+  if (groups.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
+          Products
+        </p>
+        <h3 className="mt-2 serif text-2xl leading-none">{title}</h3>
+      </div>
+
+      {groups.map((group) => (
+        <div
+          key={`${group.group_label}-${group.products[0]?.id ?? "empty"}`}
+          className="space-y-3 rounded-[1.4rem] border border-[var(--line)] bg-white/68 p-4"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-[var(--text)]">{group.group_label}</p>
+            <span className="rounded-full bg-[rgba(143,79,43,0.08)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+              {group.products.length} picks
+            </span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {group.products.map((product, itemIndex) => {
+              const image = getProductImage(product);
+              return (
+                <article
+                  key={`${group.group_label}-${product.id}-${itemIndex}`}
+                  className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-3 rounded-[1.1rem] bg-[rgba(143,79,43,0.06)] p-3"
+                >
+                  {image ? (
+                    <Image
+                      alt={product.product_display_name || group.group_label}
+                      className="aspect-[4/5] w-full rounded-[0.95rem] object-cover"
+                      src={image}
+                      width={240}
+                      height={300}
+                    />
+                  ) : (
+                    <div className="flex aspect-[4/5] items-center justify-center rounded-[0.95rem] bg-white/70 text-center text-[11px] text-[var(--muted)]">
+                      No image
+                    </div>
+                  )}
+
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text)]">
+                      {product.product_display_name || group.group_label}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-6 text-[var(--muted)]">
+                      {group.group_label}
+                    </p>
+                    <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                      {getProductMeta(product)}
+                    </p>
+                    {product.price !== null && product.price !== undefined ? (
+                      <div className="mt-3 text-xs font-semibold text-[var(--text)]">
+                        ${product.price.toFixed(2)}
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function OutfitRecommendationsSection({
+  messageId,
+  payload,
+  title,
+  activeRecommendationMessageId,
+  activeOutfitIndex,
+  onSelectOutfit,
+}: {
+  messageId: string;
+  payload: FinalResponsePayload;
+  title: string;
+  activeRecommendationMessageId: string | null;
+  activeOutfitIndex: number;
+  onSelectOutfit: (messageId: string, outfitIndex: number) => void;
+}) {
+  if (payload.recommendations.outfits.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
+          Outfits
+        </p>
+        <h3 className="mt-2 serif text-2xl leading-none">{title}</h3>
+      </div>
+
+      <div className="grid gap-3">
+        {payload.recommendations.outfits.map((outfit, index) => {
+          const isSelected =
+            activeRecommendationMessageId === messageId && activeOutfitIndex === index;
+
+          return (
+            <button
+              key={`${messageId}-outfit-${index}`}
+              type="button"
+              className={`rounded-[1.4rem] border p-4 text-left transition ${
+                isSelected
+                  ? "border-[var(--text)] bg-[rgba(143,79,43,0.12)]"
+                  : "border-[var(--line)] bg-white/72 hover:border-[var(--line-strong)]"
+              }`}
+              onClick={() => onSelectOutfit(messageId, index)}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
+                    Look {index + 1}
+                  </p>
+                  <h4 className="mt-2 text-base font-semibold text-[var(--text)]">
+                    {outfit.summary_label}
+                  </h4>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${
+                    isSelected
+                      ? "bg-[var(--text)] text-[var(--accent-ink)]"
+                      : "bg-[rgba(143,79,43,0.08)] text-[var(--muted)]"
+                  }`}
+                >
+                  {isSelected ? "Open in panel" : "View outfit"}
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {outfit.items.map((item, itemIndex) => (
+                  <span
+                    key={`${messageId}-outfit-chip-${index}-${itemIndex}`}
+                    className="rounded-full bg-[rgba(143,79,43,0.08)] px-3 py-1 text-xs text-[var(--muted)]"
+                  >
+                    {item.summary_label}
+                  </span>
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function RecommendationContent({
+  payload,
+  selectedOutfitIndex,
+  onSelectOutfit,
+}: {
+  payload: FinalResponsePayload;
+  selectedOutfitIndex: number;
+  onSelectOutfit: (outfitIndex: number) => void;
+}) {
+  const outfits = payload.recommendations.outfits;
+  const selectedOutfit = outfits[selectedOutfitIndex] ?? outfits[0];
+
+  if (!selectedOutfit) {
+    return null;
+  }
 
   return (
     <>
-      {featuredProduct ? (
-        <div className="overflow-hidden rounded-[1.8rem] border border-[var(--line)] bg-white/75">
-          {featuredImage ? (
-            <Image
-              alt={featuredProduct.product_display_name}
-              className="aspect-[4/5] w-full object-cover"
-              src={featuredImage}
-              width={720}
-              height={900}
-            />
-          ) : (
-            <div className="flex aspect-[4/5] items-center justify-center bg-[rgba(143,79,43,0.08)] text-sm text-[var(--muted)]">
-              No image available
-            </div>
-          )}
-          <div className="space-y-3 p-5">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Featured product</p>
-            <h3 className="serif text-3xl leading-none">{featuredProduct.product_display_name}</h3>
-            <p className="text-sm leading-7 text-[var(--muted)]">
-              {[featuredProduct.brand, featuredProduct.base_colour, featuredProduct.article_type]
-                .filter(Boolean)
-                .join(" - ") || "Curated selection"}
-            </p>
-            {featuredProduct.price !== null ? (
-              <p className="text-sm font-semibold text-[var(--text)]">${featuredProduct.price.toFixed(2)}</p>
-            ) : null}
-          </div>
+      <section className="space-y-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
+            Outfits
+          </p>
+          <h3 className="mt-2 serif text-2xl leading-none">Suggested combinations</h3>
         </div>
-      ) : null}
 
-      {payload.recommendations.outfits.length > 0 ? (
-        <section className="space-y-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Outfits</p>
-            <h3 className="mt-2 serif text-2xl leading-none">Suggested combinations</h3>
-          </div>
-          {payload.recommendations.outfits.map((outfit, index) => (
-            <article
+        <div className="flex flex-wrap gap-2">
+          {outfits.map((outfit, index) => (
+            <button
               key={`${outfit.summary_label}-${index}`}
-              className="rounded-[1.5rem] border border-[var(--line)] bg-white/72 p-5"
+              type="button"
+              className={`rounded-full px-4 py-2 text-sm transition ${
+                index === selectedOutfitIndex
+                  ? "bg-[var(--text)] text-[var(--accent-ink)]"
+                  : "bg-white/72 text-[var(--muted)] hover:text-[var(--text)]"
+              }`}
+              onClick={() => onSelectOutfit(index)}
             >
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Look {index + 1}</p>
-              <h4 className="mt-2 text-base font-semibold text-[var(--text)]">{outfit.summary_label}</h4>
-              <div className="mt-4 space-y-3">
-                {outfit.items.map((item, itemIndex) => (
-                  <div
-                    key={`${item.summary_label}-${itemIndex}`}
-                    className="rounded-[1rem] bg-[rgba(143,79,43,0.06)] px-3 py-3"
-                  >
-                    <p className="text-sm font-medium text-[var(--text)]">{item.summary_label}</p>
-                    <p className="mt-1 text-xs leading-6 text-[var(--muted)]">
-                      {item.best_match?.product_display_name || "No precise match"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </article>
+              Look {index + 1}
+            </button>
           ))}
-        </section>
-      ) : null}
+        </div>
+      </section>
 
-      {payload.recommendations.garments.length > 0 ? (
-        <section className="space-y-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Garments</p>
-            <h3 className="mt-2 serif text-2xl leading-none">Individual pieces</h3>
-          </div>
-          <div className="space-y-3">
-            {payload.recommendations.garments.map((garment, index) => (
+      <article className="space-y-4 rounded-[1.8rem] border border-[var(--line)] bg-white/75 p-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">
+            Look {selectedOutfitIndex + 1}
+          </p>
+          <h4 className="mt-2 serif text-3xl leading-none">
+            {selectedOutfit.summary_label}
+          </h4>
+          <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+            {selectedOutfit.items.map((item) => item.summary_label).join(" - ")}
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {selectedOutfit.items.map((item, itemIndex) => {
+            const image = getProductImage(item.best_match);
+
+            return (
               <article
-                key={`${garment.summary_label}-${index}`}
-                className="rounded-[1.4rem] border border-[var(--line)] bg-white/72 p-4"
+                key={`${selectedOutfit.summary_label}-${itemIndex}`}
+                className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-4 rounded-[1.25rem] bg-[rgba(143,79,43,0.06)] p-3"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--text)]">{garment.summary_label}</p>
-                    <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
-                      {garment.best_match?.product_display_name || "No match available"}
-                    </p>
+                {image ? (
+                  <Image
+                    alt={item.best_match?.product_display_name || item.summary_label}
+                    className="aspect-[4/5] w-full rounded-[1rem] object-cover"
+                    src={image}
+                    width={280}
+                    height={350}
+                  />
+                ) : (
+                  <div className="flex aspect-[4/5] items-center justify-center rounded-[1rem] bg-white/70 text-center text-[11px] text-[var(--muted)]">
+                    No image
                   </div>
-                  <span className="rounded-full bg-[rgba(143,79,43,0.08)] px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                    {garment.total_candidates} candidates
-                  </span>
+                )}
+
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[var(--text)]">
+                    {item.summary_label}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
+                    {item.best_match?.product_display_name || "No precise match yet"}
+                  </p>
+                  <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
+                    {getProductMeta(item.best_match)}
+                  </p>
+                  {item.best_match?.price !== null && item.best_match?.price !== undefined ? (
+                    <div className="mt-3 text-xs font-semibold text-[var(--text)]">
+                      ${item.best_match.price.toFixed(2)}
+                    </div>
+                  ) : null}
                 </div>
               </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
+            );
+          })}
+        </div>
+      </article>
     </>
   );
 }

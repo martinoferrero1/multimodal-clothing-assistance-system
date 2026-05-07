@@ -10,7 +10,6 @@ from schemas.outfit_maker.recommendation_response import (
     FinalResponseDraftSection,
     FinalResponsePayload,
     FinalResponseSection,
-    GarmentRecommendation,
     OutfitRecommendation,
     ProductRecommendation,
     RecommendationBundle,
@@ -69,15 +68,18 @@ class FinalResponseService(metaclass=SingletonMeta):
             "available_recommendations": self._serialize_recommendations_for_writer(recommendations),
             "instructions": {
                 "outfit_placeholder_required": bool(recommendations.outfits),
-                "garment_placeholder_required": bool(recommendations.garments),
+                "product_highlights_required": self._has_product_highlights(recommendations),
             },
         }
 
-        return llm.invoke([
+        result = llm.invoke([
             SystemMessage(content=sys_prompt),
             SystemMessage(content=f"Context for final response writing: {json.dumps(context, indent=2)}"),
             *recent_messages,
         ])
+
+        print("LLM output for final response draft: ", result)
+        return result
 
     def _serialize_recommendations_for_writer(
         self,
@@ -103,6 +105,7 @@ class FinalResponseService(metaclass=SingletonMeta):
             "garments": [
                 {
                     "summary_label": garment.summary_label,
+                    "garment_type_label": garment.garment_type_label,
                     "best_match_name": garment.best_match.product_display_name if garment.best_match else None,
                     "best_match_brand": garment.best_match.brand if garment.best_match else None,
                     "best_match_color": garment.best_match.base_colour if garment.best_match else None,
@@ -110,6 +113,7 @@ class FinalResponseService(metaclass=SingletonMeta):
                 }
                 for garment in recommendations.garments
             ],
+            "product_highlights": self._serialize_product_highlights(recommendations),
         }
 
     def _normalize_final_response_sections(
@@ -120,7 +124,8 @@ class FinalResponseService(metaclass=SingletonMeta):
     ) -> list[FinalResponseSection]:
         sections: list[FinalResponseSection] = []
         has_outfit_placeholder = False
-        has_garment_placeholder = False
+        has_product_highlights_placeholder = False
+        product_highlights_available = self._has_product_highlights(recommendations)
 
         for draft_section in draft_sections:
             if draft_section.type == "text":
@@ -140,13 +145,13 @@ class FinalResponseService(metaclass=SingletonMeta):
                     )
                 continue
 
-            if draft_section.type == "garment_recommendations":
-                if recommendations.garments:
-                    has_garment_placeholder = True
+            if draft_section.type in {"garment_recommendations", "product_highlights"}:
+                if product_highlights_available:
+                    has_product_highlights_placeholder = True
                     sections.append(
                         FinalResponseSection(
-                            type="garment_recommendations",
-                            title=draft_section.title or "Recommended garments",
+                            type="product_highlights",
+                            title=draft_section.title or "Featured products",
                         )
                     )
 
@@ -154,15 +159,16 @@ class FinalResponseService(metaclass=SingletonMeta):
             sections = self._default_final_response_sections(recommendations, business_answer_texts)
 
         if recommendations.outfits and not has_outfit_placeholder:
-            sections = self._insert_placeholder_before_closing_text(
+            sections = self._insert_placeholder(
                 sections,
                 FinalResponseSection(type="outfit_recommendations", title="Recommended outfits"),
             )
 
-        if recommendations.garments and not has_garment_placeholder:
-            sections = self._insert_placeholder_before_closing_text(
+        if product_highlights_available and not has_product_highlights_placeholder:
+            sections = self._insert_placeholder(
                 sections,
-                FinalResponseSection(type="garment_recommendations", title="Recommended garments"),
+                FinalResponseSection(type="product_highlights", title="Featured products"),
+                before_types={"outfit_recommendations"},
             )
 
         if sections and sections[0].type != "text":
@@ -189,17 +195,17 @@ class FinalResponseService(metaclass=SingletonMeta):
         if intro:
             sections.append(FinalResponseSection(type="text", content=intro))
 
+        if self._has_product_highlights(recommendations):
+            sections.append(
+                FinalResponseSection(type="product_highlights", title="Featured products")
+            )
+
         if recommendations.outfits:
             sections.append(
                 FinalResponseSection(type="outfit_recommendations", title="Recommended outfits")
             )
 
-        if recommendations.garments:
-            sections.append(
-                FinalResponseSection(type="garment_recommendations", title="Recommended garments")
-            )
-
-        if recommendations.outfits or recommendations.garments:
+        if self._has_product_highlights(recommendations) or recommendations.outfits:
             sections.append(
                 FinalResponseSection(
                     type="text",
@@ -227,17 +233,13 @@ class FinalResponseService(metaclass=SingletonMeta):
         if business_answer_texts:
             intro_parts.append(" ".join(business_answer_texts))
 
-        if recommendations.outfits and recommendations.garments:
+        if recommendations.outfits:
             intro_parts.append(
-                "I put together a first pass with complete outfits plus a few standalone garment picks."
+                "I found strong matches for the key pieces in your request and grouped the full outfit ideas below."
             )
-        elif recommendations.outfits:
+        elif self._has_product_highlights(recommendations):
             intro_parts.append(
-                "I put together a first pass of outfit recommendations using the best current match for each garment in every outfit."
-            )
-        elif recommendations.garments:
-            intro_parts.append(
-                "I selected the best standalone garment matches I could find for your request."
+                "I selected the strongest product matches I could find for your request."
             )
 
         if intro_parts:
@@ -245,13 +247,18 @@ class FinalResponseService(metaclass=SingletonMeta):
 
         return "I couldn't find a strong match for your request yet."
 
-    def _insert_placeholder_before_closing_text(
+    def _insert_placeholder(
         self,
         sections: list[FinalResponseSection],
         placeholder: FinalResponseSection,
+        before_types: set[str] | None = None,
     ) -> list[FinalResponseSection]:
         if not sections:
             return [placeholder]
+        if before_types:
+            for index, section in enumerate(sections):
+                if section.type in before_types:
+                    return sections[:index] + [placeholder] + sections[index:]
         if len(sections) >= 1 and sections[-1].type == "text":
             return sections[:-1] + [placeholder, sections[-1]]
         return [*sections, placeholder]
@@ -277,10 +284,10 @@ class FinalResponseService(metaclass=SingletonMeta):
                 )
                 continue
 
-            if section.type == "garment_recommendations" and recommendations.garments:
+            if section.type in {"garment_recommendations", "product_highlights"}:
                 rendered_sections.append(
-                    self._render_garment_recommendations(
-                        recommendations.garments,
+                    self._render_product_highlights(
+                        recommendations,
                         title=section.title,
                     )
                 )
@@ -301,17 +308,46 @@ class FinalResponseService(metaclass=SingletonMeta):
 
         return "\n".join(lines)
 
-    def _render_garment_recommendations(
+    def _render_product_highlights(
         self,
-        garments: list[GarmentRecommendation],
+        recommendations: RecommendationBundle,
         title: str | None = None,
     ) -> str:
-        lines = [title or "Recommended garments:"]
+        lines = [title or "Featured products:"]
 
-        for index, garment in enumerate(garments, start=1):
-            lines.append(f"{index}. {garment.summary_label}: {self._render_product_match(garment.best_match)}")
+        for group in recommendations.product_highlights:
+            lines.append(f"{group.group_label}:")
+            for product in group.products:
+                lines.append(f"- {self._render_product_match(product)}")
 
         return "\n".join(lines)
+
+    def _serialize_product_highlights(
+        self,
+        recommendations: RecommendationBundle,
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                "group_label": group.group_label,
+                "products": [
+                    {
+                        "product_display_name": product.product_display_name,
+                        "brand": product.brand,
+                        "base_colour": product.base_colour,
+                        "price": product.price,
+                        "score": product.score,
+                    }
+                    for product in group.products
+                ],
+            }
+            for group in recommendations.product_highlights
+        ]
+
+    def _has_product_highlights(
+        self,
+        recommendations: RecommendationBundle,
+    ) -> bool:
+        return bool(recommendations.product_highlights)
 
     def _render_product_match(self, match: ProductRecommendation | None) -> str:
         if match is None:

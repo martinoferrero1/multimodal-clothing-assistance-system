@@ -182,11 +182,14 @@ class SupervisorGraph(BaseGraph):
             )
 
         business_answers = state.get(StateKeys.BUSINESS_ANSWERS) or []
+        print("Recommendations to be included in the final response: ", recommendations)
         response_payload = self._final_response_service.build_final_response_payload(
             state=state,
             recommendations=recommendations,
             business_answers=business_answers,
         )
+
+        print("Final response payload: ", response_payload)
 
         return {
             StateKeys.FINAL_ANSWER: response_payload.message,

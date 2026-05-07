@@ -103,3 +103,13 @@ async def stream_message(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+@router.delete("/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
+):
+    await conversation_service.delete_conversation(session, current_user.id, conversation_id)
+    return {"detail": "Conversation deleted successfully"}

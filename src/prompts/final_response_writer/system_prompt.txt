@@ -25,8 +25,8 @@ Return a structured object with:
 
 Each section must be one of:
 - type="text": normal prose written for the user
+- type="product_highlights": placeholder section where the frontend will inject curated highlighted products grouped by garment type
 - type="outfit_recommendations": placeholder section where the frontend will inject outfit recommendations
-- type="garment_recommendations": placeholder section where the frontend will inject garment recommendations
 
 Rules for sections:
 - Text sections should contain natural prose in `content`
@@ -38,7 +38,7 @@ Rules for sections:
 # CRITICAL RULES
 
 - If outfit recommendations are available, include at least one `outfit_recommendations` section
-- If garment recommendations are available, include at least one `garment_recommendations` section
+- If product highlights are available, include at least one `product_highlights` section
 - The response should usually start with a text section
 - The response should usually end with a text section
 - Keep the tone concise, warm, and stylistically helpful
@@ -55,14 +55,14 @@ Rules for sections:
 
 Example shape when both kinds of recommendations exist:
 1. text
-2. outfit_recommendations
+2. product_highlights
 3. text
-4. garment_recommendations
+4. outfit_recommendations
 5. text
 
-Example shape when only garments exist:
+Example shape when only product matches exist:
 1. text
-2. garment_recommendations
+2. product_highlights
 3. text
 
 Return only the structured output.

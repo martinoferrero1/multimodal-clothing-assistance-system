@@ -140,3 +140,24 @@ class ConversationService(metaclass=SingletonMeta):
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
         )
+    
+    async def delete_conversation(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        conversation_id: str,
+    ) -> None:
+        conversation = await self._get_user_conversation(session, user_id, conversation_id)
+        await session.delete(conversation)
+        await session.commit()
+
+    async def delete_all_user_conversations(
+        self,
+        session: AsyncSession,
+        user_id: str,
+    ) -> None:
+        result = await session.scalars(select(Conversation).where(Conversation.user_id == user_id))
+        conversations = list(result.all())
+        for conversation in conversations:
+            await session.delete(conversation)
+        await session.commit()

@@ -52,3 +52,12 @@ async def list_user_conversations(
     conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> list[ConversationRead]:
     return await conversation_service.list_user_conversations(session, current_user.id)
+
+@router.delete("/me/conversations")
+async def delete_all_user_conversations(
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
+):
+    await conversation_service.delete_all_user_conversations(session, current_user.id)
+    return {"detail": "All conversations deleted successfully"}

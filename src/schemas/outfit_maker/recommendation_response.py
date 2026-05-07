@@ -30,7 +30,8 @@ class GarmentRecommendation(BaseModel):
     kind: Literal["garment"] = "garment"
     request: GarmentSpec
     best_match: Optional[ProductRecommendation] = None
-    total_candidates: int = 0
+    product_highlights: List[ProductRecommendation] = Field(default_factory=list)
+    garment_type_label: str
     summary_label: str
 
 
@@ -41,19 +42,25 @@ class OutfitRecommendation(BaseModel):
     summary_label: str
 
 
+class ProductHighlightGroup(BaseModel):
+    group_label: str
+    products: List[ProductRecommendation] = Field(default_factory=list)
+
+
 class RecommendationBundle(BaseModel):
     garments: List[GarmentRecommendation] = Field(default_factory=list)
     outfits: List[OutfitRecommendation] = Field(default_factory=list)
+    product_highlights: List[ProductHighlightGroup] = Field(default_factory=list)
 
 
 class FinalResponseSection(BaseModel):
-    type: Literal["text", "outfit_recommendations", "garment_recommendations"]
+    type: Literal["text", "outfit_recommendations", "garment_recommendations", "product_highlights"]
     content: Optional[str] = None
     title: Optional[str] = None
 
 
 class FinalResponseDraftSection(BaseModel):
-    type: Literal["text", "outfit_recommendations", "garment_recommendations"]
+    type: Literal["text", "outfit_recommendations", "garment_recommendations", "product_highlights"]
     content: Optional[str] = None
     title: Optional[str] = None
 
