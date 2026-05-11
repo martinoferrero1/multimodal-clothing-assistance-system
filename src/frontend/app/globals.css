@@ -7,6 +7,7 @@
   --bg-strong: #efe3d6;
   --panel: rgba(255, 252, 247, 0.78);
   --panel-strong: rgba(255, 249, 241, 0.94);
+  --workspace-panel: #fff9f1;
   --line: rgba(91, 66, 43, 0.15);
   --line-strong: rgba(91, 66, 43, 0.26);
   --text: #1d1814;
@@ -65,6 +66,10 @@ textarea {
   -webkit-backdrop-filter: blur(28px);
 }
 
+.workspace-panel {
+  background: var(--workspace-panel);
+}
+
 .hairline {
   border: 1px solid var(--line);
 }
@@ -93,6 +98,38 @@ textarea {
 .scroll-muted::-webkit-scrollbar-thumb {
   background: rgba(143, 79, 43, 0.24);
   border-radius: 9999px;
+}
+
+.scroll-chat {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(109, 90, 75, 0.34) transparent;
+}
+
+.scroll-chat::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.scroll-chat::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 0.9rem;
+}
+
+.scroll-chat::-webkit-scrollbar-thumb {
+  background: rgba(109, 90, 75, 0.32);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+
+.scroll-chat::-webkit-scrollbar-thumb:hover {
+  background: rgba(109, 90, 75, 0.44);
+  background-clip: padding-box;
+}
+
+.scroll-chat::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .thread-fade {

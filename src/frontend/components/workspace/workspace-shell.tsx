@@ -40,11 +40,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   }, [settingsOpen]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden lg:h-screen">
       <div className="page-orb left-[-5rem] top-[-6rem] h-64 w-64 bg-[rgba(223,191,164,0.42)]" />
       <div className="page-orb bottom-[-7rem] right-[-3rem] h-80 w-80 bg-[rgba(143,79,43,0.12)]" />
 
-      <div className="relative z-10 flex min-h-screen">
+      <div className="relative z-10 flex min-h-screen lg:h-screen">
         <Sidebar
           compact={compactSidebar}
           open={sidebarOpen}
@@ -52,7 +52,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
-        <div className="flex min-h-screen flex-1 flex-col lg:pl-4">
+        <div className="flex min-h-screen flex-1 flex-col lg:h-screen lg:overflow-hidden lg:pl-4">
           <header className="sticky top-0 z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:hidden">
             <button
               className="glass hairline inline-flex h-12 w-12 items-center justify-center rounded-full"
@@ -73,7 +73,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <div className="flex-1 px-4 pb-4 sm:px-6 lg:px-0 lg:pb-0">{children}</div>
+          <div className="flex-1 px-4 pb-4 sm:px-6 lg:min-h-0 lg:overflow-hidden lg:px-0 lg:pr-4 lg:pb-4">
+            {children}
+          </div>
         </div>
       </div>
 

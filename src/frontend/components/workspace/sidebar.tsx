@@ -72,7 +72,7 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
         onClick={onClose}
       />
       <aside
-        className={`glass-strong hairline soft-shadow fixed inset-y-0 left-0 z-50 flex w-[19rem] flex-col rounded-r-[2rem] p-4 transition duration-300 lg:sticky lg:top-4 lg:m-4 lg:h-[calc(100vh-2rem)] lg:translate-x-0 lg:rounded-[2rem] ${widthClass} ${open ? "translate-x-0" : "-translate-x-[105%]"}`}
+        className={`glass-strong hairline fixed inset-y-0 left-0 z-50 flex w-[19rem] flex-col rounded-r-[2rem] p-4 transition duration-300 lg:sticky lg:top-4 lg:m-4 lg:h-[calc(100vh-2rem)] lg:translate-x-0 lg:rounded-[2rem] ${widthClass} ${open ? "translate-x-0" : "-translate-x-[105%]"}`}
       >
         <div className="mb-6 flex items-start justify-between gap-3">
           <div className="space-y-2">
@@ -140,7 +140,7 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
             </span>
           </div>
 
-          <div className="scroll-muted h-full space-y-2 overflow-y-auto p-3">
+          <div className="h-full space-y-2 overflow-hidden p-3">
             {loading ? (
               <p className="rounded-[1rem] bg-white/60 px-3 py-4 text-sm text-[var(--muted)]">
                 Loading history...

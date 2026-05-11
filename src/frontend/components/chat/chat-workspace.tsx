@@ -256,13 +256,15 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
   return (
     <section
-      className={`grid min-h-[calc(100vh-2rem)] gap-4 pb-4 lg:pt-4 ${
-        usesRecommendationPanel ? "lg:grid-cols-[minmax(0,1fr)_21rem]" : "grid-cols-1"
+      className={`grid min-h-[calc(100vh-2rem)] gap-4 pb-4 lg:h-full lg:min-h-0 lg:pt-4 ${
+        usesRecommendationPanel
+          ? "lg:grid-cols-[minmax(0,1fr)_21rem] lg:overflow-hidden"
+          : "grid-cols-1"
       }`}
     >
-      <div className="glass-strong hairline soft-shadow flex min-h-[75vh] flex-col rounded-[2rem]">
+      <div className="workspace-panel hairline flex min-h-[75vh] flex-col rounded-[2rem] lg:h-full lg:min-h-0 lg:rounded-tr-[0.6rem]">
         <div
-          className={`thread-fade scroll-muted flex-1 overflow-y-auto px-5 py-6 sm:px-8 ${
+          className={`thread-fade scroll-muted min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 ${
             !loading && !error && messages.length === 0
               ? "flex items-center justify-center"
               : ""
@@ -395,14 +397,14 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       </div>
 
       {usesRecommendationPanel ? (
-        <aside className="glass-strong hairline soft-shadow hidden min-h-[75vh] flex-col rounded-[2rem] lg:flex">
+        <aside className="glass-strong hairline hidden min-h-[75vh] flex-col rounded-[2rem] lg:flex lg:h-full lg:min-h-0 lg:overflow-hidden">
           <div className="border-b border-[var(--line)] px-6 py-6">
             <p className="text-xs uppercase tracking-[0.32em] text-[var(--muted)]">
               Recommendation panel
             </p>
           </div>
 
-          <div className="scroll-muted flex-1 space-y-6 overflow-y-auto p-6">
+          <div className="flex-1 space-y-6 overflow-hidden p-6">
             {!activeRecommendationPayload ||
             activeRecommendationPayload.recommendations.outfits.length === 0 ? (
               <div className="rounded-[1.6rem] border border-dashed border-[var(--line-strong)] bg-white/60 p-5 text-sm leading-7 text-[var(--muted)]">
