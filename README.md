@@ -663,3 +663,7 @@ Build the frontend:
 cd src/frontend
 npm run build
 ```
+
+## License
+
+MIT
