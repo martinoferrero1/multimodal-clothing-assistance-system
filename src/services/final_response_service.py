@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any
 
 from core.metaclasses.singleton_meta import SingletonMeta
@@ -17,6 +18,9 @@ from schemas.outfit_maker.recommendation_response import (
 from state import State, StateKeys, SumaryKeys
 from utils.models import get_llm_model
 from utils.prompts import build_prompt
+
+
+logger = logging.getLogger(__name__)
 
 
 class FinalResponseService(metaclass=SingletonMeta):
@@ -78,7 +82,7 @@ class FinalResponseService(metaclass=SingletonMeta):
             *recent_messages,
         ])
 
-        print("LLM output for final response draft: ", result)
+        logger.debug("LLM output for final response draft: %s", result)
         return result
 
     def _serialize_recommendations_for_writer(

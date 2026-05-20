@@ -1,8 +1,15 @@
-from pathlib import Path
 import json
+import logging
+from pathlib import Path
+
 import pandas as pd
 
+from src.core.logging_config import setup_logging
+
+
 CSV_PATH = Path("data/clothes.csv")
+setup_logging()
+logger = logging.getLogger(__name__)
 
 df = pd.read_csv(CSV_PATH)
 
@@ -34,5 +41,6 @@ output_path.write_text(
     encoding="utf-8",
 )
 
-print(json.dumps(taxonomy_json, indent=2, ensure_ascii=False))
-print(f"\nSaved nested taxonomy to: {output_path.resolve()}")
+logger.info("Generated taxonomy with %s master category group(s)", len(taxonomy_json))
+logger.debug("Nested taxonomy:\n%s", json.dumps(taxonomy_json, indent=2, ensure_ascii=False))
+logger.info("Saved nested taxonomy to: %s", output_path.resolve())

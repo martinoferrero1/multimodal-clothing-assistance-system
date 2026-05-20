@@ -1,6 +1,10 @@
 import csv
 import json
+import logging
 from pathlib import Path
+
+from src.core.logging_config import setup_logging
+
 
 BASE_DIR = Path("data")
 COMPLETE_INFORMATION_DIR = BASE_DIR / "styles"
@@ -8,6 +12,10 @@ INPUT_CSV = BASE_DIR / "styles.csv"
 OUTPUT_CSV = BASE_DIR / "clothes.csv"
 
 IMAGE_KEYS = ["top", "back", "search", "default", "left", "front", "right"]
+PROGRESS_LOG_INTERVAL = 500
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 with open(INPUT_CSV, newline="", encoding="utf-8") as f:
     reader = csv.DictReader(f)
@@ -20,9 +28,11 @@ output_fields = fieldnames + new_columns
 
 enriched_rows = []
 
-file_number = 1
-for row in rows:
-    print(f"Procesando fila {file_number} de {len(rows)}", end="\r")
+total_rows = len(rows)
+logger.info("Starting CSV enrichment for %s row(s)", total_rows)
+for file_number, row in enumerate(rows, start=1):
+    if file_number == 1 or file_number % PROGRESS_LOG_INTERVAL == 0 or file_number == total_rows:
+        logger.info("Processing row %s/%s", file_number, total_rows)
 
     # Eliminar columnas sin nombre (None)
     row = {k: v for k, v in row.items() if k is not None}
@@ -57,11 +67,10 @@ for row in rows:
         row[f"image_{k}"] = images[k]
 
     enriched_rows.append(row)
-    file_number += 1
 
 with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=output_fields, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(enriched_rows)
 
-print(f"\nCSV generado correctamente: {OUTPUT_CSV}")
+logger.info("CSV generated successfully: %s", OUTPUT_CSV)

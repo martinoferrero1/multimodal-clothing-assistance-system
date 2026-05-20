@@ -269,7 +269,7 @@ The current flow:
 1. The agent extracts a structured request (`GarmentSpec`, `OutfitSpec`).
 2. A semantic query string is built from categories, colors, usage, gender,
    brands, season, and product names.
-3. Embeddings are computed for the query and catalog products.
+3. The query embedding is computed, while catalog product embeddings are loaded from the database or computed and persisted when missing/stale.
 4. Semantic scores are combined with attribute-based matching.
 5. The best candidates are returned per requested garment.
 

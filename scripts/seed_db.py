@@ -1,7 +1,9 @@
+import logging
 from pathlib import Path
 import pandas as pd
 from sqlalchemy import select, func
 
+from core.logging_config import setup_logging
 from infra.db.database import Database
 from infra.db.models.catalog_models import (
     Gender, MasterCategory, SubCategory, ArticleType,
@@ -9,6 +11,7 @@ from infra.db.models.catalog_models import (
 )
 
 CSV_PATH = Path(__file__).resolve().parents[1] / "data" / "clothes.csv"
+logger = logging.getLogger(__name__)
 
 
 def get_or_create(session, model, **kwargs):
@@ -23,22 +26,22 @@ def get_or_create(session, model, **kwargs):
 
 
 def seed_catalog():
-    print("CSV path:", CSV_PATH.resolve())
-    print("CSV exists:", CSV_PATH.exists())
+    logger.info("Catalog CSV path: %s", CSV_PATH.resolve())
+    logger.info("Catalog CSV exists: %s", CSV_PATH.exists())
     if not CSV_PATH.exists():
-        print("Catalog CSV not found. Skipping seed.")
+        logger.warning("Catalog CSV not found. Skipping seed")
         return
 
     df = pd.read_csv(CSV_PATH)
-    print("Rows:", len(df))
-    print("Columns:", list(df.columns))
+    logger.info("Catalog CSV rows: %s", len(df))
+    logger.debug("Catalog CSV columns: %s", list(df.columns))
 
     db = Database()
 
     with db.get_session() as session:
         existing_products = session.scalar(select(func.count(Product.id))) or 0
         if existing_products > 0:
-            print(f"Catalog already seeded with {existing_products} products. Skipping seed.")
+            logger.info("Catalog already seeded with %s products. Skipping seed", existing_products)
             return
 
         for _, row in df.iterrows():
@@ -103,4 +106,9 @@ def seed_catalog():
 
         session.commit()
 
-        print("Products:", session.query(Product).count())
+        logger.info("Catalog seeded with %s products", session.query(Product).count())
+
+
+if __name__ == "__main__":
+    setup_logging()
+    seed_catalog()

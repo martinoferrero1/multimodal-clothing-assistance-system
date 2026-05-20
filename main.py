@@ -1,20 +1,26 @@
+import logging
 import uuid
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage, SystemMessage
 from agents.main_supervisor_agent.graph import SupervisorGraph
+from core.logging_config import setup_logging
 from state import StateKeys, SumaryKeys
 from dotenv import load_dotenv
 from utils.models import get_llm_model
 from scripts.seed_db import seed_catalog
 
 
+logger = logging.getLogger(__name__)
+
+
 def main():
     load_dotenv()
+    setup_logging()
     graph = SupervisorGraph().get_graph()
     thread_id = str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
 
-    print("Assistant ready. Type 'exit' to quit.\n")
+    logger.info("Assistant ready. Type 'exit' to quit")
 
     #user_input = input("User: ")
     #user_input = "I want two special outfits. One of them is for my wedding, I need a blue dress from the last year. But also I want an outfit for playing tennis. It needs to have a pair of sneakers with red as main color but also blue in a secondary grade. And also it needs a t-shirt, but not much expensive, I can pay a maximum of 25 USD for that"
@@ -47,10 +53,17 @@ Also I want two special outfits. One of them is for my wedding, where I need a d
                 config=config
             )
         while True:
-            print("Workflow errors: ", result.get(StateKeys.ERRORS, []))
+            errors = result.get(StateKeys.ERRORS, [])
+            if errors:
+                logger.warning("Workflow errors: %s", errors)
+            else:
+                logger.info("Workflow completed without errors")
             response = result.get(StateKeys.MESSAGES, [])[-1] if result.get(StateKeys.MESSAGES, []) else None
-            print(response.content if response else "No response from the agent.")
-            print(f"Final Response Payload: {response.additional_kwargs.get('final_response_payload')}" if response else "No final response payload.")
+            logger.info("Assistant response:\n%s", response.content if response else "No response from the agent.")
+            logger.debug(
+                "Final response payload: %s",
+                response.additional_kwargs.get("final_response_payload") if response else None,
+            )
             user_input = input("User: ")
             if user_input.lower() in {"exit", "quit"}:
                 break
@@ -127,5 +140,6 @@ Return ONLY the summary as plain text. No JSON. No extra formatting.
                 )
 
 if __name__ == "__main__":
+    setup_logging()
     seed_catalog()
     main()

@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any
 
 from agents.base_graph import BaseGraph
@@ -19,6 +20,9 @@ from utils.catalog_taxonomy import taxonomy_prompt_reference
 from utils.error_handling import safe_node
 from utils.models import get_llm_model
 from utils.prompts import build_prompt
+
+
+logger = logging.getLogger(__name__)
 
 
 class SupervisorGraph(BaseGraph):
@@ -96,7 +100,7 @@ class SupervisorGraph(BaseGraph):
 
     @safe_node("plan_router")
     def _plan_router_node(self, state: State) -> Command:
-        print("\nRouting according to the orchestator plan ---")
+        logger.info("Routing according to the orchestator plan")
         plan = state.get(StateKeys.PLAN, [])
         current_step_index = state.get(StateKeys.CURRENT_STEP_INDEX, 0)
 
@@ -104,7 +108,7 @@ class SupervisorGraph(BaseGraph):
             return Command(goto="ask_for_feedback")
 
         next_node = plan[current_step_index]
-        print(f"Next node in the plan: {next_node}")
+        logger.info("Next node in the plan: %s", next_node)
         return Command(
             goto=getattr(next_node, "value", next_node),
             update={StateKeys.CURRENT_STEP_INDEX: current_step_index + 1},
@@ -112,7 +116,7 @@ class SupervisorGraph(BaseGraph):
 
     @safe_node("extract_outfit_request")
     def _extract_outfit_request_node(self, state: State) -> dict[StateKeys, Any]:
-        print("\nExtracting outfit request from user messages ---")
+        logger.info("Extracting outfit request from user messages")
         sys_prompt = build_prompt(
             base_prompt_path="src/prompts/outfit_request_extractor/system_prompt.txt",
             examples_prompt_path="src/prompts/outfit_request_extractor/examples_system_prompt.txt",
@@ -143,20 +147,22 @@ class SupervisorGraph(BaseGraph):
             *recent_messages,
         ]
         solicitations: ItemSpecList = llm.invoke(messages)
-        print("Search intents extracted: ", state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []))
-        print(f"Extracted outfit request: {solicitations}")
+        logger.debug("Search intents extracted: %s", state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []))
+        logger.info("Extracted outfit request with %s item(s)", len(solicitations.items))
+        logger.debug("Extracted outfit request details: %s", solicitations)
         return {StateKeys.CURRENT_OUTFIT_REQUEST: solicitations}
 
     @safe_node("search_products")
     def _search_products_node(self, state: State) -> dict[StateKeys, Any]:
-        print("\nSearching products in the database according to the outfit request ---")
+        logger.info("Searching products in the database according to the outfit request")
         product_candidates = search_product_candidates(state.get(StateKeys.CURRENT_OUTFIT_REQUEST))
-        print(f"Found product candidates: {product_candidates}")
+        logger.info("Found product candidates for %s request item(s)", len(product_candidates))
+        logger.debug("Product candidate details: %s", product_candidates)
         return {StateKeys.PRODUCT_CANDIDATES: product_candidates}
 
     @safe_node("business_qa")
     def _business_qa_node(self, state: State) -> dict[StateKeys, Any]:
-        print("\nAnswering business questions ---")
+        logger.info("Answering business questions")
         answers = self._business_qa_service.answer_queries(
             queries=state.get(StateKeys.BUSINESS_QA_QUERIES),
             conversation_summary=state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
@@ -165,7 +171,7 @@ class SupervisorGraph(BaseGraph):
 
     @safe_node("build_outfit")
     def _build_outfit_node(self, state: State) -> dict[StateKeys, Any]:
-        print("\nBuilding outfit from product candidates ---")
+        logger.info("Building outfit from product candidates")
         recommendations = self._outfit_recommendation_service.build_recommendation_bundle(
             state.get(StateKeys.PRODUCT_CANDIDATES, []) or []
         )
@@ -173,7 +179,7 @@ class SupervisorGraph(BaseGraph):
 
     @safe_node("final_response")
     def _final_response_node(self, state: State) -> dict[StateKeys, Any]:
-        print("\nProducing final response ---")
+        logger.info("Producing final response")
 
         recommendations = state.get(StateKeys.CURRENT_OUTFIT)
         if recommendations is None:
@@ -182,14 +188,15 @@ class SupervisorGraph(BaseGraph):
             )
 
         business_answers = state.get(StateKeys.BUSINESS_ANSWERS) or []
-        print("Recommendations to be included in the final response: ", recommendations)
+        logger.debug("Recommendations to be included in the final response: %s", recommendations)
         response_payload = self._final_response_service.build_final_response_payload(
             state=state,
             recommendations=recommendations,
             business_answers=business_answers,
         )
 
-        print("Final response payload: ", response_payload)
+        logger.info("Final response produced with %s section(s)", len(response_payload.sections))
+        logger.debug("Final response payload: %s", response_payload)
 
         return {
             StateKeys.FINAL_ANSWER: response_payload.message,
@@ -210,7 +217,7 @@ class SupervisorGraph(BaseGraph):
 
     @safe_node("ask_for_feedback")
     def _ask_for_feedback_node(self, state: State) -> dict[StateKeys, Any]:
-        print("\nAsking for user feedback on the system response ---")
+        logger.info("Asking for user feedback on the system response")
         return {}
 
     def _build_graph(self) -> CompiledStateGraph:

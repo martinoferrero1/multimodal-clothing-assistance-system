@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 import math
 import unicodedata
 from difflib import SequenceMatcher
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from infra.db.database import Database
-from infra.db.models.catalog_models import Product
+from infra.db.models.catalog_models import Product, ProductEmbedding
 from schemas.outfit_maker.product_solicitation import GarmentSpec, ItemSpec, ItemSpecList, OutfitSpec
 from utils.models import get_embedding_model, get_embedding_model_identifier
 
@@ -17,9 +21,11 @@ from utils.models import get_embedding_model, get_embedding_model_identifier
 DEFAULT_OPTIONS_PER_ITEM = 8
 PRODUCT_POOL_LIMIT: int | None = None
 EMBEDDING_BATCH_SIZE = 96
+PERSISTED_EMBEDDING_LOOKUP_BATCH_SIZE = 900
 SEMANTIC_WEIGHT = 8.0
 
 _PRODUCT_EMBEDDING_CACHE: dict[tuple[str, int], tuple[str, list[float]]] = {}
+logger = logging.getLogger(__name__)
 
 
 def search_product_candidates(
@@ -31,14 +37,15 @@ def search_product_candidates(
 
     with Database().get_session() as session:
         products = _load_product_pool(session)
-        print(f"Loaded {len(products)} products from the database for candidate search.")
+        logger.info("Loaded %s products from the database for candidate search", len(products))
         return [
-            _search_item(products, item, options_per_item)
+            _search_item(session, products, item, options_per_item)
             for item in request.items
         ]
 
 
 def _search_item(
+    session: Session,
     products: list[Product],
     item: ItemSpec,
     options_per_item: int,
@@ -48,14 +55,14 @@ def _search_item(
             "kind": "outfit",
             "request": item.model_dump(exclude={"items"}),
             "items": [
-                _search_garment(products, _merge_outfit_defaults(item, garment), options_per_item)
+                _search_garment(session, products, _merge_outfit_defaults(item, garment), options_per_item)
                 for garment in item.items
             ],
         }
 
     return {
         "kind": "garment",
-        **_search_garment(products, item, options_per_item),
+        **_search_garment(session, products, item, options_per_item),
     }
 
 
@@ -77,12 +84,13 @@ def _merge_outfit_defaults(outfit: OutfitSpec, garment: GarmentSpec) -> GarmentS
 
 
 def _search_garment(
+    session: Session,
     products: list[Product],
     garment: GarmentSpec,
     options_per_item: int,
 ) -> dict[str, Any]:
     semantic_query = _request_search_text(garment)
-    semantic_scores = _semantic_similarity_scores(semantic_query, products)
+    semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
 
     ranked = sorted(
         (
@@ -155,15 +163,20 @@ def _score_product(
     return round(score, 4)
 
 
-def _semantic_similarity_scores(query: str, products: list[Product]) -> dict[int, float]:
+def _semantic_similarity_scores(session: Session, query: str, products: list[Product]) -> dict[int, float]:
     if not query:
         return {}
 
     try:
         embedding_model = get_embedding_model()
         query_embedding = _embed_query(embedding_model, query)
-        product_embeddings = _get_product_embeddings(embedding_model, products)
+        product_embeddings = _get_product_embeddings(session, embedding_model, products)
+    except SQLAlchemyError:
+        session.rollback()
+        logger.debug("Persistent product embedding lookup failed; falling back to text matching", exc_info=True)
+        return {}
     except Exception:
+        logger.debug("Semantic similarity search failed; falling back to text matching", exc_info=True)
         return {}
 
     return {
@@ -172,29 +185,149 @@ def _semantic_similarity_scores(query: str, products: list[Product]) -> dict[int
     }
 
 
-def _get_product_embeddings(embedding_model, products: list[Product]) -> dict[int, list[float]]:
+def _get_product_embeddings(
+    session: Session,
+    embedding_model,
+    products: list[Product],
+) -> dict[int, list[float]]:
     embedding_identifier = get_embedding_model_identifier()
+    product_texts = {
+        product.id: _product_search_text(product)
+        for product in products
+    }
+    product_text_hashes = {
+        product_id: _text_hash(text)
+        for product_id, text in product_texts.items()
+    }
+    embeddings: dict[int, list[float]] = {}
     missing_products: list[Product] = []
+    product_ids_to_load: list[int] = []
+
     for product in products:
-        text = _product_search_text(product)
+        text = product_texts[product.id]
         cache_key = (embedding_identifier, product.id)
         cached = _PRODUCT_EMBEDDING_CACHE.get(cache_key)
-        if cached is None or cached[0] != text:
-            missing_products.append(product)
+        if cached is not None and cached[0] == text:
+            embeddings[product.id] = cached[1]
+            continue
+        product_ids_to_load.append(product.id)
+
+    persisted_embeddings = _load_persisted_product_embeddings(
+        session,
+        embedding_identifier,
+        product_ids_to_load,
+    )
+    product_ids_to_load_set = set(product_ids_to_load)
+
+    for product in products:
+        if product.id not in product_ids_to_load_set:
+            continue
+
+        text = product_texts[product.id]
+        text_hash = product_text_hashes[product.id]
+        cache_key = (embedding_identifier, product.id)
+        persisted_embedding = persisted_embeddings.get(product.id)
+
+        if persisted_embedding is not None and persisted_embedding.source_text_hash == text_hash:
+            try:
+                embedding = _deserialize_embedding(persisted_embedding.vector_json)
+            except ValueError:
+                logger.debug("Stored embedding for product %s is invalid; recomputing", product.id, exc_info=True)
+            else:
+                _PRODUCT_EMBEDDING_CACHE[cache_key] = (text, embedding)
+                embeddings[product.id] = embedding
+                continue
+
+        missing_products.append(product)
 
     for start in range(0, len(missing_products), EMBEDDING_BATCH_SIZE):
         batch = missing_products[start:start + EMBEDDING_BATCH_SIZE]
-        texts = [_product_search_text(product) for product in batch]
-        embeddings = _embed_documents(embedding_model, texts)
-        for product, text, embedding in zip(batch, texts, embeddings):
+        texts = [product_texts[product.id] for product in batch]
+        embedded_documents = _embed_documents(embedding_model, texts)
+        for product, text, raw_embedding in zip(batch, texts, embedded_documents):
+            embedding = _coerce_embedding_vector(raw_embedding)
             cache_key = (embedding_identifier, product.id)
             _PRODUCT_EMBEDDING_CACHE[cache_key] = (text, embedding)
+            embeddings[product.id] = embedding
+            _upsert_product_embedding(
+                session=session,
+                persisted_embeddings=persisted_embeddings,
+                embedding_identifier=embedding_identifier,
+                product_id=product.id,
+                source_text_hash=product_text_hashes[product.id],
+                embedding=embedding,
+            )
 
-    return {
-        product.id: _PRODUCT_EMBEDDING_CACHE[(embedding_identifier, product.id)][1]
-        for product in products
-        if (embedding_identifier, product.id) in _PRODUCT_EMBEDDING_CACHE
-    }
+    if missing_products:
+        session.commit()
+
+    return embeddings
+
+
+def _load_persisted_product_embeddings(
+    session: Session,
+    embedding_identifier: str,
+    product_ids: list[int],
+) -> dict[int, ProductEmbedding]:
+    if not product_ids:
+        return {}
+
+    embeddings: dict[int, ProductEmbedding] = {}
+    for start in range(0, len(product_ids), PERSISTED_EMBEDDING_LOOKUP_BATCH_SIZE):
+        batch_ids = product_ids[start:start + PERSISTED_EMBEDDING_LOOKUP_BATCH_SIZE]
+        rows = session.scalars(
+            select(ProductEmbedding).where(
+                ProductEmbedding.embedding_identifier == embedding_identifier,
+                ProductEmbedding.product_id.in_(batch_ids),
+            )
+        ).all()
+        embeddings.update({row.product_id: row for row in rows})
+
+    return embeddings
+
+
+def _upsert_product_embedding(
+    *,
+    session: Session,
+    persisted_embeddings: dict[int, ProductEmbedding],
+    embedding_identifier: str,
+    product_id: int,
+    source_text_hash: str,
+    embedding: list[float],
+) -> None:
+    vector_json = json.dumps(embedding, separators=(",", ":"))
+    persisted_embedding = persisted_embeddings.get(product_id)
+
+    if persisted_embedding is None:
+        persisted_embedding = ProductEmbedding(
+            product_id=product_id,
+            embedding_identifier=embedding_identifier,
+            source_text_hash=source_text_hash,
+            vector_json=vector_json,
+        )
+        session.add(persisted_embedding)
+        persisted_embeddings[product_id] = persisted_embedding
+        return
+
+    persisted_embedding.source_text_hash = source_text_hash
+    persisted_embedding.vector_json = vector_json
+
+
+def _deserialize_embedding(value: str) -> list[float]:
+    decoded = json.loads(value)
+    if not isinstance(decoded, list):
+        raise ValueError("Stored embedding must be a list")
+    return [float(item) for item in decoded]
+
+
+def _coerce_embedding_vector(embedding: Any) -> list[float]:
+    if hasattr(embedding, "tolist"):
+        embedding = embedding.tolist()
+    return [float(value) for value in embedding]
+
+
+def _text_hash(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _embed_query(embedding_model, text: str) -> list[float]:

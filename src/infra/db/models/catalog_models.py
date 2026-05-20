@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String, Integer, Float, CheckConstraint
+from sqlalchemy import ForeignKey, String, Integer, Float, CheckConstraint, Index, Text, UniqueConstraint
 from sqlalchemy.orm import relationship, mapped_column, Mapped
 from infra.db.models.base import Base
 
@@ -91,3 +91,29 @@ class Product(Base):
     image_left: Mapped[str | None] = mapped_column(String, nullable=True)
     image_front: Mapped[str | None] = mapped_column(String, nullable=True)
     image_right: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    embeddings: Mapped[list["ProductEmbedding"]] = relationship(
+        "ProductEmbedding",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+
+
+class ProductEmbedding(Base):
+    __tablename__ = 'product_embeddings'
+    __table_args__ = (
+        UniqueConstraint(
+            'embedding_identifier',
+            'product_id',
+            name='uq_product_embeddings_identifier_product',
+        ),
+        Index('ix_product_embeddings_identifier_product', 'embedding_identifier', 'product_id'),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey('products.id', ondelete='CASCADE'), nullable=False)
+    embedding_identifier: Mapped[str] = mapped_column(String, nullable=False)
+    source_text_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    vector_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    product: Mapped["Product"] = relationship("Product", back_populates="embeddings")

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from api.checkpointer import LangGraphCheckpointer
+from core.logging_config import setup_logging
 from api.routes.conversations import router as conversations_router
 from api.routes.health import router as health_router
 from api.routes.users import router as users_router
@@ -14,8 +16,13 @@ from scripts.seed_db import seed_catalog
 from services.conversation_runtime_service import ConversationRuntimeService
 
 
+setup_logging()
+logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting Multimodal Clothing Assistant API")
     database = Database()
     await asyncio.to_thread(seed_catalog)
     checkpoint_manager = LangGraphCheckpointer()
@@ -25,6 +32,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        logger.info("Shutting down Multimodal Clothing Assistant API")
         checkpoint_manager.close()
         await database.dispose()
 

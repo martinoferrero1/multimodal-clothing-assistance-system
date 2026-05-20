@@ -1,9 +1,14 @@
+import logging
 from functools import wraps
 from langgraph.types import Command
 from langgraph.graph import END
 from state import State, StateKeys, SumaryKeys
 from langchain_core.messages import AIMessage
 from state import ErrorKeys
+
+
+logger = logging.getLogger(__name__)
+
 
 def safe_node(node_name: str):
     def decorator(func):
@@ -12,6 +17,7 @@ def safe_node(node_name: str):
             try:
                 return func(self, state)
             except Exception as e:
+                logger.exception("Node %s failed", node_name)
                 if node_name == "orchestator_planner":
                     next = "ask_for_feedback"
                 else:
