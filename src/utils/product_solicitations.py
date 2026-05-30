@@ -15,6 +15,7 @@ def format_solicitation(item_spec_list: ItemSpecList) -> str:
         "article_types": "Type",
         "product_names": "Product name",
         "images": "Images",
+        "priority_fields": "Priority fields",
     }
 
     def format_value(value):

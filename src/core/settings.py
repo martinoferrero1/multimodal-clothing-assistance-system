@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     GROQ_LLM_TEMPERATURE: Optional[float] = None
 
     INCLUDE_PROMPT_EXAMPLES: Optional[bool] = None
+    PRODUCT_SEARCH_PRIORITY_FIELDS: str = ""
 
     BUSINESS_KNOWLEDGE_DIR: str = "data/business_knowledge"
     BUSINESS_KNOWLEDGE_GLOB: str = "*.knowledge.md"

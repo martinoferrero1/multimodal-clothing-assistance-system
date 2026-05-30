@@ -286,6 +286,12 @@ The scoring considers:
 - year proximity;
 - maximum price.
 
+Search can optionally apply priority filters before ranking. Defaults come from
+`PRODUCT_SEARCH_PRIORITY_FIELDS`, while individual `GarmentSpec` or `OutfitSpec`
+objects can override them with `priority_fields`. If a priority-filtered search
+does not return enough products, matching priority products are kept first and
+the remaining slots are filled with the traditional ranking.
+
 Each result includes product data, price, brand, category, color, season, score,
 and available product images.
 
@@ -476,6 +482,7 @@ GROQ_LLM_MODEL=llama-3.3-70b-versatile
 GROQ_API_KEY=your-groq-api-key
 
 INCLUDE_PROMPT_EXAMPLES=false
+PRODUCT_SEARCH_PRIORITY_FIELDS=
 ```
 
 Relevant variables:
@@ -492,6 +499,7 @@ Relevant variables:
 - `LLM_SUPERVISOR_PROVIDER`: provider for the supervisor.
 - `EMBEDDINGS_PROVIDER`: provider for embeddings.
 - `INCLUDE_PROMPT_EXAMPLES`: includes prompt examples where supported.
+- `PRODUCT_SEARCH_PRIORITY_FIELDS`: optional comma-separated product search priority fields. Supported values are `gender`, `season`, `base_colors`, `secondary_colors`, `max_price`, and `category`. Category priority uses the deepest available request taxonomy field among article type, subcategory, and master category.
 - `BUSINESS_KNOWLEDGE_DIR`: RAG document folder.
 - `BUSINESS_KNOWLEDGE_GLOB`: RAG document glob pattern.
 - `BUSINESS_FAISS_INDEX_DIR`: FAISS index output directory.

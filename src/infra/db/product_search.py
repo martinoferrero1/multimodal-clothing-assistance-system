@@ -12,9 +12,17 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
+from core.settings import settings
 from infra.db.database import Database
 from infra.db.models.catalog_models import Product, ProductEmbedding
-from schemas.outfit_maker.product_solicitation import GarmentSpec, ItemSpec, ItemSpecList, OutfitSpec
+from schemas.outfit_maker.product_solicitation import (
+    GarmentSpec,
+    ItemSpec,
+    ItemSpecList,
+    OutfitSpec,
+    SearchPriorityField,
+    normalize_priority_fields,
+)
 from utils.models import get_embedding_model, get_embedding_model_identifier
 
 
@@ -23,6 +31,7 @@ PRODUCT_POOL_LIMIT: int | None = None
 EMBEDDING_BATCH_SIZE = 96
 PERSISTED_EMBEDDING_LOOKUP_BATCH_SIZE = 900
 SEMANTIC_WEIGHT = 8.0
+PRIORITY_MATCH_BONUS = 8.0
 
 _PRODUCT_EMBEDDING_CACHE: dict[tuple[str, int], tuple[str, list[float]]] = {}
 logger = logging.getLogger(__name__)
@@ -77,6 +86,7 @@ def _merge_outfit_defaults(outfit: OutfitSpec, garment: GarmentSpec) -> GarmentS
         "seasons",
         "base_colors",
         "secondary_colors",
+        "priority_fields",
     ):
         if data.get(field) is None:
             data[field] = getattr(outfit, field)
@@ -90,11 +100,49 @@ def _search_garment(
     options_per_item: int,
 ) -> dict[str, Any]:
     semantic_query = _request_search_text(garment)
-    semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
+    priority_fields = _effective_priority_fields(garment)
+    active_priority_fields = _active_priority_fields(garment, priority_fields)
+    priority_products = _priority_filtered_products(products, garment, active_priority_fields)
 
-    ranked = sorted(
+    if active_priority_fields and len(priority_products) >= options_per_item:
+        semantic_scores = _semantic_similarity_scores(session, semantic_query, priority_products)
+        ranked = _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
+        selected = ranked[:options_per_item]
+    elif active_priority_fields:
+        semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
+        ranked_priority = _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
+        ranked_fallback = _rank_products(products, garment, semantic_scores, [])
+        selected = _merge_priority_and_fallback_rankings(
+            ranked_priority,
+            ranked_fallback,
+            options_per_item,
+        )
+    else:
+        semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
+        ranked = _rank_products(products, garment, semantic_scores, [])
+        selected = ranked[:options_per_item]
+
+    return {
+        "request": garment.model_dump(),
+        "semantic_query": semantic_query,
+        "priority_fields": active_priority_fields,
+        "priority_candidate_count": len(priority_products) if active_priority_fields else None,
+        "candidates": [
+            _serialize_product(product, score)
+            for score, product in selected
+        ],
+    }
+
+
+def _rank_products(
+    products: list[Product],
+    garment: GarmentSpec,
+    semantic_scores: dict[int, float],
+    priority_fields: list[SearchPriorityField],
+) -> list[tuple[float, Product]]:
+    return sorted(
         (
-            (_score_product(product, garment, semantic_scores.get(product.id)), product)
+            (_score_product(product, garment, semantic_scores.get(product.id), priority_fields), product)
             for product in products
         ),
         key=lambda pair: (
@@ -106,14 +154,30 @@ def _search_garment(
         reverse=True,
     )
 
-    return {
-        "request": garment.model_dump(),
-        "semantic_query": semantic_query,
-        "candidates": [
-            _serialize_product(product, score)
-            for score, product in ranked[:options_per_item]
-        ],
-    }
+
+def _merge_priority_and_fallback_rankings(
+    ranked_priority: list[tuple[float, Product]],
+    ranked_fallback: list[tuple[float, Product]],
+    limit: int,
+) -> list[tuple[float, Product]]:
+    selected: list[tuple[float, Product]] = []
+    selected_ids: set[int] = set()
+
+    for score, product in ranked_priority:
+        if len(selected) >= limit:
+            return selected
+        selected.append((score, product))
+        selected_ids.add(product.id)
+
+    for score, product in ranked_fallback:
+        if len(selected) >= limit:
+            break
+        if product.id in selected_ids:
+            continue
+        selected.append((score, product))
+        selected_ids.add(product.id)
+
+    return selected
 
 
 def _load_product_pool(session: Session) -> list[Product]:
@@ -142,6 +206,7 @@ def _score_product(
     product: Product,
     garment: GarmentSpec,
     semantic_score: float | None,
+    priority_fields: list[SearchPriorityField],
 ) -> float:
     score = 0.0
 
@@ -159,8 +224,139 @@ def _score_product(
     score += _soft_match(garment.seasons, [_name(product.season)], 0.6)
     score += _year_score(garment.years, product.year) * 0.7
     score += _price_score(garment.max_price, product.price) * 0.9
+    score += _priority_match_score(product, garment, priority_fields)
 
     return round(score, 4)
+
+
+def _effective_priority_fields(garment: GarmentSpec) -> list[SearchPriorityField]:
+    if garment.priority_fields is not None:
+        return garment.priority_fields
+
+    return normalize_priority_fields(settings.PRODUCT_SEARCH_PRIORITY_FIELDS) or []
+
+
+def _active_priority_fields(
+    garment: GarmentSpec,
+    priority_fields: list[SearchPriorityField],
+) -> list[SearchPriorityField]:
+    return [
+        priority_field
+        for priority_field in priority_fields
+        if _priority_field_has_request_value(garment, priority_field)
+    ]
+
+
+def _priority_field_has_request_value(
+    garment: GarmentSpec,
+    priority_field: SearchPriorityField,
+) -> bool:
+    if priority_field == "gender":
+        return bool(garment.gender)
+    if priority_field == "season":
+        return bool(garment.seasons)
+    if priority_field == "base_colors":
+        return bool(garment.base_colors)
+    if priority_field == "secondary_colors":
+        return bool(garment.secondary_colors)
+    if priority_field == "max_price":
+        return garment.max_price is not None
+    if priority_field == "category":
+        return _deepest_category_priority(garment) is not None
+    return False
+
+
+def _priority_filtered_products(
+    products: list[Product],
+    garment: GarmentSpec,
+    priority_fields: list[SearchPriorityField],
+) -> list[Product]:
+    if not priority_fields:
+        return []
+
+    return [
+        product
+        for product in products
+        if all(
+            _product_matches_priority_field(product, garment, priority_field)
+            for priority_field in priority_fields
+        )
+    ]
+
+
+def _priority_match_score(
+    product: Product,
+    garment: GarmentSpec,
+    priority_fields: list[SearchPriorityField],
+) -> float:
+    return sum(
+        PRIORITY_MATCH_BONUS
+        for priority_field in priority_fields
+        if _product_matches_priority_field(product, garment, priority_field)
+    )
+
+
+def _product_matches_priority_field(
+    product: Product,
+    garment: GarmentSpec,
+    priority_field: SearchPriorityField,
+) -> bool:
+    if priority_field == "gender":
+        return _matches_any_normalized(_name(product.gender), [garment.gender] if garment.gender else None)
+    if priority_field == "season":
+        return _matches_any_normalized(_name(product.season), garment.seasons)
+    if priority_field == "base_colors":
+        return _matches_any_normalized(_name(product.base_colour), garment.base_colors)
+    if priority_field == "secondary_colors":
+        return _matches_any_normalized(
+            [_name(product.colour1), _name(product.colour2)],
+            garment.secondary_colors,
+        )
+    if priority_field == "max_price":
+        return (
+            garment.max_price is not None
+            and product.price is not None
+            and product.price <= garment.max_price
+        )
+    if priority_field == "category":
+        category_priority = _deepest_category_priority(garment)
+        if category_priority is None:
+            return False
+        product_field, requested_values = category_priority
+        if product_field == "article_type":
+            return _matches_any_normalized(_name(product.article_type), requested_values)
+        if product_field == "sub_category":
+            return _matches_any_normalized(_name(product.sub_category), requested_values)
+        return _matches_any_normalized(_name(product.master_category), requested_values)
+
+    return False
+
+
+def _deepest_category_priority(garment: GarmentSpec) -> tuple[str, list[str]] | None:
+    if garment.article_types:
+        return ("article_type", garment.article_types)
+    if garment.sub_categories:
+        return ("sub_category", garment.sub_categories)
+    if garment.master_categories:
+        return ("master_category", garment.master_categories)
+    return None
+
+
+def _matches_any_normalized(
+    product_values: str | list[str | None] | None,
+    requested_values: list[str] | None,
+) -> bool:
+    if not requested_values:
+        return False
+
+    if isinstance(product_values, str) or product_values is None:
+        values = [product_values]
+    else:
+        values = product_values
+
+    normalized_requested = {_normalize(value) for value in requested_values if value}
+    normalized_values = {_normalize(value) for value in values if value}
+    return bool(normalized_requested & normalized_values)
 
 
 def _semantic_similarity_scores(session: Session, query: str, products: list[Product]) -> dict[int, float]:
@@ -420,6 +616,8 @@ def _year_score(requested_years: list[int] | None, product_year: int | None) -> 
 
 def _price_score(max_price: float | None, product_price: float | None) -> float:
     if max_price is None or product_price is None:
+        return 0.0
+    if max_price <= 0:
         return 0.0
     if product_price <= max_price:
         return 1.0
