@@ -126,106 +126,76 @@ class FinalResponseService(metaclass=SingletonMeta):
         recommendations: RecommendationBundle,
         business_answer_texts: list[str],
     ) -> list[FinalResponseSection]:
-        sections: list[FinalResponseSection] = []
-        has_outfit_placeholder = False
-        has_product_highlights_placeholder = False
+        text_sections = [
+            (section.content or "").strip()
+            for section in draft_sections
+            if section.type == "text" and (section.content or "").strip()
+        ]
         product_highlights_available = self._has_product_highlights(recommendations)
-
-        for draft_section in draft_sections:
-            if draft_section.type == "text":
-                content = (draft_section.content or "").strip()
-                if content:
-                    sections.append(FinalResponseSection(type="text", content=content))
-                continue
-
-            if draft_section.type == "outfit_recommendations":
-                if recommendations.outfits:
-                    has_outfit_placeholder = True
-                    sections.append(
-                        FinalResponseSection(
-                            type="outfit_recommendations",
-                            title=draft_section.title or "Recommended outfits",
-                        )
-                    )
-                continue
-
-            if draft_section.type in {"garment_recommendations", "product_highlights"}:
-                if product_highlights_available:
-                    has_product_highlights_placeholder = True
-                    sections.append(
-                        FinalResponseSection(
-                            type="product_highlights",
-                            title=draft_section.title or "Featured products",
-                        )
-                    )
-
-        if not sections:
-            sections = self._default_final_response_sections(recommendations, business_answer_texts)
-
-        if recommendations.outfits and not has_outfit_placeholder:
-            sections = self._insert_placeholder(
-                sections,
-                FinalResponseSection(type="outfit_recommendations", title="Recommended outfits"),
-            )
-
-        if product_highlights_available and not has_product_highlights_placeholder:
-            sections = self._insert_placeholder(
-                sections,
-                FinalResponseSection(type="product_highlights", title="Featured products"),
-                before_types={"outfit_recommendations"},
-            )
-
-        if sections and sections[0].type != "text":
-            intro = self._default_intro_text(recommendations, business_answer_texts)
-            sections.insert(0, FinalResponseSection(type="text", content=intro))
-
-        if not sections or sections[-1].type != "text":
-            sections.append(
-                FinalResponseSection(
-                    type="text",
-                    content="If you want, I can refine these picks further by color, budget, season, or occasion.",
-                )
-            )
-
-        return sections
-
-    def _default_final_response_sections(
-        self,
-        recommendations: RecommendationBundle,
-        business_answer_texts: list[str],
-    ) -> list[FinalResponseSection]:
+        outfits_available = bool(recommendations.outfits)
+        has_recommendations = product_highlights_available or outfits_available
         sections: list[FinalResponseSection] = []
-        intro = self._default_intro_text(recommendations, business_answer_texts)
+
+        intro = text_sections[0] if text_sections else self._default_intro_text(
+            recommendations,
+            business_answer_texts,
+        )
         if intro:
             sections.append(FinalResponseSection(type="text", content=intro))
 
-        if self._has_product_highlights(recommendations):
-            sections.append(
-                FinalResponseSection(type="product_highlights", title="Featured products")
-            )
-
-        if recommendations.outfits:
-            sections.append(
-                FinalResponseSection(type="outfit_recommendations", title="Recommended outfits")
-            )
-
-        if self._has_product_highlights(recommendations) or recommendations.outfits:
+        if product_highlights_available:
             sections.append(
                 FinalResponseSection(
-                    type="text",
-                    content="If you want, I can refine these picks further by color, budget, season, or occasion.",
+                    type="product_highlights",
+                    title=self._product_highlights_section_title(None, recommendations),
                 )
             )
 
-        if not sections:
+        if outfits_available:
+            bridge_text = (
+                text_sections[1]
+                if len(text_sections) > 1
+                else self._default_bridge_text(product_highlights_available)
+            )
+            if bridge_text:
+                sections.append(FinalResponseSection(type="text", content=bridge_text))
+            sections.append(
+                FinalResponseSection(
+                    type="outfit_recommendations",
+                    title="Recommended outfits",
+                )
+            )
+
+        if has_recommendations:
+            final_text_index = 2 if outfits_available else 1
+            final_text = (
+                text_sections[final_text_index]
+                if len(text_sections) > final_text_index
+                else self._default_final_text()
+            )
             sections.append(
                 FinalResponseSection(
                     type="text",
-                    content="I couldn't find a strong match for your request yet.",
+                    content=final_text,
                 )
             )
 
         return sections
+
+    def _product_highlights_section_title(
+        self,
+        draft_title: str | None,
+        recommendations: RecommendationBundle,
+    ) -> str:
+        
+        if len(recommendations.product_highlights) == 1:
+            return (
+                draft_title
+                or recommendations.product_highlights[0].group_label
+                or "Featured products"
+            )
+
+        return "Featured products"
 
     def _default_intro_text(
         self,
@@ -251,21 +221,14 @@ class FinalResponseService(metaclass=SingletonMeta):
 
         return "I couldn't find a strong match for your request yet."
 
-    def _insert_placeholder(
-        self,
-        sections: list[FinalResponseSection],
-        placeholder: FinalResponseSection,
-        before_types: set[str] | None = None,
-    ) -> list[FinalResponseSection]:
-        if not sections:
-            return [placeholder]
-        if before_types:
-            for index, section in enumerate(sections):
-                if section.type in before_types:
-                    return sections[:index] + [placeholder] + sections[index:]
-        if len(sections) >= 1 and sections[-1].type == "text":
-            return sections[:-1] + [placeholder, sections[-1]]
-        return [*sections, placeholder]
+    def _default_bridge_text(self, has_product_highlights: bool) -> str:
+        if has_product_highlights:
+            return "Based on those matches, here is a concise outfit view to compare the full look."
+
+        return "Here is a concise outfit view to compare the full look."
+
+    def _default_final_text(self) -> str:
+        return "I can refine these picks further by color, budget, season, or occasion."
 
     def _render_response_text(
         self,

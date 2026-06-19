@@ -1,6 +1,10 @@
 
 import { LoaderCircle } from "lucide-react";
-import type { ChatMessage, FinalResponsePayload } from "@/lib/types";
+import type {
+  ChatMessage,
+  FinalResponsePayload,
+  FinalResponseSection,
+} from "@/lib/types";
 import Image from "next/image";
 import { getProductImage, getProductMeta } from "@/lib/format";
 
@@ -49,10 +53,35 @@ export function AssistantMessageBody({
     );
   }
 
-  const sections =
+  const rawSections: FinalResponseSection[] =
     payload.sections.length > 0
       ? payload.sections
       : [{ type: "text" as const, content: message.content, title: null }];
+
+  const sections = rawSections.reduce<FinalResponseSection[]>((deduped, section) => {
+    if (
+      section.type === "product_highlights" ||
+      section.type === "garment_recommendations"
+    ) {
+      return deduped.some(
+        (dedupedSection) =>
+          dedupedSection.type === "product_highlights" ||
+          dedupedSection.type === "garment_recommendations",
+      )
+        ? deduped
+        : [...deduped, section];
+    }
+
+    if (section.type === "outfit_recommendations") {
+      return deduped.some(
+        (dedupedSection) => dedupedSection.type === "outfit_recommendations",
+      )
+        ? deduped
+        : [...deduped, section];
+    }
+
+    return [...deduped, section];
+  }, []);
 
   return (
     <div className="space-y-4">

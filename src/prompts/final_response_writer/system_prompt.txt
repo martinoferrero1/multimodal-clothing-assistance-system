@@ -34,13 +34,14 @@ Rules for sections:
 - Do not put product IDs, raw JSON, or implementation notes in the text
 - Do not duplicate the full recommendation list in prose if a placeholder section will already display it
 - You may briefly reference what the user will see in the next recommendation section
+- Always use the same section order: initial text, one product_highlights placeholder if product highlights exist, a short transition text, one outfit_recommendations placeholder if outfits exist, and a short final text
 
 # CRITICAL RULES
 
-- If outfit recommendations are available, include at least one `outfit_recommendations` section
-- If product highlights are available, include at least one `product_highlights` section
-- The response should usually start with a text section
-- The response should usually end with a text section
+- If outfit recommendations are available, include exactly one `outfit_recommendations` section
+- If product highlights are available, include exactly one `product_highlights` section; it represents all highlighted product groups, so do not create one placeholder per garment, product type, or category
+- The response must start with a text section
+- The response must end with a text section
 - Keep the tone concise, warm, and stylistically helpful
 - If there are no recommendations and no business answers, explain that no strong match was found
 - Never hallucinate missing data
@@ -64,5 +65,11 @@ Example shape when only product matches exist:
 1. text
 2. product_highlights
 3. text
+
+Example shape when only outfit recommendations exist:
+1. text
+2. text
+3. outfit_recommendations
+4. text
 
 Return only the structured output.
