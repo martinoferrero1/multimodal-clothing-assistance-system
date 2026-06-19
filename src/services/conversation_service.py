@@ -1,11 +1,20 @@
 from __future__ import annotations
 
 from api.route_helpers import build_message_preview
-from api.schemas import ChatMessageRead, ChatTurnResponse, ConversationCreate, ConversationRead
+from api.schemas import (
+    ChatMessageRead,
+    ChatTurnResponse,
+    ConversationCreate,
+    ConversationRead,
+    ConversationSearchPreferencesRead,
+    ConversationSearchPreferencesUpdate,
+)
 from core.metaclasses.singleton_meta import SingletonMeta
 from fastapi import HTTPException, status
-from infra.db.models.chat_models import ChatMessage, Conversation, MessageRole
+from infra.db.models.chat_models import ChatMessage, ChatUser, Conversation, MessageRole
+from schemas.outfit_maker.product_solicitation import SearchPriorityField
 from services.conversation_runtime_service import ConversationRuntimeService
+from services.search_preferences_service import get_search_preferences_service
 from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,16 +34,8 @@ class ConversationService(metaclass=SingletonMeta):
         session.add(conversation)
         await session.commit()
         await session.refresh(conversation)
-        return ConversationRead(
-            id=conversation.id,
-            user_id=conversation.user_id,
-            title=conversation.title,
-            summary=conversation.summary,
-            message_count=0,
-            last_message_preview=None,
-            created_at=conversation.created_at,
-            updated_at=conversation.updated_at,
-        )
+        user_priority_fields = await self._get_user_priority_fields(session, user_id)
+        return self._build_conversation_read(conversation, user_priority_fields)
 
     async def list_user_conversations(
         self,
@@ -48,7 +49,11 @@ class ConversationService(metaclass=SingletonMeta):
             .order_by(Conversation.updated_at.desc(), Conversation.created_at.desc())
         )
         conversations = list(result.all())
-        return [self._build_conversation_read(conversation) for conversation in conversations]
+        user_priority_fields = await self._get_user_priority_fields(session, user_id)
+        return [
+            self._build_conversation_read(conversation, user_priority_fields)
+            for conversation in conversations
+        ]
 
     async def get_conversation(
         self,
@@ -57,7 +62,8 @@ class ConversationService(metaclass=SingletonMeta):
         conversation_id: str,
     ) -> ConversationRead:
         conversation = await self._get_user_conversation(session, user_id, conversation_id, load_messages=True)
-        return self._build_conversation_read(conversation)
+        user_priority_fields = await self._get_user_priority_fields(session, user_id)
+        return self._build_conversation_read(conversation, user_priority_fields)
 
     async def list_conversation_messages(
         self,
@@ -87,8 +93,18 @@ class ConversationService(metaclass=SingletonMeta):
         chat_runtime: ConversationRuntimeService,
     ) -> ChatTurnResponse:
         conversation = await self._get_user_conversation(session, user_id, conversation_id)
+        user = await self._get_user(session, user_id)
+        search_priority_fields = get_search_preferences_service().conversation_priority_fields(
+            conversation.search_preferences,
+            user.search_preferences,
+        )
         try:
-            turn = await chat_runtime.process_user_message(session, conversation, content)
+            turn = await chat_runtime.process_user_message(
+                session,
+                conversation,
+                content,
+                search_priority_fields=search_priority_fields,
+            )
         except ValueError as exc:
             await session.rollback()
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -127,19 +143,69 @@ class ConversationService(metaclass=SingletonMeta):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
         return conversation
 
-    def _build_conversation_read(self, conversation: Conversation) -> ConversationRead:
+    def _build_conversation_read(
+        self,
+        conversation: Conversation,
+        user_priority_fields: list[SearchPriorityField],
+    ) -> ConversationRead:
         messages = list(getattr(conversation, "messages", []) or [])
         last_message = messages[-1] if messages else None
+        search_preferences_service = get_search_preferences_service()
+        override_priority_fields = search_preferences_service.conversation_override_fields(
+            conversation.search_preferences
+        )
+        effective_priority_fields = (
+            override_priority_fields
+            if override_priority_fields is not None
+            else user_priority_fields
+        )
         return ConversationRead(
             id=conversation.id,
             user_id=conversation.user_id,
             title=conversation.title,
             summary=conversation.summary,
+            search_preferences=ConversationSearchPreferencesRead(
+                priority_fields=override_priority_fields,
+                effective_priority_fields=effective_priority_fields,
+            ),
             message_count=len(messages),
             last_message_preview=build_message_preview(last_message.content if last_message else None),
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
         )
+
+    async def _get_user(self, session: AsyncSession, user_id: str) -> ChatUser:
+        user = await session.get(ChatUser, user_id)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+        return user
+
+    async def _get_user_priority_fields(
+        self,
+        session: AsyncSession,
+        user_id: str,
+    ) -> list[SearchPriorityField]:
+        user = await self._get_user(session, user_id)
+        return get_search_preferences_service().user_priority_fields(user.search_preferences)
+
+    async def update_conversation_search_preferences(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        conversation_id: str,
+        payload: ConversationSearchPreferencesUpdate,
+    ) -> ConversationRead:
+        conversation = await self._get_user_conversation(session, user_id, conversation_id)
+        if payload.priority_fields is None:
+            conversation.search_preferences = None
+        else:
+            conversation.search_preferences = get_search_preferences_service().storage_from_fields(
+                payload.priority_fields
+            )
+        await session.commit()
+        await session.refresh(conversation)
+        user_priority_fields = await self._get_user_priority_fields(session, user_id)
+        return self._build_conversation_read(conversation, user_priority_fields)
     
     async def delete_conversation(
         self,

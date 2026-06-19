@@ -1,8 +1,43 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import field_validator
+from schemas.outfit_maker.product_solicitation import (
+    SearchPriorityField,
+    normalize_priority_fields,
+)
+
+
+class SearchPreferencesRead(BaseModel):
+    priority_fields: list[SearchPriorityField] = Field(default_factory=list)
+
+
+class SearchPreferencesUpdate(BaseModel):
+    priority_fields: list[SearchPriorityField] = Field(default_factory=list)
+
+    @field_validator("priority_fields", mode="before")
+    @classmethod
+    def clean_priority_fields(cls, value: Any) -> list[SearchPriorityField]:
+        return list(normalize_priority_fields(value) or [])
+
+
+class ConversationSearchPreferencesRead(BaseModel):
+    priority_fields: list[SearchPriorityField] | None = None
+    effective_priority_fields: list[SearchPriorityField] = Field(default_factory=list)
+
+
+class ConversationSearchPreferencesUpdate(BaseModel):
+    priority_fields: list[SearchPriorityField] | None = None
+
+    @field_validator("priority_fields", mode="before")
+    @classmethod
+    def clean_priority_fields(cls, value: Any) -> list[SearchPriorityField] | None:
+        if value is None:
+            return None
+        return list(normalize_priority_fields(value) or [])
 
 
 class UserRegister(BaseModel):
@@ -22,6 +57,7 @@ class UserRead(BaseModel):
     id: str
     display_name: str
     email: EmailStr | None = None
+    search_preferences: SearchPreferencesRead
     created_at: datetime
 
 
@@ -45,6 +81,7 @@ class ConversationRead(BaseModel):
     user_id: str
     title: str
     summary: str | None = None
+    search_preferences: ConversationSearchPreferencesRead
     message_count: int = 0
     last_message_preview: str | None = None
     created_at: datetime

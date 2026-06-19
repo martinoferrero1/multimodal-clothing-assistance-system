@@ -1,24 +1,63 @@
 "use client";
 
 import { useState } from "react";
-import { PanelsTopLeft, UserRound } from "lucide-react";
+import { Check, PanelsTopLeft, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { ApiError, updateUserSearchPreferences } from "@/lib/api-client";
 import { formatShortDate } from "@/lib/format";
+import {
+  SEARCH_PRIORITY_OPTIONS,
+  formatPriorityFields,
+  togglePriorityField,
+} from "@/lib/search-preferences";
 import { readPreferences, writePreferences } from "@/lib/storage";
-import type { SettingsPreferences } from "@/lib/types";
+import type { SearchPriorityField, SettingsPreferences } from "@/lib/types";
 
 type SettingsSection = "general" | "account";
 
 export function SettingsView() {
   const auth = useAuth();
+  const authPriorityFields = auth.user?.search_preferences?.priority_fields ?? [];
   const [preferences, setPreferences] = useState<SettingsPreferences>(() => readPreferences());
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
+  const [optimisticSearchPriorityFields, setOptimisticSearchPriorityFields] =
+    useState<SearchPriorityField[] | null>(null);
+  const [savingSearchPreferences, setSavingSearchPreferences] = useState(false);
+  const [searchPreferencesError, setSearchPreferencesError] = useState<string | null>(null);
+  const searchPriorityFields = optimisticSearchPriorityFields ?? authPriorityFields;
 
   function updatePreferences(nextPreferences: SettingsPreferences) {
     setPreferences(nextPreferences);
     writePreferences(nextPreferences);
     window.dispatchEvent(new Event("preferences:changed"));
+  }
+
+  async function handleSearchPriorityToggle(field: SearchPriorityField) {
+    if (!auth.token || savingSearchPreferences) {
+      return;
+    }
+
+    const nextFields = togglePriorityField(searchPriorityFields, field);
+    setOptimisticSearchPriorityFields(nextFields);
+    setSavingSearchPreferences(true);
+    setSearchPreferencesError(null);
+
+    try {
+      await updateUserSearchPreferences(auth.token, nextFields);
+      await auth.refreshUser();
+      setOptimisticSearchPriorityFields(null);
+      window.dispatchEvent(new Event("search-preferences:changed"));
+    } catch (caughtError) {
+      setOptimisticSearchPriorityFields(null);
+      setSearchPreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not save the search priorities.",
+      );
+    } finally {
+      setSavingSearchPreferences(false);
+    }
   }
 
   const sections = [
@@ -95,6 +134,40 @@ export function SettingsView() {
                   })
                 }
               />
+              <section className="rounded-[1.4rem] border border-[var(--line)] bg-white/68 px-4 py-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text)]">Search priorities</p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      {formatPriorityFields(searchPriorityFields)}
+                    </p>
+                  </div>
+                  {savingSearchPreferences ? (
+                    <span className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
+                      Saving
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {SEARCH_PRIORITY_OPTIONS.map((option) => (
+                    <SearchPriorityToggle
+                      key={option.field}
+                      checked={searchPriorityFields.includes(option.field)}
+                      disabled={savingSearchPreferences || !auth.token}
+                      description={option.description}
+                      label={option.label}
+                      onToggle={() => handleSearchPriorityToggle(option.field)}
+                    />
+                  ))}
+                </div>
+
+                {searchPreferencesError ? (
+                  <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
+                    {searchPreferencesError}
+                  </p>
+                ) : null}
+              </section>
             </div>
           </article>
         ) : null}
@@ -146,6 +219,52 @@ function PreferenceRow({ checked, description, label, onToggle }: PreferenceRowP
         <span
           className={`h-5 w-5 rounded-full bg-white transition ${checked ? "translate-x-5" : "translate-x-0"}`}
         />
+      </span>
+    </button>
+  );
+}
+
+type SearchPriorityToggleProps = {
+  checked: boolean;
+  description: string;
+  disabled: boolean;
+  label: string;
+  onToggle: () => void;
+};
+
+function SearchPriorityToggle({
+  checked,
+  description,
+  disabled,
+  label,
+  onToggle,
+}: SearchPriorityToggleProps) {
+  return (
+    <button
+      className={`flex min-h-[5.5rem] items-start gap-3 rounded-[1.1rem] border px-3 py-3 text-left transition ${
+        checked
+          ? "border-[rgba(143,79,43,0.34)] bg-[rgba(143,79,43,0.09)]"
+          : "border-[var(--line)] bg-white/62 hover:bg-white/86"
+      } ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
+      type="button"
+      aria-pressed={checked}
+      disabled={disabled}
+      onClick={onToggle}
+    >
+      <span
+        className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[0.55rem] border ${
+          checked
+            ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]"
+            : "border-[var(--line-strong)] bg-white/70 text-transparent"
+        }`}
+      >
+        <Check size={14} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-[var(--text)]">{label}</span>
+        <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
+          {description}
+        </span>
       </span>
     </button>
   );

@@ -43,6 +43,7 @@ Also I want two special outfits. One of them is for my wedding, where I need a d
                     StateKeys.CURRENT_STEP_INDEX: None,
                     StateKeys.BUSINESS_QA_QUERIES: None,
                     StateKeys.OUTFIT_SEARCH_INTENTS: None,
+                    StateKeys.SEARCH_PRIORITY_FIELDS: [],
                     StateKeys.BUSINESS_ANSWERS: None,
                     StateKeys.CURRENT_OUTFIT_REQUEST: None,
                     StateKeys.PRODUCT_CANDIDATES: None,

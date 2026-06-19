@@ -36,7 +36,7 @@ class Database(metaclass=SingletonMeta):
         )
 
         Base.metadata.create_all(self.engine)
-        self._ensure_chat_auth_schema()
+        self._ensure_chat_schema()
 
     def get_session(self) -> Session:
         return self.SessionLocal()
@@ -57,14 +57,19 @@ class Database(metaclass=SingletonMeta):
             return db_url.replace("postgres://", "postgresql+psycopg://", 1)
         return db_url
 
-    def _ensure_chat_auth_schema(self) -> None:
+    def _ensure_chat_schema(self) -> None:
         inspector = inspect(self.engine)
-        if not inspector.has_table("chat_users"):
-            return
-
-        column_names = {column["name"] for column in inspector.get_columns("chat_users")}
-        if "password_hash" in column_names:
-            return
-
         with self.engine.begin() as connection:
-            connection.execute(text("ALTER TABLE chat_users ADD COLUMN password_hash VARCHAR(255)"))
+            if inspector.has_table("chat_users"):
+                user_column_names = {column["name"] for column in inspector.get_columns("chat_users")}
+                if "password_hash" not in user_column_names:
+                    connection.execute(text("ALTER TABLE chat_users ADD COLUMN password_hash VARCHAR(255)"))
+                if "search_preferences" not in user_column_names:
+                    connection.execute(text("ALTER TABLE chat_users ADD COLUMN search_preferences JSON"))
+
+            if inspector.has_table("conversations"):
+                conversation_column_names = {
+                    column["name"] for column in inspector.get_columns("conversations")
+                }
+                if "search_preferences" not in conversation_column_names:
+                    connection.execute(text("ALTER TABLE conversations ADD COLUMN search_preferences JSON"))

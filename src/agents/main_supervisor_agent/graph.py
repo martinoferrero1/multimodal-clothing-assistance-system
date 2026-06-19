@@ -11,7 +11,7 @@ from langgraph.graph import START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from schemas.orchestator_decision import NodeName, OrchestatorDecision
-from schemas.outfit_maker.product_solicitation import ItemSpecList
+from schemas.outfit_maker.product_solicitation import ItemSpecList, SearchPriorityField
 from services.business_qa.rag_service import get_business_qa_service
 from services.final_response_service import FinalResponseService
 from services.outfit_recommendation_service import OutfitRecommendationService
@@ -126,6 +126,7 @@ class SupervisorGraph(BaseGraph):
         current_request = state.get(StateKeys.CURRENT_OUTFIT_REQUEST)
         context = {
             "search_intents": state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []),
+            "priority_fields": state.get(StateKeys.SEARCH_PRIORITY_FIELDS, []),
             "current_solicitation": current_request.model_dump() if current_request else None,
             "summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
         }
@@ -147,6 +148,10 @@ class SupervisorGraph(BaseGraph):
             *recent_messages,
         ]
         solicitations: ItemSpecList = llm.invoke(messages)
+        solicitations = self._apply_configured_priority_fields(
+            solicitations,
+            state.get(StateKeys.SEARCH_PRIORITY_FIELDS, []),
+        )
         logger.debug("Search intents extracted: %s", state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []))
         logger.info("Extracted outfit request with %s item(s)", len(solicitations.items))
         logger.debug("Extracted outfit request details: %s", solicitations)
@@ -155,10 +160,36 @@ class SupervisorGraph(BaseGraph):
     @safe_node("search_products")
     def _search_products_node(self, state: State) -> dict[StateKeys, Any]:
         logger.info("Searching products in the database according to the outfit request")
-        product_candidates = search_product_candidates(state.get(StateKeys.CURRENT_OUTFIT_REQUEST))
+        product_candidates = search_product_candidates(
+            state.get(StateKeys.CURRENT_OUTFIT_REQUEST),
+            priority_fields=state.get(StateKeys.SEARCH_PRIORITY_FIELDS, []),
+        )
         logger.info("Found product candidates for %s request item(s)", len(product_candidates))
         logger.debug("Product candidate details: %s", product_candidates)
         return {StateKeys.PRODUCT_CANDIDATES: product_candidates}
+
+    def _apply_configured_priority_fields(
+        self,
+        solicitations: ItemSpecList,
+        priority_fields: list[SearchPriorityField],
+    ) -> ItemSpecList:
+        configured_fields = list(priority_fields or [])
+        items_data: list[dict[str, Any]] = []
+
+        for item in solicitations.items:
+            item_data = item.model_dump()
+            item_data["priority_fields"] = configured_fields
+            if item_data.get("kind") == "outfit":
+                item_data["items"] = [
+                    {
+                        **garment,
+                        "priority_fields": configured_fields,
+                    }
+                    for garment in item_data.get("items", [])
+                ]
+            items_data.append(item_data)
+
+        return ItemSpecList(items=items_data)
 
     @safe_node("business_qa")
     def _business_qa_node(self, state: State) -> dict[StateKeys, Any]:

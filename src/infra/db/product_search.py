@@ -40,15 +40,22 @@ logger = logging.getLogger(__name__)
 def search_product_candidates(
     request: ItemSpecList | None,
     options_per_item: int = DEFAULT_OPTIONS_PER_ITEM,
+    priority_fields: list[SearchPriorityField] | None = None,
 ) -> list[dict[str, Any]]:
     if request is None:
         return []
+
+    configured_priority_fields = (
+        normalize_priority_fields(priority_fields)
+        if priority_fields is not None
+        else None
+    )
 
     with Database().get_session() as session:
         products = _load_product_pool(session)
         logger.info("Loaded %s products from the database for candidate search", len(products))
         return [
-            _search_item(session, products, item, options_per_item)
+            _search_item(session, products, item, options_per_item, configured_priority_fields)
             for item in request.items
         ]
 
@@ -58,20 +65,27 @@ def _search_item(
     products: list[Product],
     item: ItemSpec,
     options_per_item: int,
+    configured_priority_fields: list[SearchPriorityField] | None,
 ) -> dict[str, Any]:
     if isinstance(item, OutfitSpec):
         return {
             "kind": "outfit",
             "request": item.model_dump(exclude={"items"}),
             "items": [
-                _search_garment(session, products, _merge_outfit_defaults(item, garment), options_per_item)
+                _search_garment(
+                    session,
+                    products,
+                    _merge_outfit_defaults(item, garment),
+                    options_per_item,
+                    configured_priority_fields,
+                )
                 for garment in item.items
             ],
         }
 
     return {
         "kind": "garment",
-        **_search_garment(session, products, item, options_per_item),
+        **_search_garment(session, products, item, options_per_item, configured_priority_fields),
     }
 
 
@@ -98,9 +112,10 @@ def _search_garment(
     products: list[Product],
     garment: GarmentSpec,
     options_per_item: int,
+    configured_priority_fields: list[SearchPriorityField] | None,
 ) -> dict[str, Any]:
     semantic_query = _request_search_text(garment)
-    priority_fields = _effective_priority_fields(garment)
+    priority_fields = _effective_priority_fields(garment, configured_priority_fields)
     active_priority_fields = _active_priority_fields(garment, priority_fields)
     priority_products = _priority_filtered_products(products, garment, active_priority_fields)
 
@@ -229,7 +244,13 @@ def _score_product(
     return round(score, 4)
 
 
-def _effective_priority_fields(garment: GarmentSpec) -> list[SearchPriorityField]:
+def _effective_priority_fields(
+    garment: GarmentSpec,
+    configured_priority_fields: list[SearchPriorityField] | None = None,
+) -> list[SearchPriorityField]:
+    if configured_priority_fields is not None:
+        return configured_priority_fields
+
     if garment.priority_fields is not None:
         return garment.priority_fields
 

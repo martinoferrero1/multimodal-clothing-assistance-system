@@ -2,15 +2,31 @@
 
 import Image from "next/image";
 import { startTransition, useEffect, useState } from "react";
-import { ArrowUp, LoaderCircle, Plus, Sparkles, X } from "lucide-react";
+import { ArrowUp, Check, LoaderCircle, Plus, Settings2, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useConversations } from "@/components/providers/conversation-provider";
-import { ApiError, getConversation, listMessages, sendMessage } from "@/lib/api-client";
+import {
+  ApiError,
+  getConversation,
+  listMessages,
+  sendMessage,
+  updateConversationSearchPreferences,
+} from "@/lib/api-client";
 import { formatShortDate, formatShortTime } from "@/lib/format";
+import {
+  SEARCH_PRIORITY_OPTIONS,
+  formatPriorityFields,
+  togglePriorityField,
+} from "@/lib/search-preferences";
 import { readPreferences } from "@/lib/storage";
-import type { ChatMessage, Conversation, FinalResponsePayload } from "@/lib/types";
+import type {
+  ChatMessage,
+  Conversation,
+  FinalResponsePayload,
+  SearchPriorityField,
+} from "@/lib/types";
 import { AssistantMessageBody } from "./assistant-message-body";
 import { getProductImage, getProductMeta } from "@/lib/format";
 
@@ -54,6 +70,10 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
+  const [chatPriorityDraft, setChatPriorityDraft] = useState<SearchPriorityField[] | null>(null);
+  const [savingChatPreferences, setSavingChatPreferences] = useState(false);
+  const [chatPreferencesError, setChatPreferencesError] = useState<string | null>(null);
   const [showRecommendationPanel, setShowRecommendationPanel] = useState(
     () => readPreferences().showRecommendationPanel,
   );
@@ -153,6 +173,11 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       ? selectedOutfitState.outfitIndex
       : 0;
   const usesRecommendationPanel = showRecommendationPanel && isLargeScreen;
+  const userDefaultPriorityFields = auth.user?.search_preferences?.priority_fields ?? [];
+  const conversationOverridePriorityFields =
+    conversation?.search_preferences?.priority_fields ?? null;
+  const effectiveSearchPriorityFields =
+    conversationOverridePriorityFields ?? userDefaultPriorityFields;
 
   useEffect(() => {
     if (!outfitModalOpen) {
@@ -251,6 +276,52 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     setSelectedOutfitState({ messageId, outfitIndex });
     if (!usesRecommendationPanel) {
       setOutfitModalOpen(true);
+    }
+  }
+
+  function handleOpenChatSettings() {
+    setChatPriorityDraft(conversation?.search_preferences?.priority_fields ?? null);
+    setChatPreferencesError(null);
+    setChatSettingsOpen(true);
+  }
+
+  async function handleSaveChatPreferences() {
+    if (!auth.token || savingChatPreferences) {
+      return;
+    }
+
+    setSavingChatPreferences(true);
+    setChatPreferencesError(null);
+
+    try {
+      let activeConversation = conversation;
+      if (!activeConversation) {
+        activeConversation = await createConversation("New conversation");
+        setConversation(activeConversation);
+      }
+
+      const updatedConversation = await updateConversationSearchPreferences(
+        auth.token,
+        activeConversation.id,
+        chatPriorityDraft,
+      );
+      setConversation(updatedConversation);
+      await refreshConversations();
+      setChatSettingsOpen(false);
+
+      if (conversationId === "new") {
+        startTransition(() => {
+          router.replace(`/chat/${updatedConversation.id}`);
+        });
+      }
+    } catch (caughtError) {
+      setChatPreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not save this chat's search priorities.",
+      );
+    } finally {
+      setSavingChatPreferences(false);
     }
   }
 
@@ -370,6 +441,14 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
               >
                 <Plus size={18} />
               </button>
+              <button
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:text-[var(--text)]"
+                type="button"
+                onClick={handleOpenChatSettings}
+                aria-label="Chat search preferences"
+              >
+                <Settings2 size={18} />
+              </button>
 
               <textarea
                 className="min-h-[52px] flex-1 resize-none bg-transparent px-2 py-3 text-sm leading-7 outline-none placeholder:text-[var(--muted)]"
@@ -447,7 +526,170 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           </div>
         </div>
       ) : null}
+
+      {chatSettingsOpen ? (
+        <ChatSearchPreferencesModal
+          draftPriorityFields={chatPriorityDraft}
+          effectivePriorityFields={effectiveSearchPriorityFields}
+          error={chatPreferencesError}
+          saving={savingChatPreferences}
+          onClose={() => setChatSettingsOpen(false)}
+          onDraftChange={setChatPriorityDraft}
+          onSave={handleSaveChatPreferences}
+        />
+      ) : null}
     </section>
+  );
+}
+
+type ChatSearchPreferencesModalProps = {
+  draftPriorityFields: SearchPriorityField[] | null;
+  effectivePriorityFields: SearchPriorityField[];
+  error: string | null;
+  saving: boolean;
+  onClose: () => void;
+  onDraftChange: (fields: SearchPriorityField[] | null) => void;
+  onSave: () => void;
+};
+
+function ChatSearchPreferencesModal({
+  draftPriorityFields,
+  effectivePriorityFields,
+  error,
+  saving,
+  onClose,
+  onDraftChange,
+  onSave,
+}: ChatSearchPreferencesModalProps) {
+  const usesCustomPriorities = draftPriorityFields !== null;
+  const visiblePriorityFields = draftPriorityFields ?? effectivePriorityFields;
+
+  function handleToggleField(field: SearchPriorityField) {
+    const baseFields = draftPriorityFields ?? effectivePriorityFields;
+    onDraftChange(togglePriorityField(baseFields, field));
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(32,20,12,0.42)] p-4 sm:p-6">
+      <button
+        className="absolute inset-0 cursor-default"
+        type="button"
+        aria-label="Close chat search preferences"
+        onClick={onClose}
+      />
+      <div className="glass-strong hairline soft-shadow relative z-10 w-full max-w-2xl rounded-[2rem] px-5 py-5 sm:px-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+              Search preferences
+            </p>
+            <h3 className="serif mt-3 text-3xl leading-none">This chat</h3>
+          </div>
+          <button
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-white/60 transition hover:bg-white/85"
+            type="button"
+            aria-label="Close chat search preferences"
+            onClick={onClose}
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 rounded-[1.1rem] border border-[var(--line)] bg-white/52 p-1">
+          <button
+            className={`rounded-[0.9rem] px-3 py-3 text-sm font-semibold transition ${
+              !usesCustomPriorities
+                ? "bg-[var(--text)] text-[var(--accent-ink)]"
+                : "text-[var(--muted)] hover:text-[var(--text)]"
+            }`}
+            type="button"
+            onClick={() => onDraftChange(null)}
+          >
+            Inherit general
+          </button>
+          <button
+            className={`rounded-[0.9rem] px-3 py-3 text-sm font-semibold transition ${
+              usesCustomPriorities
+                ? "bg-[var(--text)] text-[var(--accent-ink)]"
+                : "text-[var(--muted)] hover:text-[var(--text)]"
+            }`}
+            type="button"
+            onClick={() => onDraftChange([...effectivePriorityFields])}
+          >
+            Customize
+          </button>
+        </div>
+
+        <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+          {usesCustomPriorities ? "Custom: " : "Inherited: "}
+          {formatPriorityFields(visiblePriorityFields)}
+        </p>
+
+        {usesCustomPriorities ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {SEARCH_PRIORITY_OPTIONS.map((option) => {
+              const checked = visiblePriorityFields.includes(option.field);
+
+              return (
+                <button
+                  key={option.field}
+                  className={`flex min-h-[5rem] items-start gap-3 rounded-[1.1rem] border px-3 py-3 text-left transition ${
+                    checked
+                      ? "border-[rgba(143,79,43,0.34)] bg-[rgba(143,79,43,0.09)]"
+                      : "border-[var(--line)] bg-white/62 hover:bg-white/86"
+                  }`}
+                  type="button"
+                  aria-pressed={checked}
+                  onClick={() => handleToggleField(option.field)}
+                >
+                  <span
+                    className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[0.55rem] border ${
+                      checked
+                        ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]"
+                        : "border-[var(--line-strong)] bg-white/70 text-transparent"
+                    }`}
+                  >
+                    <Check size={14} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-[var(--text)]">
+                      {option.label}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
+                      {option.description}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            className="inline-flex h-11 items-center justify-center rounded-full border border-[var(--line)] px-5 text-sm font-semibold text-[var(--muted)] transition hover:bg-white/65 hover:text-[var(--text)]"
+            type="button"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            className="inline-flex h-11 items-center justify-center rounded-full bg-[var(--accent)] px-5 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            type="button"
+            disabled={saving}
+            onClick={onSave}
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

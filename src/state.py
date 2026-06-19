@@ -3,6 +3,7 @@ from langchain_core.messages import BaseMessage
 import operator
 from schemas.business_qa import BusinessAnswer
 from schemas.outfit_maker.product_solicitation import ItemSpecList
+from schemas.outfit_maker.product_solicitation import SearchPriorityField
 from schemas.outfit_maker.recommendation_response import (
     FinalResponsePayload,
     RecommendationBundle,
@@ -33,6 +34,7 @@ class State(TypedDict):
     current_step_index: Optional[int]
     business_qa_queries: Optional[List[str]]
     outfit_search_intents: Optional[List[str]]
+    search_priority_fields: List[SearchPriorityField]
 
     # Outputs from later nodes
     business_answers: Optional[List[BusinessAnswer]]
@@ -51,6 +53,7 @@ class StateKeys:
     CURRENT_STEP_INDEX = "current_step_index"
     BUSINESS_QA_QUERIES = "business_qa_queries"
     OUTFIT_SEARCH_INTENTS = "outfit_search_intents"
+    SEARCH_PRIORITY_FIELDS = "search_priority_fields"
     BUSINESS_ANSWERS = "business_answers"
     CURRENT_OUTFIT_REQUEST = "current_outfit_request"
     PRODUCT_CANDIDATES = "product_candidates"

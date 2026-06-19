@@ -152,7 +152,7 @@ If it is not reasonably clear, leave that field null instead of guessing.
 For all non-category fields:
 - include them only when explicitly stated or clearly tied to the item
 - otherwise use null
-- `priority_fields` is system/configuration controlled for now; do not infer it from user language.
+- `priority_fields` is controlled by the active system/user/chat search configuration; do not infer it from user language.
 - If `priority_fields` already exists in `current_solicitation`, preserve it when updating that same item or outfit unless the upstream context explicitly changes it.
 
 Examples:

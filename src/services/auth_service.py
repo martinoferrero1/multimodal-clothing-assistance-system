@@ -7,11 +7,20 @@ import json
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from api.schemas import AuthResponse, AuthToken, UserLogin, UserRead, UserRegister
+from api.schemas import (
+    AuthResponse,
+    AuthToken,
+    SearchPreferencesRead,
+    SearchPreferencesUpdate,
+    UserLogin,
+    UserRead,
+    UserRegister,
+)
 from core.metaclasses.singleton_meta import SingletonMeta
 from core.settings import settings
 from fastapi import HTTPException, status
 from infra.db.models.chat_models import ChatUser
+from services.search_preferences_service import get_search_preferences_service
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -73,9 +82,35 @@ class AuthenticationService(metaclass=SingletonMeta):
                 detail="You are not allowed to access this user.",
             )
 
+    async def update_user_search_preferences(
+        self,
+        session: AsyncSession,
+        user: ChatUser,
+        payload: SearchPreferencesUpdate,
+    ) -> SearchPreferencesRead:
+        user.search_preferences = get_search_preferences_service().storage_from_fields(
+            payload.priority_fields
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return self.build_user_read(user).search_preferences
+
+    def build_user_read(self, user: ChatUser) -> UserRead:
+        priority_fields = get_search_preferences_service().user_priority_fields(
+            user.search_preferences
+        )
+        return UserRead(
+            id=user.id,
+            display_name=user.display_name,
+            email=user.email,
+            search_preferences=SearchPreferencesRead(priority_fields=priority_fields),
+            created_at=user.created_at,
+        )
+
     def _build_auth_response(self, user: ChatUser) -> AuthResponse:
         token = self._create_access_token(user.id)
-        return AuthResponse(token=token, user=UserRead.model_validate(user))
+        return AuthResponse(token=token, user=self.build_user_read(user))
 
     def _create_access_token(self, user_id: str) -> AuthToken:
         expires_at = datetime.now(UTC) + timedelta(minutes=settings.AUTH_TOKEN_EXPIRE_MINUTES)

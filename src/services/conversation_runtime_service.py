@@ -10,6 +10,7 @@ from core.metaclasses.singleton_meta import SingletonMeta
 from infra.db.models.chat_models import ChatMessage, Conversation, MessageRole
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.types import Command
+from schemas.outfit_maker.product_solicitation import SearchPriorityField
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from state import StateKeys, SumaryKeys
@@ -76,6 +77,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         session: AsyncSession,
         conversation: Conversation,
         content: str,
+        search_priority_fields: list[SearchPriorityField],
     ) -> ChatTurnResult:
         clean_content = content.strip()
         if not clean_content:
@@ -94,9 +96,14 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
 
         config = {"configurable": {"thread_id": conversation.id}}
         if await self._has_prior_checkpointed_turn(session, conversation.id):
-            workflow_input = await asyncio.to_thread(self._build_resume_command, config, clean_content)
+            workflow_input = await asyncio.to_thread(
+                self._build_resume_command,
+                config,
+                clean_content,
+                search_priority_fields,
+            )
         else:
-            workflow_input = self._build_initial_state(clean_content)
+            workflow_input = self._build_initial_state(clean_content, search_priority_fields)
 
         result = await asyncio.to_thread(self._invoke_graph, workflow_input, config)
 
@@ -131,7 +138,11 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             assistant_message=assistant_message,
         )
 
-    def _build_initial_state(self, content: str) -> dict:
+    def _build_initial_state(
+        self,
+        content: str,
+        search_priority_fields: list[SearchPriorityField],
+    ) -> dict:
         return {
             StateKeys.MESSAGES: [HumanMessage(content=content)],
             StateKeys.ERRORS: [],
@@ -144,6 +155,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             StateKeys.CURRENT_STEP_INDEX: None,
             StateKeys.BUSINESS_QA_QUERIES: None,
             StateKeys.OUTFIT_SEARCH_INTENTS: None,
+            StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
             StateKeys.BUSINESS_ANSWERS: None,
             StateKeys.CURRENT_OUTFIT_REQUEST: None,
             StateKeys.PRODUCT_CANDIDATES: None,
@@ -152,7 +164,12 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             StateKeys.FINAL_RESPONSE_PAYLOAD: None,
         }
 
-    def _build_resume_command(self, config: dict[str, Any], content: str) -> Command:
+    def _build_resume_command(
+        self,
+        config: dict[str, Any],
+        content: str,
+        search_priority_fields: list[SearchPriorityField],
+    ) -> Command:
         with self._graph_lock:
             snapshot = self._graph.get_state(config)
         state_values = getattr(snapshot, "values", {}) or {}
@@ -161,6 +178,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
 
         update = {
             StateKeys.MESSAGES: [HumanMessage(content=content)],
+            StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
             StateKeys.PREVIOUS_SUMMARY: {
                 SumaryKeys.CONTENT: previous_summary.get(SumaryKeys.CONTENT),
                 SumaryKeys.POS_MSGS_COUNT: pos_msgs_count + 1,

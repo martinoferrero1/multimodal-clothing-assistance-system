@@ -8,7 +8,13 @@ from api.dependencies import (
     session_scope,
 )
 from api.route_helpers import chunk_text, sse_event
-from api.schemas import ChatMessageRead, ChatTurnResponse, ConversationRead, MessageCreate
+from api.schemas import (
+    ChatMessageRead,
+    ChatTurnResponse,
+    ConversationRead,
+    ConversationSearchPreferencesUpdate,
+    MessageCreate,
+)
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from infra.db.models.chat_models import ChatUser
@@ -38,6 +44,22 @@ async def list_conversation_messages(
     conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> list[ChatMessageRead]:
     return await conversation_service.list_conversation_messages(session, current_user.id, conversation_id)
+
+
+@router.put("/{conversation_id}/search-preferences", response_model=ConversationRead)
+async def update_conversation_search_preferences(
+    conversation_id: str,
+    payload: ConversationSearchPreferencesUpdate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
+) -> ConversationRead:
+    return await conversation_service.update_conversation_search_preferences(
+        session,
+        current_user.id,
+        conversation_id,
+        payload,
+    )
 
 
 @router.post("/{conversation_id}/messages", response_model=ChatTurnResponse)

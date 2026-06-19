@@ -6,7 +6,13 @@ from api.dependencies import (
     get_current_user,
     get_db_session,
 )
-from api.schemas import ConversationCreate, ConversationRead, UserRead
+from api.schemas import (
+    ConversationCreate,
+    ConversationRead,
+    SearchPreferencesRead,
+    SearchPreferencesUpdate,
+    UserRead,
+)
 from fastapi import APIRouter, Depends, status
 from infra.db.models.chat_models import ChatUser
 from services.auth_service import AuthenticationService
@@ -17,8 +23,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 @router.get("/me", response_model=UserRead)
-async def get_me(current_user: ChatUser = Depends(get_current_user)) -> UserRead:
-    return UserRead.model_validate(current_user)
+async def get_me(
+    current_user: ChatUser = Depends(get_current_user),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> UserRead:
+    return auth_service.build_user_read(current_user)
+
+
+@router.put("/me/search-preferences", response_model=SearchPreferencesRead)
+async def update_me_search_preferences(
+    payload: SearchPreferencesUpdate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> SearchPreferencesRead:
+    return await auth_service.update_user_search_preferences(session, current_user, payload)
 
 
 @router.get("/{user_id}", response_model=UserRead)
@@ -28,7 +47,7 @@ async def get_user(
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> UserRead:
     auth_service.ensure_same_user(current_user.id, user_id)
-    return UserRead.model_validate(current_user)
+    return auth_service.build_user_read(current_user)
 
 
 @router.post(

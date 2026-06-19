@@ -22,6 +22,7 @@ class ChatUser(Base):
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    search_preferences: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -43,6 +44,7 @@ class Conversation(Base):
     title: Mapped[str] = mapped_column(String(160), nullable=False, default="New conversation")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_message_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    search_preferences: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
