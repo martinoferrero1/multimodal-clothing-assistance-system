@@ -1,0 +1,149 @@
+import type {
+  AuthResponse,
+  ChatMessage,
+  ChatTurnResponse,
+  Conversation,
+  HealthResponse,
+  SearchPreferences,
+  SearchPriorityField,
+  User,
+} from "@/lib/types";
+
+type RequestOptions = {
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  token?: string;
+  body?: unknown;
+};
+
+export const AUTH_EXPIRED_EVENT = "digital-atelier-auth-expired";
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers = new Headers({
+    Accept: "application/json",
+  });
+
+  if (options.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (options.token) {
+    headers.set("Authorization", `Bearer ${options.token}`);
+  }
+
+  const response = await fetch(`/api/proxy/${path}`, {
+    method: options.method ?? "GET",
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    cache: "no-store",
+  });
+
+  const contentType = response.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    if (response.status === 401 && options.token && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
+
+    const message =
+      typeof payload === "object" && payload && "detail" in payload
+        ? String(payload.detail)
+        : typeof payload === "string" && payload
+          ? payload
+          : "No se pudo completar la solicitud.";
+    throw new ApiError(message, response.status);
+  }
+
+  return payload as T;
+}
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("api/auth/login", {
+    method: "POST",
+    body: { email, password },
+  });
+}
+
+export async function register(
+  displayName: string,
+  email: string,
+  password: string,
+): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("api/auth/register", {
+    method: "POST",
+    body: { display_name: displayName, email, password },
+  });
+}
+
+export async function getMe(token: string): Promise<User> {
+  return apiRequest<User>("api/users/me", { token });
+}
+
+export async function updateUserSearchPreferences(
+  token: string,
+  priorityFields: SearchPriorityField[],
+): Promise<SearchPreferences> {
+  return apiRequest<SearchPreferences>("api/users/me/search-preferences", {
+    method: "PUT",
+    token,
+    body: { priority_fields: priorityFields },
+  });
+}
+
+export async function getHealth(): Promise<HealthResponse> {
+  return apiRequest<HealthResponse>("health");
+}
+
+export async function listConversations(token: string): Promise<Conversation[]> {
+  return apiRequest<Conversation[]>("api/users/me/conversations", { token });
+}
+
+export async function createConversation(token: string, title?: string): Promise<Conversation> {
+  return apiRequest<Conversation>("api/users/me/conversations", {
+    method: "POST",
+    token,
+    body: { title: title?.trim() || null },
+  });
+}
+
+export async function getConversation(token: string, conversationId: string): Promise<Conversation> {
+  return apiRequest<Conversation>(`api/conversations/${conversationId}`, { token });
+}
+
+export async function updateConversationSearchPreferences(
+  token: string,
+  conversationId: string,
+  priorityFields: SearchPriorityField[] | null,
+): Promise<Conversation> {
+  return apiRequest<Conversation>(`api/conversations/${conversationId}/search-preferences`, {
+    method: "PUT",
+    token,
+    body: { priority_fields: priorityFields },
+  });
+}
+
+export async function listMessages(token: string, conversationId: string): Promise<ChatMessage[]> {
+  return apiRequest<ChatMessage[]>(`api/conversations/${conversationId}/messages`, { token });
+}
+
+export async function sendMessage(
+  token: string,
+  conversationId: string,
+  content: string,
+): Promise<ChatTurnResponse> {
+  return apiRequest<ChatTurnResponse>(`api/conversations/${conversationId}/messages`, {
+    method: "POST",
+    token,
+    body: { content },
+  });
+}

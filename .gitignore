@@ -207,6 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # Next.js frontend
+!src/frontend/lib/
+!src/frontend/lib/**
 src/frontend/node_modules/
 src/frontend/.next/
 src/frontend/out/

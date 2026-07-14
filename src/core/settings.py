@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     DATABASE_ECHO: bool = False
     LANGGRAPH_CHECKPOINT_DATABASE_URL: Optional[str] = None
     AUTH_TOKEN_SECRET: str = "development-auth-secret-change-me"
-    AUTH_TOKEN_EXPIRE_MINUTES: int = 10080
+    AUTH_TOKEN_EXPIRE_MINUTES: int = 60
 
     GOOGLE_LLM_MODEL: Optional[str] = None
     GROQ_LLM_MODEL: Optional[str] = None

@@ -3,12 +3,18 @@
 import {
   createContext,
   startTransition,
+  useCallback,
   useContext,
   useEffect,
   useState,
 } from "react";
 
-import { getMe, login as loginRequest, register as registerRequest } from "@/lib/api-client";
+import {
+  AUTH_EXPIRED_EVENT,
+  getMe,
+  login as loginRequest,
+  register as registerRequest,
+} from "@/lib/api-client";
 import { clearSession, readSession, writeSession } from "@/lib/storage";
 import type { AuthSession, User } from "@/lib/types";
 
@@ -25,10 +31,22 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const MAX_SESSION_TIMEOUT_MS = 2_147_483_647;
+
+function getSessionExpirationTime(session: AuthSession): number | null {
+  const expiresAt = new Date(session.token.expires_at).getTime();
+  return Number.isNaN(expiresAt) ? null : expiresAt;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
   const [session, setSession] = useState<AuthSession | null>(null);
+
+  const expireSession = useCallback(() => {
+    clearSession();
+    setSession(null);
+    setStatus("guest");
+  }, []);
 
   useEffect(() => {
     function deferStateUpdate(callback: () => void) {
@@ -41,8 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const expiresAt = new Date(stored.token.expires_at).getTime();
-    if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) {
+    const expiresAt = getSessionExpirationTime(stored);
+    if (expiresAt === null || expiresAt <= Date.now()) {
       clearSession();
       deferStateUpdate(() => {
         setSession(null);
@@ -63,14 +81,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(nextSession);
         setStatus("authenticated");
       } catch {
-        clearSession();
-        setSession(null);
-        setStatus("guest");
+        expireSession();
       }
     }
 
     void validateSession();
-  }, []);
+  }, [expireSession]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    const expiresAt = getSessionExpirationTime(session);
+    const delay =
+      expiresAt === null ? 0 : Math.max(0, Math.min(expiresAt - Date.now(), MAX_SESSION_TIMEOUT_MS));
+    const timeoutId = window.setTimeout(expireSession, delay);
+    return () => window.clearTimeout(timeoutId);
+  }, [expireSession, session]);
+
+  useEffect(() => {
+    function handleAuthExpired() {
+      expireSession();
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, [expireSession]);
 
   async function signIn(email: string, password: string) {
     const response = await loginRequest(email, password);
@@ -95,10 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   function signOut() {
-    clearSession();
     startTransition(() => {
-      setSession(null);
-      setStatus("guest");
+      expireSession();
     });
   }
 

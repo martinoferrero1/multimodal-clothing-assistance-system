@@ -113,9 +113,11 @@ class AuthenticationService(metaclass=SingletonMeta):
         return AuthResponse(token=token, user=self.build_user_read(user))
 
     def _create_access_token(self, user_id: str) -> AuthToken:
-        expires_at = datetime.now(UTC) + timedelta(minutes=settings.AUTH_TOKEN_EXPIRE_MINUTES)
+        issued_at = datetime.now(UTC)
+        expires_at = issued_at + timedelta(minutes=settings.AUTH_TOKEN_EXPIRE_MINUTES)
         payload = {
             "sub": user_id,
+            "iat": int(issued_at.timestamp()),
             "exp": int(expires_at.timestamp()),
         }
         payload_segment = self._urlsafe_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
@@ -151,10 +153,18 @@ class AuthenticationService(metaclass=SingletonMeta):
             return None
 
         expires_at = payload.get("exp")
+        issued_at = payload.get("iat")
         user_id = payload.get("sub")
-        if not isinstance(expires_at, int) or not isinstance(user_id, str):
+        if not isinstance(expires_at, int) or not isinstance(issued_at, int) or not isinstance(user_id, str):
             return None
-        if expires_at <= int(datetime.now(UTC).timestamp()):
+
+        now = int(datetime.now(UTC).timestamp())
+        max_lifetime_seconds = settings.AUTH_TOKEN_EXPIRE_MINUTES * 60
+        if issued_at > now:
+            return None
+        if expires_at <= now:
+            return None
+        if expires_at - issued_at > max_lifetime_seconds:
             return None
         return user_id
 

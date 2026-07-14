@@ -468,7 +468,7 @@ DATABASE_URL=sqlite:///catalog.db
 LANGGRAPH_CHECKPOINT_DATABASE_URL=sqlite:///data/langgraph_checkpoints.sqlite
 
 AUTH_TOKEN_SECRET=change-this-secret
-AUTH_TOKEN_EXPIRE_MINUTES=10080
+AUTH_TOKEN_EXPIRE_MINUTES=60
 
 LLM_SUB_AGENTS_PROVIDER=google
 LLM_SUPERVISOR_PROVIDER=google
@@ -491,7 +491,7 @@ Relevant variables:
 - `DATABASE_ECHO`: enables SQL logs.
 - `LANGGRAPH_CHECKPOINT_DATABASE_URL`: database for LangGraph checkpoints.
 - `AUTH_TOKEN_SECRET`: HMAC secret for bearer tokens.
-- `AUTH_TOKEN_EXPIRE_MINUTES`: token duration.
+- `AUTH_TOKEN_EXPIRE_MINUTES`: token duration in minutes.
 - `GOOGLE_LLM_MODEL`: Google chat model.
 - `GROQ_LLM_MODEL`: Groq chat model.
 - `GOOGLE_EMBEDDING_MODEL`: embedding model.
@@ -630,9 +630,9 @@ makes debugging easier from the database or API response.
 Authentication is implemented without an external provider:
 
 - Password hashing with `hashlib.scrypt`.
-- Bearer token signed with HMAC SHA-256.
+- Bearer token signed with HMAC SHA-256 and bounded by issued-at/expiration timestamps.
 - Configurable expiration.
-- Session persisted in the frontend's `localStorage`.
+- Session persisted in the frontend's `localStorage` until the token expires.
 
 For production, `AUTH_TOKEN_SECRET` must be changed. A more robust token/auth
 system should be evaluated if the product scope grows.
