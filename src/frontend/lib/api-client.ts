@@ -26,6 +26,28 @@ export class ApiError extends Error {
   }
 }
 
+async function parseApiResponse<T>(response: Response, hasToken: boolean): Promise<T> {
+  const contentType = response.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
+
+  if (!response.ok) {
+    if (response.status === 401 && hasToken && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
+
+    const message =
+      typeof payload === "object" && payload && "detail" in payload
+        ? String(payload.detail)
+        : typeof payload === "string" && payload
+          ? payload
+          : "No se pudo completar la solicitud.";
+    throw new ApiError(message, response.status);
+  }
+
+  return payload as T;
+}
+
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers({
     Accept: "application/json",
@@ -46,25 +68,23 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     cache: "no-store",
   });
 
-  const contentType = response.headers.get("content-type") ?? "";
-  const isJson = contentType.includes("application/json");
-  const payload = isJson ? await response.json() : await response.text();
+  return parseApiResponse<T>(response, Boolean(options.token));
+}
 
-  if (!response.ok) {
-    if (response.status === 401 && options.token && typeof window !== "undefined") {
-      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
-    }
+async function apiFormRequest<T>(path: string, token: string, body: FormData): Promise<T> {
+  const headers = new Headers({
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  });
 
-    const message =
-      typeof payload === "object" && payload && "detail" in payload
-        ? String(payload.detail)
-        : typeof payload === "string" && payload
-          ? payload
-          : "No se pudo completar la solicitud.";
-    throw new ApiError(message, response.status);
-  }
+  const response = await fetch(`/api/proxy/${path}`, {
+    method: "POST",
+    headers,
+    body,
+    cache: "no-store",
+  });
 
-  return payload as T;
+  return parseApiResponse<T>(response, true);
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
@@ -140,7 +160,21 @@ export async function sendMessage(
   token: string,
   conversationId: string,
   content: string,
+  images: File[] = [],
 ): Promise<ChatTurnResponse> {
+  if (images.length > 0) {
+    const body = new FormData();
+    body.set("content", content);
+    for (const image of images) {
+      body.append("images", image);
+    }
+    return apiFormRequest<ChatTurnResponse>(
+      `api/conversations/${conversationId}/messages/with-images`,
+      token,
+      body,
+    );
+  }
+
   return apiRequest<ChatTurnResponse>(`api/conversations/${conversationId}/messages`, {
     method: "POST",
     token,

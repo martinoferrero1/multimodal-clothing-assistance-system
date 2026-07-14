@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic import field_validator
@@ -92,6 +93,14 @@ class MessageCreate(BaseModel):
     content: str = Field(min_length=1)
 
 
+class MessageImageAttachment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    filename: str
+    content_type: str
+    data_url: str
+    description: str | None = None
+
+
 class ChatMessageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -99,6 +108,7 @@ class ChatMessageRead(BaseModel):
     conversation_id: str
     role: str
     content: str
+    attachments: list[MessageImageAttachment] | None = None
     final_response_payload: dict | None = None
     workflow_errors: list[dict] | None = None
     created_at: datetime

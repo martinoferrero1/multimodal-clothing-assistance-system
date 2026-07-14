@@ -469,6 +469,7 @@ LANGGRAPH_CHECKPOINT_DATABASE_URL=sqlite:///data/langgraph_checkpoints.sqlite
 
 AUTH_TOKEN_SECRET=change-this-secret
 AUTH_TOKEN_EXPIRE_MINUTES=60
+IMAGE_ANALYSIS_MODEL=gemini-2.5-flash
 
 LLM_SUB_AGENTS_PROVIDER=google
 LLM_SUPERVISOR_PROVIDER=google
@@ -492,6 +493,7 @@ Relevant variables:
 - `LANGGRAPH_CHECKPOINT_DATABASE_URL`: database for LangGraph checkpoints.
 - `AUTH_TOKEN_SECRET`: HMAC secret for bearer tokens.
 - `AUTH_TOKEN_EXPIRE_MINUTES`: token duration in minutes.
+- `IMAGE_ANALYSIS_MODEL`: Google Gemini model used to describe uploaded images for visual product search.
 - `GOOGLE_LLM_MODEL`: Google chat model.
 - `GROQ_LLM_MODEL`: Groq chat model.
 - `GOOGLE_EMBEDDING_MODEL`: embedding model.

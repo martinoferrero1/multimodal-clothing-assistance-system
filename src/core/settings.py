@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     LANGGRAPH_CHECKPOINT_DATABASE_URL: Optional[str] = None
     AUTH_TOKEN_SECRET: str = "development-auth-secret-change-me"
     AUTH_TOKEN_EXPIRE_MINUTES: int = 60
+    MAX_CHAT_IMAGE_ATTACHMENTS: int = 3
+    MAX_CHAT_IMAGE_UPLOAD_BYTES: int = 4 * 1024 * 1024
+    IMAGE_ANALYSIS_MODEL: Optional[str] = None
 
     GOOGLE_LLM_MODEL: Optional[str] = None
     GROQ_LLM_MODEL: Optional[str] = None

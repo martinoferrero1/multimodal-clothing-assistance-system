@@ -106,10 +106,19 @@ export type ChatMessage = {
   conversation_id: string;
   role: "user" | "assistant" | string;
   content: string;
+  attachments: MessageImageAttachment[] | null;
   final_response_payload: FinalResponsePayload | null;
   workflow_errors: Array<Record<string, unknown>> | null;
   created_at: string;
   pending?: boolean;
+};
+
+export type MessageImageAttachment = {
+  id: string;
+  filename: string;
+  content_type: string;
+  data_url: string;
+  description: string | null;
 };
 
 export type ChatTurnResponse = {

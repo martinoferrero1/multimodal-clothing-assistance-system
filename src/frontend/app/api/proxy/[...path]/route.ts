@@ -32,7 +32,9 @@ async function proxyRequest(
   }
 
   const body =
-    request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
+    request.method === "GET" || request.method === "HEAD"
+      ? undefined
+      : Buffer.from(await request.arrayBuffer());
 
   const upstream = await fetch(targetUrl, {
     method: request.method,
@@ -58,5 +60,16 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  return proxyRequest(request, context);
+}
+
+export async function PUT(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  return proxyRequest(request, context);
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> },
+) {
   return proxyRequest(request, context);
 }

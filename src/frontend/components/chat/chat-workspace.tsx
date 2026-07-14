@@ -1,8 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { startTransition, useEffect, useState } from "react";
-import { ArrowUp, Check, LoaderCircle, Plus, Settings2, Sparkles, X } from "lucide-react";
+import { startTransition, useEffect, useRef, useState } from "react";
+import {
+  ArrowUp,
+  Check,
+  ImagePlus,
+  LoaderCircle,
+  MessageCirclePlus,
+  Plus,
+  Settings2,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -34,6 +44,16 @@ type ChatWorkspaceProps = {
   conversationId: string;
 };
 
+type PendingImage = {
+  id: string;
+  file: File;
+  dataUrl: string;
+};
+
+const MAX_PENDING_IMAGES = 3;
+const MAX_PENDING_IMAGE_BYTES = 4 * 1024 * 1024;
+const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
 function getRoleOrder(role: string) {
   if (role === "user") {
     return 0;
@@ -60,13 +80,25 @@ function sortMessagesChronologically(items: ChatMessage[]) {
   });
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result)));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const auth = useAuth();
   const router = useRouter();
   const { createConversation, refreshConversations } = useConversations();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [selectedImages, setSelectedImages] = useState<PendingImage[]>([]);
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -203,19 +235,37 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   async function handleSend(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = draft.trim();
-    if (!trimmed || !auth.token || sending) {
+    const imagesToSend = selectedImages;
+    if ((!trimmed && imagesToSend.length === 0) || !auth.token || sending) {
       return;
     }
 
     setSending(true);
     setError(null);
     setDraft("");
+    setSelectedImages([]);
+
+    const displayContent =
+      trimmed ||
+      (imagesToSend.length === 1
+        ? `Search products based on ${imagesToSend[0].file.name}.`
+        : "Search products based on the uploaded images.");
 
     const optimisticUserMessage: ChatMessage = {
       id: `pending-user-${Date.now()}`,
       conversation_id: conversation?.id ?? "new",
       role: "user",
-      content: trimmed,
+      content: displayContent,
+      attachments:
+        imagesToSend.length > 0
+          ? imagesToSend.map((image) => ({
+              id: image.id,
+              filename: image.file.name,
+              content_type: image.file.type,
+              data_url: image.dataUrl,
+              description: null,
+            }))
+          : null,
       final_response_payload: null,
       workflow_errors: null,
       created_at: new Date().toISOString(),
@@ -227,6 +277,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       conversation_id: conversation?.id ?? "new",
       role: "assistant",
       content: "",
+      attachments: null,
       final_response_payload: null,
       workflow_errors: null,
       created_at: new Date().toISOString(),
@@ -238,11 +289,16 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     try {
       let activeConversation = conversation;
       if (conversationId === "new" || !activeConversation) {
-        activeConversation = await createConversation(trimmed.slice(0, 60));
+        activeConversation = await createConversation(displayContent.slice(0, 60));
         setConversation(activeConversation);
       }
 
-      const response = await sendMessage(auth.token, activeConversation.id, trimmed);
+      const response = await sendMessage(
+        auth.token,
+        activeConversation.id,
+        trimmed,
+        imagesToSend.map((image) => image.file),
+      );
 
       setMessages((current) => {
         const withoutPending = current.filter((message) => !message.pending);
@@ -262,6 +318,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       }
     } catch (caughtError) {
       setMessages((current) => current.filter((message) => !message.pending));
+      setSelectedImages(imagesToSend);
       setError(
         caughtError instanceof ApiError
           ? caughtError.message
@@ -270,6 +327,58 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     } finally {
       setSending(false);
     }
+  }
+
+  function handleOpenImagePicker() {
+    setAttachmentMenuOpen(false);
+    fileInputRef.current?.click();
+  }
+
+  async function handleImageSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) {
+      return;
+    }
+
+    setError(null);
+    const remainingSlots = MAX_PENDING_IMAGES - selectedImages.length;
+    if (remainingSlots <= 0) {
+      setError(`You can attach up to ${MAX_PENDING_IMAGES} images per message.`);
+      return;
+    }
+
+    const acceptedFiles = files.slice(0, remainingSlots);
+    const pendingImages: PendingImage[] = [];
+    for (const file of acceptedFiles) {
+      if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
+        setError("Only JPEG, PNG, WEBP, or GIF images are supported.");
+        continue;
+      }
+
+      if (file.size > MAX_PENDING_IMAGE_BYTES) {
+        setError("Each image must be 4 MB or smaller.");
+        continue;
+      }
+
+      pendingImages.push({
+        id: `${file.name}-${file.lastModified}-${crypto.randomUUID()}`,
+        file,
+        dataUrl: await readFileAsDataUrl(file),
+      });
+    }
+
+    if (files.length > remainingSlots) {
+      setError(`Only the first ${remainingSlots} image(s) were attached.`);
+    }
+
+    if (pendingImages.length > 0) {
+      setSelectedImages((current) => [...current, ...pendingImages]);
+    }
+  }
+
+  function handleRemoveSelectedImage(imageId: string) {
+    setSelectedImages((current) => current.filter((image) => image.id !== imageId));
   }
 
   function handleSelectOutfit(messageId: string, outfitIndex: number) {
@@ -403,6 +512,24 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                       ) : null}
 
                       {isUser ? (
+                        message.attachments?.length ? (
+                          <div className="mb-3 grid max-w-md grid-cols-2 gap-2">
+                            {message.attachments.map((attachment) => (
+                              <Image
+                                key={attachment.id}
+                                alt={attachment.filename}
+                                className="aspect-square rounded-[1rem] object-cover"
+                                src={attachment.data_url}
+                                width={220}
+                                height={220}
+                                unoptimized
+                              />
+                            ))}
+                          </div>
+                        ) : null
+                      ) : null}
+
+                      {isUser ? (
                         <p className="whitespace-pre-wrap text-sm leading-7">
                           {message.content}
                         </p>
@@ -432,15 +559,77 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           onSubmit={handleSend}
         >
           <div className="rounded-[1.8rem] border border-[var(--line)] bg-white/70 p-3 shadow-[0_18px_40px_rgba(76,47,26,0.08)]">
+            {selectedImages.length > 0 ? (
+              <div className="mb-3 flex flex-wrap gap-2 px-1">
+                {selectedImages.map((image) => (
+                  <div
+                    key={image.id}
+                    className="relative h-20 w-20 overflow-hidden rounded-[1rem] border border-[var(--line)] bg-white"
+                  >
+                    <Image
+                      alt={image.file.name}
+                      className="h-full w-full object-cover"
+                      src={image.dataUrl}
+                      width={160}
+                      height={160}
+                      unoptimized
+                    />
+                    <button
+                      className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(32,20,12,0.72)] text-white transition hover:bg-[rgba(32,20,12,0.9)]"
+                      type="button"
+                      aria-label={`Remove ${image.file.name}`}
+                      onClick={() => handleRemoveSelectedImage(image.id)}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="flex items-end gap-3">
-              <button
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:text-[var(--text)]"
-                type="button"
-                onClick={() => router.push("/chat/new")}
-                aria-label="New conversation"
-              >
-                <Plus size={18} />
-              </button>
+              <div className="relative">
+                <button
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:text-[var(--text)]"
+                  type="button"
+                  onClick={() => setAttachmentMenuOpen((open) => !open)}
+                  aria-label="Open attachment actions"
+                  aria-expanded={attachmentMenuOpen}
+                >
+                  <Plus size={18} />
+                </button>
+
+                {attachmentMenuOpen ? (
+                  <div className="absolute bottom-14 left-0 z-30 w-56 rounded-[1.2rem] border border-[var(--line)] bg-white/95 p-2 shadow-[0_18px_40px_rgba(76,47,26,0.14)] backdrop-blur">
+                    <button
+                      className="flex w-full items-center gap-3 rounded-[0.9rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(143,79,43,0.08)]"
+                      type="button"
+                      onClick={handleOpenImagePicker}
+                    >
+                      <ImagePlus size={17} />
+                      Upload image
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-3 rounded-[0.9rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(143,79,43,0.08)]"
+                      type="button"
+                      onClick={() => {
+                        setAttachmentMenuOpen(false);
+                        router.push("/chat/new");
+                      }}
+                    >
+                      <MessageCirclePlus size={17} />
+                      New conversation
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <input
+                ref={fileInputRef}
+                className="hidden"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                onChange={handleImageSelection}
+              />
               <button
                 className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:text-[var(--text)]"
                 type="button"
@@ -460,7 +649,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
               <button
                 className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={sending || !draft.trim()}
+                disabled={sending || (!draft.trim() && selectedImages.length === 0)}
                 type="submit"
                 aria-label="Send message"
               >

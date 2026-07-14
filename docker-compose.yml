@@ -27,6 +27,7 @@ services:
       LANGGRAPH_CHECKPOINT_DATABASE_URL: postgresql://clothing_assistant:clothing_assistant@db:5432/clothing_assistant
       AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-development-auth-secret-change-me}
       AUTH_TOKEN_EXPIRE_MINUTES: ${AUTH_TOKEN_EXPIRE_MINUTES:-60}
+      IMAGE_ANALYSIS_MODEL: ${IMAGE_ANALYSIS_MODEL:-gemini-2.5-flash}
       GOOGLE_LLM_MODEL: ${GOOGLE_LLM_MODEL}
       GROQ_LLM_MODEL: ${GROQ_LLM_MODEL}
       GOOGLE_EMBEDDING_MODEL: ${GOOGLE_EMBEDDING_MODEL}
