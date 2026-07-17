@@ -5,7 +5,11 @@ def get_prompt_from_path(path: str) -> str:
         prompt = file.read()
     return prompt
 
-def build_prompt(base_prompt_path: str, examples_prompt_path: Optional[str], include_examples: bool) -> str:
+def build_prompt(
+    base_prompt_path: str,
+    examples_prompt_path: Optional[str] = None,
+    include_examples: bool = False,
+) -> str:
     base_prompt = get_prompt_from_path(base_prompt_path)
     if include_examples and examples_prompt_path:
         examples_prompt = get_prompt_from_path(examples_prompt_path)

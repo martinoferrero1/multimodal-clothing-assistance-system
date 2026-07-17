@@ -5,12 +5,14 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Iterable
 
+from api.schemas import MessageImageAttachment
 from agents.main_supervisor_agent.graph import SupervisorGraph
 from core.metaclasses.singleton_meta import SingletonMeta
 from infra.db.models.chat_models import ChatMessage, Conversation, MessageRole
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langgraph.types import Command
 from schemas.outfit_maker.product_solicitation import SearchPriorityField
+from services.image_analysis_service import ImageAnalysisService
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from state import StateKeys, SumaryKeys
@@ -71,6 +73,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
     def __init__(self, checkpointer) -> None:
         self._graph = SupervisorGraph(checkpointer=checkpointer).get_graph()
         self._graph_lock = Lock()
+        self._image_analysis_service = ImageAnalysisService()
 
     async def process_user_message(
         self,
@@ -78,32 +81,44 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         conversation: Conversation,
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        image_attachments: list[MessageImageAttachment] | None = None,
     ) -> ChatTurnResult:
         clean_content = content.strip()
-        if not clean_content:
+        attachment_payloads = [
+            attachment.model_dump(mode="json")
+            for attachment in (image_attachments or [])
+        ]
+        if not clean_content and not attachment_payloads:
             raise ValueError("Message content cannot be empty.")
+
+        if attachment_payloads:
+            attachment_payloads = self._image_analysis_service.describe_attachments(attachment_payloads)
+
+        display_content = clean_content or self._default_image_search_content(attachment_payloads)
+        workflow_content = self._build_workflow_content(display_content, attachment_payloads)
 
         user_message = ChatMessage(
             conversation_id=conversation.id,
             role=MessageRole.USER.value,
-            content=clean_content,
+            content=display_content,
+            attachments=attachment_payloads or None,
         )
         session.add(user_message)
         await session.flush()
 
         if not conversation.title or conversation.title == "New conversation":
-            conversation.title = self._conversation_title_from_message(clean_content)
+            conversation.title = self._conversation_title_from_message(display_content)
 
         config = {"configurable": {"thread_id": conversation.id}}
         if await self._has_prior_checkpointed_turn(session, conversation.id):
             workflow_input = await asyncio.to_thread(
                 self._build_resume_command,
                 config,
-                clean_content,
+                workflow_content,
                 search_priority_fields,
             )
         else:
-            workflow_input = self._build_initial_state(clean_content, search_priority_fields)
+            workflow_input = self._build_initial_state(workflow_content, search_priority_fields)
 
         result = await asyncio.to_thread(self._invoke_graph, workflow_input, config)
 
@@ -136,6 +151,34 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             conversation=conversation,
             user_message=user_message,
             assistant_message=assistant_message,
+        )
+
+    def _default_image_search_content(self, attachments: list[dict[str, Any]]) -> str:
+        if len(attachments) == 1:
+            filename = attachments[0].get("filename") or "uploaded image"
+            return f"Search products based on {filename}."
+        return "Search products based on the uploaded images."
+
+    def _build_workflow_content(
+        self,
+        content: str,
+        attachments: list[dict[str, Any]],
+    ) -> str:
+        if not attachments:
+            return content
+
+        image_lines = [
+            (
+                f"Image {index + 1} ({attachment.get('filename') or 'uploaded image'}): "
+                f"{attachment.get('description') or 'No visual description available.'}"
+            )
+            for index, attachment in enumerate(attachments)
+        ]
+        return (
+            f"{content}\n\n"
+            "[Attached image analysis for product search]\n"
+            + "\n".join(image_lines)
+            + "\nUse these visual details together with the user's text when extracting the product request."
         )
 
     def _build_initial_state(
