@@ -264,6 +264,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
               content_type: image.file.type,
               data_url: image.dataUrl,
               description: null,
+              analysis: null,
             }))
           : null,
       final_response_payload: null,

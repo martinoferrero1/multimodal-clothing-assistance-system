@@ -119,6 +119,33 @@ export type MessageImageAttachment = {
   content_type: string;
   data_url: string;
   description: string | null;
+  analysis: ImageAnalysisResult | null;
+};
+
+export type GarmentVisualFeatures = {
+  garment_type: string | null;
+  dominant_colors: string[];
+  secondary_colors: string[];
+  gender_presentation: string | null;
+  style: string | null;
+  usage: string | null;
+  season: string | null;
+  pattern: string | null;
+  material: string | null;
+  fit: string | null;
+  notable_details: string[];
+  brand_or_logo_text: string | null;
+};
+
+export type ImageAnalysisResult = {
+  image_type:
+    | "single_garment"
+    | "outfit"
+    | "multiple_garments"
+    | "non_fashion"
+    | "unclear";
+  garments: GarmentVisualFeatures[];
+  summary: string;
 };
 
 export type ChatTurnResponse = {

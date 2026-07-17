@@ -22,11 +22,14 @@ def get_llm_model(is_supervisor: bool = False) -> BaseChatModel:
 
 
 def get_image_analysis_model() -> BaseChatModel:
-    from infra.providers.factories.google_factory import GoogleFactory
-
-    model = settings.IMAGE_ANALYSIS_MODEL or settings.GOOGLE_LLM_MODEL or "gemini-2.5-flash"
-    return GoogleFactory.get_llm_model_instance(model, settings.GOOGLE_LLM_TEMPERATURE)
-
+    provider = settings.IMAGE_ANALYSIS_PROVIDER.lower()
+    if provider == Provider.google:
+        from infra.providers.factories.google_factory import GoogleFactory
+        return GoogleFactory.get_llm_model_instance(
+            settings.GOOGLE_IMAGE_ANALYSIS_MODEL, settings.GOOGLE_LLM_TEMPERATURE
+        )
+    else:
+        raise ValueError(f"Unsupported image analysis provider: {provider}")
 
 def get_embedding_model():
     provider = settings.EMBEDDINGS_PROVIDER.lower()

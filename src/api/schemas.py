@@ -6,6 +6,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic import field_validator
+from schemas.image_analysis import ImageAnalysisResult
 from schemas.outfit_maker.product_solicitation import (
     SearchPriorityField,
     normalize_priority_fields,
@@ -99,6 +100,7 @@ class MessageImageAttachment(BaseModel):
     content_type: str
     data_url: str
     description: str | None = None
+    analysis: ImageAnalysisResult | None = None
 
 
 class ChatMessageRead(BaseModel):
