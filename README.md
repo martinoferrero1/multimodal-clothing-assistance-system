@@ -469,10 +469,12 @@ LANGGRAPH_CHECKPOINT_DATABASE_URL=sqlite:///data/langgraph_checkpoints.sqlite
 
 AUTH_TOKEN_SECRET=change-this-secret
 AUTH_TOKEN_EXPIRE_MINUTES=60
+GOOGLE_IMAGE_ANALYSIS_MODEL=gemini-2.5-flash
 
 LLM_SUB_AGENTS_PROVIDER=google
 LLM_SUPERVISOR_PROVIDER=google
 EMBEDDINGS_PROVIDER=google
+IMAGE_ANALYSIS_PROVIDER=google
 
 GOOGLE_LLM_MODEL=gemini-2.0-flash
 GOOGLE_EMBEDDING_MODEL=gemini-embedding-001
@@ -492,12 +494,14 @@ Relevant variables:
 - `LANGGRAPH_CHECKPOINT_DATABASE_URL`: database for LangGraph checkpoints.
 - `AUTH_TOKEN_SECRET`: HMAC secret for bearer tokens.
 - `AUTH_TOKEN_EXPIRE_MINUTES`: token duration in minutes.
+- `GOOGLE_IMAGE_ANALYSIS_MODEL`: Google Gemini model used to describe uploaded images for visual product search.
 - `GOOGLE_LLM_MODEL`: Google chat model.
 - `GROQ_LLM_MODEL`: Groq chat model.
 - `GOOGLE_EMBEDDING_MODEL`: embedding model.
 - `LLM_SUB_AGENTS_PROVIDER`: provider for sub-agents.
 - `LLM_SUPERVISOR_PROVIDER`: provider for the supervisor.
 - `EMBEDDINGS_PROVIDER`: provider for embeddings.
+- `IMAGE_ANALYSIS_PROVIDER`: provider for image analysis. Currently, `google` is supported.
 - `INCLUDE_PROMPT_EXAMPLES`: includes prompt examples where supported.
 - `PRODUCT_SEARCH_PRIORITY_FIELDS`: optional comma-separated product search priority fields. Supported values are `gender`, `season`, `base_colors`, `secondary_colors`, `max_price`, and `category`. Category priority uses the deepest available request taxonomy field among article type, subcategory, and master category.
 - `BUSINESS_KNOWLEDGE_DIR`: RAG document folder.

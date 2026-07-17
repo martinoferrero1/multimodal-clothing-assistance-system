@@ -81,6 +81,7 @@ class ChatMessage(Base):
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    attachments: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     final_response_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     workflow_errors: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

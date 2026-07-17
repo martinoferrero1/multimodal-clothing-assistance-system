@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     LANGGRAPH_CHECKPOINT_DATABASE_URL: Optional[str] = None
     AUTH_TOKEN_SECRET: str = "development-auth-secret-change-me"
     AUTH_TOKEN_EXPIRE_MINUTES: int = 60
+    MAX_CHAT_IMAGE_ATTACHMENTS: int = 3
+    MAX_CHAT_IMAGE_UPLOAD_BYTES: int = 4 * 1024 * 1024
 
     GOOGLE_LLM_MODEL: Optional[str] = None
     GROQ_LLM_MODEL: Optional[str] = None
@@ -16,12 +18,15 @@ class Settings(BaseSettings):
     GOOGLE_EMBEDDING_MODEL: Optional[str] = None
     GROQ_EMBEDDING_MODEL: Optional[str] = None
 
+    GOOGLE_IMAGE_ANALYSIS_MODEL: Optional[str] = None
+
     GOOGLE_API_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
 
     LLM_SUB_AGENTS_PROVIDER: Provider = Provider.google
     LLM_SUPERVISOR_PROVIDER: Provider = Provider.google
     EMBEDDINGS_PROVIDER: Provider = Provider.google
+    IMAGE_ANALYSIS_PROVIDER: Provider = Provider.google
 
     GOOGLE_LLM_TEMPERATURE: Optional[float] = None
     GROQ_LLM_TEMPERATURE: Optional[float] = None
@@ -60,6 +65,9 @@ class Settings(BaseSettings):
         match self.EMBEDDINGS_PROVIDER:
             case Provider.google: self._check_api_key_and_model(Provider.google, self.GOOGLE_EMBEDDING_MODEL, self.GOOGLE_API_KEY, is_embedding_provider=True)
             case Provider.groq: self._check_api_key_and_model(Provider.groq, self.GROQ_EMBEDDING_MODEL, self.GROQ_API_KEY, is_embedding_provider=True)
+        match self.IMAGE_ANALYSIS_PROVIDER:
+            case Provider.google: self._check_api_key_and_model(Provider.google, self.GOOGLE_IMAGE_ANALYSIS_MODEL, self.GOOGLE_API_KEY)
+            case _: raise ValueError(f"Unsupported image analysis provider: {self.IMAGE_ANALYSIS_PROVIDER}")
         return self
 
     class Config:

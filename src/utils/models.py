@@ -21,6 +21,16 @@ def get_llm_model(is_supervisor: bool = False) -> BaseChatModel:
         raise ValueError(f"Unsupported provider: {provider}")
 
 
+def get_image_analysis_model() -> BaseChatModel:
+    provider = settings.IMAGE_ANALYSIS_PROVIDER.lower()
+    if provider == Provider.google:
+        from infra.providers.factories.google_factory import GoogleFactory
+        return GoogleFactory.get_llm_model_instance(
+            settings.GOOGLE_IMAGE_ANALYSIS_MODEL, settings.GOOGLE_LLM_TEMPERATURE
+        )
+    else:
+        raise ValueError(f"Unsupported image analysis provider: {provider}")
+
 def get_embedding_model():
     provider = settings.EMBEDDINGS_PROVIDER.lower()
     if provider == Provider.google:

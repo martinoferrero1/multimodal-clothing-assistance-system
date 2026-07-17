@@ -73,3 +73,10 @@ class Database(metaclass=SingletonMeta):
                 }
                 if "search_preferences" not in conversation_column_names:
                     connection.execute(text("ALTER TABLE conversations ADD COLUMN search_preferences JSON"))
+
+            if inspector.has_table("chat_messages"):
+                message_column_names = {
+                    column["name"] for column in inspector.get_columns("chat_messages")
+                }
+                if "attachments" not in message_column_names:
+                    connection.execute(text("ALTER TABLE chat_messages ADD COLUMN attachments JSON"))

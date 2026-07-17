@@ -8,6 +8,7 @@ from api.schemas import (
     ConversationRead,
     ConversationSearchPreferencesRead,
     ConversationSearchPreferencesUpdate,
+    MessageImageAttachment,
 )
 from core.metaclasses.singleton_meta import SingletonMeta
 from fastapi import HTTPException, status
@@ -15,7 +16,7 @@ from infra.db.models.chat_models import ChatMessage, ChatUser, Conversation, Mes
 from schemas.outfit_maker.product_solicitation import SearchPriorityField
 from services.conversation_runtime_service import ConversationRuntimeService
 from services.search_preferences_service import get_search_preferences_service
-from sqlalchemy import case, select
+from sqlalchemy import case, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -91,6 +92,7 @@ class ConversationService(metaclass=SingletonMeta):
         conversation_id: str,
         content: str,
         chat_runtime: ConversationRuntimeService,
+        image_attachments: list[MessageImageAttachment] | None = None,
     ) -> ChatTurnResponse:
         conversation = await self._get_user_conversation(session, user_id, conversation_id)
         user = await self._get_user(session, user_id)
@@ -104,6 +106,7 @@ class ConversationService(metaclass=SingletonMeta):
                 conversation,
                 content,
                 search_priority_fields=search_priority_fields,
+                image_attachments=image_attachments,
             )
         except ValueError as exc:
             await session.rollback()
@@ -148,7 +151,7 @@ class ConversationService(metaclass=SingletonMeta):
         conversation: Conversation,
         user_priority_fields: list[SearchPriorityField],
     ) -> ConversationRead:
-        messages = list(getattr(conversation, "messages", []) or [])
+        messages = self._loaded_messages(conversation)
         last_message = messages[-1] if messages else None
         search_preferences_service = get_search_preferences_service()
         override_priority_fields = search_preferences_service.conversation_override_fields(
@@ -173,6 +176,11 @@ class ConversationService(metaclass=SingletonMeta):
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
         )
+
+    def _loaded_messages(self, conversation: Conversation) -> list[ChatMessage]:
+        if "messages" in inspect(conversation).unloaded:
+            return []
+        return list(conversation.messages or [])
 
     async def _get_user(self, session: AsyncSession, user_id: str) -> ChatUser:
         user = await session.get(ChatUser, user_id)
