@@ -7,9 +7,10 @@ user requests.
 
 > Status: under active development. The conversational backend,
 > authentication, conversation persistence, business-information RAG, and
-> text-based product search are already implemented. User image uploads, full
-> visual reasoning, and persistent saved outfits as first-class entities are
-> part of the product vision and are still being built.
+> text-based product search are already implemented. User image uploads and
+> backend-configurable image search modes are implemented for the chat flow.
+> Persistent saved outfits as first-class entities are part of the product
+> vision and are still being built.
 
 ## Project Vision
 
@@ -57,8 +58,7 @@ but the API and UI are still primarily text-based.
 
 ## In Development / Roadmap
 
-- User image uploads for true multimodal search.
-- Visual comparison against similar catalog products.
+- Stronger multimodal image embeddings for visual search quality.
 - Saving personalized outfits as dedicated database entities.
 - Editing previously saved outfits.
 - Favorites, collections, or wishlist flows.
@@ -485,6 +485,11 @@ GROQ_API_KEY=your-groq-api-key
 
 INCLUDE_PROMPT_EXAMPLES=false
 PRODUCT_SEARCH_PRIORITY_FIELDS=
+IMAGE_SEARCH_MODE=characteristics
+IMAGE_VISUAL_SEARCH_CANDIDATE_LIMIT=80
+IMAGE_VISUAL_SEARCH_WEIGHT=10.0
+IMAGE_VISUAL_SEARCH_FETCH_TIMEOUT_SECONDS=3.0
+IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES=5242880
 ```
 
 Relevant variables:
@@ -502,6 +507,11 @@ Relevant variables:
 - `LLM_SUPERVISOR_PROVIDER`: provider for the supervisor.
 - `EMBEDDINGS_PROVIDER`: provider for embeddings.
 - `IMAGE_ANALYSIS_PROVIDER`: provider for image analysis. Currently, `google` is supported.
+- `IMAGE_SEARCH_MODE`: image search strategy. Use `characteristics` to search from analyzed image text, or `visual_similarity` to combine direct catalog image similarity with text and structured ranking.
+- `IMAGE_VISUAL_SEARCH_CANDIDATE_LIMIT`: fallback candidate count used by the text-ranking path when priority filters do not produce enough products.
+- `IMAGE_VISUAL_SEARCH_WEIGHT`: weight applied to direct visual similarity scores.
+- `IMAGE_VISUAL_SEARCH_FETCH_TIMEOUT_SECONDS`: timeout for downloading catalog product images during visual feature extraction.
+- `IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES`: maximum catalog image download size for visual feature extraction.
 - `INCLUDE_PROMPT_EXAMPLES`: includes prompt examples where supported.
 - `PRODUCT_SEARCH_PRIORITY_FIELDS`: optional comma-separated product search priority fields. Supported values are `gender`, `season`, `base_colors`, `secondary_colors`, `max_price`, and `category`. Category priority uses the deepest available request taxonomy field among article type, subcategory, and master category.
 - `BUSINESS_KNOWLEDGE_DIR`: RAG document folder.

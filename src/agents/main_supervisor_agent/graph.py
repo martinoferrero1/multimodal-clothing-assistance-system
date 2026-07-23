@@ -163,6 +163,7 @@ class SupervisorGraph(BaseGraph):
         product_candidates = search_product_candidates(
             state.get(StateKeys.CURRENT_OUTFIT_REQUEST),
             priority_fields=state.get(StateKeys.SEARCH_PRIORITY_FIELDS, []),
+            image_search_features=state.get(StateKeys.IMAGE_SEARCH_FEATURES, []),
         )
         logger.info("Found product candidates for %s request item(s)", len(product_candidates))
         logger.debug("Product candidate details: %s", product_candidates)

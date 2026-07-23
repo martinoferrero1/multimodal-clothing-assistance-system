@@ -13,6 +13,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langgraph.types import Command
 from schemas.outfit_maker.product_solicitation import SearchPriorityField
 from services.image_analysis_service import ImageAnalysisService
+from services.image_similarity_service import ImageSimilarityService
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from state import StateKeys, SumaryKeys
@@ -74,6 +75,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         self._graph = SupervisorGraph(checkpointer=checkpointer).get_graph()
         self._graph_lock = Lock()
         self._image_analysis_service = ImageAnalysisService()
+        self._image_similarity_service = ImageSimilarityService()
 
     async def process_user_message(
         self,
@@ -93,6 +95,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
 
         if attachment_payloads:
             attachment_payloads = self._image_analysis_service.describe_attachments(attachment_payloads)
+        image_search_features = self._image_similarity_service.extract_attachment_features(attachment_payloads)
 
         display_content = clean_content or self._default_image_search_content(attachment_payloads)
         workflow_content = self._build_workflow_content(display_content, attachment_payloads)
@@ -116,9 +119,14 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
                 config,
                 workflow_content,
                 search_priority_fields,
+                image_search_features,
             )
         else:
-            workflow_input = self._build_initial_state(workflow_content, search_priority_fields)
+            workflow_input = self._build_initial_state(
+                workflow_content,
+                search_priority_fields,
+                image_search_features,
+            )
 
         result = await asyncio.to_thread(self._invoke_graph, workflow_input, config)
 
@@ -185,6 +193,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         self,
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        image_search_features: list[dict[str, Any]],
     ) -> dict:
         return {
             StateKeys.MESSAGES: [HumanMessage(content=content)],
@@ -199,6 +208,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             StateKeys.BUSINESS_QA_QUERIES: None,
             StateKeys.OUTFIT_SEARCH_INTENTS: None,
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
+            StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
             StateKeys.BUSINESS_ANSWERS: None,
             StateKeys.CURRENT_OUTFIT_REQUEST: None,
             StateKeys.PRODUCT_CANDIDATES: None,
@@ -212,6 +222,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         config: dict[str, Any],
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        image_search_features: list[dict[str, Any]],
     ) -> Command:
         with self._graph_lock:
             snapshot = self._graph.get_state(config)
@@ -222,6 +233,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         update = {
             StateKeys.MESSAGES: [HumanMessage(content=content)],
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
+            StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
             StateKeys.PREVIOUS_SUMMARY: {
                 SumaryKeys.CONTENT: previous_summary.get(SumaryKeys.CONTENT),
                 SumaryKeys.POS_MSGS_COUNT: pos_msgs_count + 1,
