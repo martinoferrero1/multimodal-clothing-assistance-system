@@ -45,6 +45,21 @@ textarea {
   font: inherit;
 }
 
+button:not(:disabled):not([aria-disabled="true"]),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+summary,
+select:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="file"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+label[for] {
+  cursor: pointer;
+}
+
 ::selection {
   background: rgba(143, 79, 43, 0.18);
   color: var(--text);

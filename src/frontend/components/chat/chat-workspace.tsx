@@ -330,6 +330,15 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     }
   }
 
+  function handleDraftKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
+
   function handleOpenImagePicker() {
     setAttachmentMenuOpen(false);
     fileInputRef.current?.click();
@@ -646,6 +655,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                 rows={1}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={handleDraftKeyDown}
               />
 
               <button
