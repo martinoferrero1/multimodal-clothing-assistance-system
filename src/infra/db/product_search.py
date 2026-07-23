@@ -23,6 +23,7 @@ from schemas.outfit_maker.product_solicitation import (
     SearchPriorityField,
     normalize_priority_fields,
 )
+from services.image_similarity_service import score_products_by_image_similarity
 from utils.models import get_embedding_model, get_embedding_model_identifier
 
 
@@ -41,6 +42,7 @@ def search_product_candidates(
     request: ItemSpecList | None,
     options_per_item: int = DEFAULT_OPTIONS_PER_ITEM,
     priority_fields: list[SearchPriorityField] | None = None,
+    image_search_features: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     if request is None:
         return []
@@ -55,7 +57,14 @@ def search_product_candidates(
         products = _load_product_pool(session)
         logger.info("Loaded %s products from the database for candidate search", len(products))
         return [
-            _search_item(session, products, item, options_per_item, configured_priority_fields)
+            _search_item(
+                session,
+                products,
+                item,
+                options_per_item,
+                configured_priority_fields,
+                image_search_features,
+            )
             for item in request.items
         ]
 
@@ -66,6 +75,7 @@ def _search_item(
     item: ItemSpec,
     options_per_item: int,
     configured_priority_fields: list[SearchPriorityField] | None,
+    image_search_features: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
     if isinstance(item, OutfitSpec):
         return {
@@ -78,6 +88,7 @@ def _search_item(
                     _merge_outfit_defaults(item, garment),
                     options_per_item,
                     configured_priority_fields,
+                    image_search_features,
                 )
                 for garment in item.items
             ],
@@ -85,7 +96,14 @@ def _search_item(
 
     return {
         "kind": "garment",
-        **_search_garment(session, products, item, options_per_item, configured_priority_fields),
+        **_search_garment(
+            session,
+            products,
+            item,
+            options_per_item,
+            configured_priority_fields,
+            image_search_features,
+        ),
     }
 
 
@@ -113,33 +131,47 @@ def _search_garment(
     garment: GarmentSpec,
     options_per_item: int,
     configured_priority_fields: list[SearchPriorityField] | None,
+    image_search_features: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
     semantic_query = _request_search_text(garment)
     priority_fields = _effective_priority_fields(garment, configured_priority_fields)
     active_priority_fields = _active_priority_fields(garment, priority_fields)
     priority_products = _priority_filtered_products(products, garment, active_priority_fields)
 
-    if active_priority_fields and len(priority_products) >= options_per_item:
-        semantic_scores = _semantic_similarity_scores(session, semantic_query, priority_products)
-        ranked = _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
-        selected = ranked[:options_per_item]
-    elif active_priority_fields:
-        semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
-        ranked_priority = _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
-        ranked_fallback = _rank_products(products, garment, semantic_scores, [])
-        selected = _merge_priority_and_fallback_rankings(
-            ranked_priority,
-            ranked_fallback,
+    ranked = _rank_text_search_candidates(
+        session,
+        products,
+        garment,
+        semantic_query,
+        active_priority_fields,
+        priority_products,
+        options_per_item,
+    )
+    ranking_pool = ranked
+
+    if _uses_visual_similarity_search(image_search_features):
+        ranking_pool = _rank_direct_visual_search_pool(
+            session,
+            products,
+            garment,
+            semantic_query,
+            active_priority_fields,
+            priority_products,
             options_per_item,
         )
-    else:
-        semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
-        ranked = _rank_products(products, garment, semantic_scores, [])
-        selected = ranked[:options_per_item]
+
+    selected = _select_ranked_products(
+        session,
+        ranking_pool,
+        image_search_features,
+        options_per_item,
+        fallback_ranked=ranked,
+    )
 
     return {
         "request": garment.model_dump(),
         "semantic_query": semantic_query,
+        "image_search_mode": settings.IMAGE_SEARCH_MODE,
         "priority_fields": active_priority_fields,
         "priority_candidate_count": len(priority_products) if active_priority_fields else None,
         "candidates": [
@@ -147,6 +179,51 @@ def _search_garment(
             for score, product in selected
         ],
     }
+
+
+def _rank_text_search_candidates(
+    session: Session,
+    products: list[Product],
+    garment: GarmentSpec,
+    semantic_query: str,
+    active_priority_fields: list[SearchPriorityField],
+    priority_products: list[Product],
+    options_per_item: int,
+) -> list[tuple[float, Product]]:
+    if active_priority_fields and len(priority_products) >= options_per_item:
+        semantic_scores = _semantic_similarity_scores(session, semantic_query, priority_products)
+        return _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
+    elif active_priority_fields:
+        semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
+        ranked_priority = _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
+        ranked_fallback = _rank_products(products, garment, semantic_scores, [])
+        ranked = _merge_priority_and_fallback_rankings(
+            ranked_priority,
+            ranked_fallback,
+            max(options_per_item, settings.IMAGE_VISUAL_SEARCH_CANDIDATE_LIMIT),
+        )
+        return ranked
+
+    semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
+    return _rank_products(products, garment, semantic_scores, [])
+
+
+def _rank_direct_visual_search_pool(
+    session: Session,
+    products: list[Product],
+    garment: GarmentSpec,
+    semantic_query: str,
+    active_priority_fields: list[SearchPriorityField],
+    priority_products: list[Product],
+    options_per_item: int,
+) -> list[tuple[float, Product]]:
+    eligible_products = (
+        priority_products
+        if active_priority_fields and len(priority_products) >= options_per_item
+        else products
+    )
+    semantic_scores = _semantic_similarity_scores(session, semantic_query, eligible_products)
+    return _rank_products(eligible_products, garment, semantic_scores, active_priority_fields)
 
 
 def _rank_products(
@@ -168,6 +245,45 @@ def _rank_products(
         ),
         reverse=True,
     )
+
+
+def _select_ranked_products(
+    session: Session,
+    ranked: list[tuple[float, Product]],
+    image_search_features: list[dict[str, Any]] | None,
+    limit: int,
+    fallback_ranked: list[tuple[float, Product]] | None = None,
+) -> list[tuple[float, Product]]:
+    if not _uses_visual_similarity_search(image_search_features):
+        return ranked[:limit]
+
+    candidate_pool = ranked
+    visual_scores = score_products_by_image_similarity(
+        session,
+        image_search_features,
+        [product for _, product in candidate_pool],
+    )
+    if not visual_scores:
+        return (fallback_ranked or ranked)[:limit]
+
+    return sorted(
+        (
+            (score + visual_scores.get(product.id, 0.0) * settings.IMAGE_VISUAL_SEARCH_WEIGHT, product)
+            for score, product in candidate_pool
+        ),
+        key=lambda pair: (
+            pair[0],
+            -pair[1].price,
+            -pair[1].id,
+        ),
+        reverse=True,
+    )[:limit]
+
+
+def _uses_visual_similarity_search(
+    image_search_features: list[dict[str, Any]] | None,
+) -> bool:
+    return settings.IMAGE_SEARCH_MODE == "visual_similarity" and bool(image_search_features)
 
 
 def _merge_priority_and_fallback_rankings(

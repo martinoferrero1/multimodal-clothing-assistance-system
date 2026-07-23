@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 from pydantic import model_validator
 from schemas.provider import Provider
-from typing import Optional
+from typing import Literal, Optional
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///catalog.db"
@@ -33,6 +33,11 @@ class Settings(BaseSettings):
 
     INCLUDE_PROMPT_EXAMPLES: Optional[bool] = None
     PRODUCT_SEARCH_PRIORITY_FIELDS: str = ""
+    IMAGE_SEARCH_MODE: Literal["characteristics", "visual_similarity"] = "characteristics"
+    IMAGE_VISUAL_SEARCH_CANDIDATE_LIMIT: int = 80
+    IMAGE_VISUAL_SEARCH_WEIGHT: float = 10.0
+    IMAGE_VISUAL_SEARCH_FETCH_TIMEOUT_SECONDS: float = 3.0
+    IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES: int = 5 * 1024 * 1024
 
     BUSINESS_KNOWLEDGE_DIR: str = "data/business_knowledge"
     BUSINESS_KNOWLEDGE_GLOB: str = "*.knowledge.md"

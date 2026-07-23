@@ -11,6 +11,7 @@ pydantic-settings
 python-dotenv
 email-validator
 python-multipart
+Pillow
 langchain-core
 langchain-groq
 langchain-google-genai
