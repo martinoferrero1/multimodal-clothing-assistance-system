@@ -11,6 +11,8 @@ from api.schemas import (
     ConversationRead,
     SearchPreferencesRead,
     SearchPreferencesUpdate,
+    UserStylePreferencesRead,
+    UserStylePreferencesUpdate,
     UserRead,
 )
 from fastapi import APIRouter, Depends, status
@@ -38,6 +40,35 @@ async def update_me_search_preferences(
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> SearchPreferencesRead:
     return await auth_service.update_user_search_preferences(session, current_user, payload)
+
+
+@router.put("/me/style-preferences", response_model=UserStylePreferencesRead)
+async def update_me_style_preferences(
+    payload: UserStylePreferencesUpdate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> UserStylePreferencesRead:
+    return await auth_service.update_user_style_preferences(session, current_user, payload)
+
+
+@router.delete("/me/style-preferences/explicit", response_model=UserStylePreferencesRead)
+async def clear_me_explicit_style_preferences(
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> UserStylePreferencesRead:
+    return await auth_service.clear_user_explicit_style_preferences(session, current_user)
+
+
+@router.delete("/me/style-preferences/inferred/{inferred_id}", response_model=UserStylePreferencesRead)
+async def remove_me_inferred_style_preference(
+    inferred_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> UserStylePreferencesRead:
+    return await auth_service.remove_user_inferred_style_preference(session, current_user, inferred_id)
 
 
 @router.get("/{user_id}", response_model=UserRead)

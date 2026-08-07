@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, PanelsTopLeft, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
-import { ApiError, updateUserSearchPreferences } from "@/lib/api-client";
+import {
+  ApiError,
+  clearUserExplicitStylePreferences,
+  removeUserInferredStylePreference,
+  updateUserSearchPreferences,
+  updateUserStylePreferences,
+} from "@/lib/api-client";
 import { formatShortDate } from "@/lib/format";
 import {
   SEARCH_PRIORITY_OPTIONS,
@@ -12,9 +18,24 @@ import {
   togglePriorityField,
 } from "@/lib/search-preferences";
 import { readPreferences, writePreferences } from "@/lib/storage";
-import type { SearchPriorityField, SettingsPreferences } from "@/lib/types";
+import type { SearchPriorityField, SettingsPreferences, StylePreferenceDetails } from "@/lib/types";
 
 type SettingsSection = "general" | "account";
+type StyleDraft = Record<keyof StylePreferenceDetails, string>;
+
+const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; label: string; multiline?: boolean }> = [
+  { key: "liked_styles", label: "Liked styles" },
+  { key: "disliked_styles", label: "Styles to avoid" },
+  { key: "preferred_colors", label: "Preferred colors" },
+  { key: "avoided_colors", label: "Colors to avoid" },
+  { key: "preferred_brands", label: "Preferred brands" },
+  { key: "avoided_brands", label: "Brands to avoid" },
+  { key: "preferred_fits", label: "Preferred fits" },
+  { key: "occasions", label: "Occasions" },
+  { key: "budget_notes", label: "Budget notes", multiline: true },
+  { key: "sizing_notes", label: "Sizing notes", multiline: true },
+  { key: "freeform_notes", label: "Style notes", multiline: true },
+];
 
 export function SettingsView() {
   const auth = useAuth();
@@ -25,7 +46,17 @@ export function SettingsView() {
     useState<SearchPriorityField[] | null>(null);
   const [savingSearchPreferences, setSavingSearchPreferences] = useState(false);
   const [searchPreferencesError, setSearchPreferencesError] = useState<string | null>(null);
+  const [styleDraft, setStyleDraft] = useState<StyleDraft>(() => stylePreferencesToDraft(auth.user?.style_preferences?.explicit));
+  const [savingStylePreferences, setSavingStylePreferences] = useState(false);
+  const [stylePreferencesError, setStylePreferencesError] = useState<string | null>(null);
   const searchPriorityFields = optimisticSearchPriorityFields ?? authPriorityFields;
+  const stylePreferences = auth.user?.style_preferences;
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setStyleDraft(stylePreferencesToDraft(auth.user?.style_preferences?.explicit));
+    });
+  }, [auth.user?.style_preferences?.explicit]);
 
   function updatePreferences(nextPreferences: SettingsPreferences) {
     setPreferences(nextPreferences);
@@ -57,6 +88,88 @@ export function SettingsView() {
       );
     } finally {
       setSavingSearchPreferences(false);
+    }
+  }
+
+  async function handlePersonalizedStylesToggle() {
+    if (!auth.token || savingStylePreferences || !stylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await updateUserStylePreferences(auth.token, {
+        use_personalized_styles: !stylePreferences.use_personalized_styles,
+      });
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not update personalized style usage.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
+    }
+  }
+
+  async function handleSaveExplicitStylePreferences() {
+    if (!auth.token || savingStylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await updateUserStylePreferences(auth.token, { explicit: draftToStylePreferences(styleDraft) });
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not save your style preferences.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
+    }
+  }
+
+  async function handleClearExplicitStylePreferences() {
+    if (!auth.token || savingStylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await clearUserExplicitStylePreferences(auth.token);
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not clear your style preferences.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
+    }
+  }
+
+  async function handleRemoveInferredStylePreference(inferredId: string) {
+    if (!auth.token || savingStylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await removeUserInferredStylePreference(auth.token, inferredId);
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not remove the inferred preference.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
     }
   }
 
@@ -168,6 +281,111 @@ export function SettingsView() {
                   </p>
                 ) : null}
               </section>
+              <section className="rounded-[1.4rem] border border-[var(--line)] bg-white/68 px-4 py-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text)]">Personalized style memory</p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      Let recommendations use your saved and inferred style preferences when your current request does not conflict.
+                    </p>
+                  </div>
+                  <button
+                    className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${stylePreferences?.use_personalized_styles ? "bg-[var(--accent)]" : "bg-[rgba(143,79,43,0.18)]"}`}
+                    type="button"
+                    disabled={!auth.token || savingStylePreferences}
+                    aria-pressed={stylePreferences?.use_personalized_styles ?? true}
+                    onClick={handlePersonalizedStylesToggle}
+                  >
+                    <span
+                      className={`h-5 w-5 rounded-full bg-white transition ${stylePreferences?.use_personalized_styles ? "translate-x-5" : "translate-x-0"}`}
+                    />
+                  </button>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {styleDraftFields.map((field) => (
+                    <label key={field.key} className={field.multiline ? "sm:col-span-2" : ""}>
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                        {field.label}
+                      </span>
+                      <textarea
+                        className="mt-2 min-h-[3.2rem] w-full resize-y rounded-[1rem] border border-[var(--line)] bg-white/70 px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+                        rows={field.multiline ? 3 : 1}
+                        placeholder={field.multiline ? "Add a note" : "Comma-separated values"}
+                        value={styleDraft[field.key]}
+                        onChange={(event) =>
+                          setStyleDraft((current) => ({
+                            ...current,
+                            [field.key]: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    className="rounded-full bg-[var(--text)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    type="button"
+                    disabled={!auth.token || savingStylePreferences}
+                    onClick={handleSaveExplicitStylePreferences}
+                  >
+                    Save style preferences
+                  </button>
+                  <button
+                    className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                    type="button"
+                    disabled={!auth.token || savingStylePreferences}
+                    onClick={handleClearExplicitStylePreferences}
+                  >
+                    Clear explicit preferences
+                  </button>
+                  {savingStylePreferences ? (
+                    <span className="self-center text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
+                      Saving
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-6 rounded-[1.1rem] border border-[var(--line)] bg-white/58 p-4">
+                  <p className="text-sm font-semibold text-[var(--text)]">Inferred preferences</p>
+                  {stylePreferences?.inferred?.length ? (
+                    <div className="mt-3 space-y-3">
+                      {stylePreferences.inferred.map((entry) => (
+                        <div key={entry.id} className="flex flex-col gap-3 rounded-[1rem] bg-white/72 p-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-[var(--text)]">
+                              {entry.kind}: {entry.value}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                              {Math.round(entry.confidence * 100)}% confidence{entry.evidence ? ` · ${entry.evidence}` : ""}
+                            </p>
+                          </div>
+                          <button
+                            className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                            type="button"
+                            disabled={!auth.token || savingStylePreferences}
+                            onClick={() => handleRemoveInferredStylePreference(entry.id)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      No inferred style preferences yet.
+                    </p>
+                  )}
+                </div>
+
+                {stylePreferencesError ? (
+                  <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
+                    {stylePreferencesError}
+                  </p>
+                ) : null}
+              </section>
             </div>
           </article>
         ) : null}
@@ -193,6 +411,71 @@ export function SettingsView() {
       </div>
     </div>
   );
+}
+
+function stylePreferencesToDraft(details: StylePreferenceDetails | undefined): StyleDraft {
+  const safeDetails = details ?? {
+    liked_styles: [],
+    disliked_styles: [],
+    preferred_colors: [],
+    avoided_colors: [],
+    preferred_brands: [],
+    avoided_brands: [],
+    preferred_fits: [],
+    occasions: [],
+    budget_notes: null,
+    sizing_notes: null,
+    freeform_notes: null,
+  };
+  return {
+    liked_styles: safeDetails.liked_styles.join(", "),
+    disliked_styles: safeDetails.disliked_styles.join(", "),
+    preferred_colors: safeDetails.preferred_colors.join(", "),
+    avoided_colors: safeDetails.avoided_colors.join(", "),
+    preferred_brands: safeDetails.preferred_brands.join(", "),
+    avoided_brands: safeDetails.avoided_brands.join(", "),
+    preferred_fits: safeDetails.preferred_fits.join(", "),
+    occasions: safeDetails.occasions.join(", "),
+    budget_notes: safeDetails.budget_notes ?? "",
+    sizing_notes: safeDetails.sizing_notes ?? "",
+    freeform_notes: safeDetails.freeform_notes ?? "",
+  };
+}
+
+function draftToStylePreferences(draft: StyleDraft): StylePreferenceDetails {
+  return {
+    liked_styles: parseCsv(draft.liked_styles),
+    disliked_styles: parseCsv(draft.disliked_styles),
+    preferred_colors: parseCsv(draft.preferred_colors),
+    avoided_colors: parseCsv(draft.avoided_colors),
+    preferred_brands: parseCsv(draft.preferred_brands),
+    avoided_brands: parseCsv(draft.avoided_brands),
+    preferred_fits: parseCsv(draft.preferred_fits),
+    occasions: parseCsv(draft.occasions),
+    budget_notes: cleanNote(draft.budget_notes),
+    sizing_notes: cleanNote(draft.sizing_notes),
+    freeform_notes: cleanNote(draft.freeform_notes),
+  };
+}
+
+function parseCsv(value: string): string[] {
+  const seen = new Set<string>();
+  const values: string[] = [];
+  for (const item of value.split(/[;,]/)) {
+    const normalized = item.trim();
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) {
+      continue;
+    }
+    values.push(normalized);
+    seen.add(key);
+  }
+  return values;
+}
+
+function cleanNote(value: string): string | null {
+  const normalized = value.trim();
+  return normalized || null;
 }
 
 type PreferenceRowProps = {

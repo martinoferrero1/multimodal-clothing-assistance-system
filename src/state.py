@@ -35,6 +35,7 @@ class State(TypedDict):
     business_qa_queries: Optional[List[str]]
     outfit_search_intents: Optional[List[str]]
     search_priority_fields: List[SearchPriorityField]
+    style_preference_context: Optional[dict]
     image_search_features: Optional[List[dict]]
 
     # Outputs from later nodes
@@ -55,6 +56,7 @@ class StateKeys:
     BUSINESS_QA_QUERIES = "business_qa_queries"
     OUTFIT_SEARCH_INTENTS = "outfit_search_intents"
     SEARCH_PRIORITY_FIELDS = "search_priority_fields"
+    STYLE_PREFERENCE_CONTEXT = "style_preference_context"
     IMAGE_SEARCH_FEATURES = "image_search_features"
     BUSINESS_ANSWERS = "business_answers"
     CURRENT_OUTFIT_REQUEST = "current_outfit_request"

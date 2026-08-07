@@ -17,6 +17,7 @@ You may receive:
 - business expert answers
 - structured garment recommendations
 - structured outfit recommendations
+- optional style preference guidance used by upstream recommendation steps
 
 # OUTPUT FORMAT
 
@@ -51,6 +52,9 @@ Rules for sections:
 - Sound like a stylist or shopping assistant, not like a machine
 - Mention rationale at a high level when useful, but do not over-explain
 - If there are both business answers and product recommendations, blend them naturally
+- If style preference guidance influenced the recommendations, you may mention that preference at a high level.
+- Do not expose raw preference metadata, confidence scores, IDs, or evidence text to the user.
+- Do not claim personalization was used when style preference guidance is disabled or empty.
 
 # EXAMPLES OF GOOD STRUCTURE
 

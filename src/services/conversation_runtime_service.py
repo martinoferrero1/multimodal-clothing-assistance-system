@@ -83,6 +83,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         conversation: Conversation,
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        style_preference_context: dict[str, Any] | None = None,
         image_attachments: list[MessageImageAttachment] | None = None,
     ) -> ChatTurnResult:
         clean_content = content.strip()
@@ -119,12 +120,14 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
                 config,
                 workflow_content,
                 search_priority_fields,
+                style_preference_context or {},
                 image_search_features,
             )
         else:
             workflow_input = self._build_initial_state(
                 workflow_content,
                 search_priority_fields,
+                style_preference_context or {},
                 image_search_features,
             )
 
@@ -193,6 +196,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         self,
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        style_preference_context: dict[str, Any],
         image_search_features: list[dict[str, Any]],
     ) -> dict:
         return {
@@ -208,6 +212,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             StateKeys.BUSINESS_QA_QUERIES: None,
             StateKeys.OUTFIT_SEARCH_INTENTS: None,
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
+            StateKeys.STYLE_PREFERENCE_CONTEXT: style_preference_context,
             StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
             StateKeys.BUSINESS_ANSWERS: None,
             StateKeys.CURRENT_OUTFIT_REQUEST: None,
@@ -222,6 +227,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         config: dict[str, Any],
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        style_preference_context: dict[str, Any],
         image_search_features: list[dict[str, Any]],
     ) -> Command:
         with self._graph_lock:
@@ -233,6 +239,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         update = {
             StateKeys.MESSAGES: [HumanMessage(content=content)],
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
+            StateKeys.STYLE_PREFERENCE_CONTEXT: style_preference_context,
             StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
             StateKeys.PREVIOUS_SUMMARY: {
                 SumaryKeys.CONTENT: previous_summary.get(SumaryKeys.CONTENT),

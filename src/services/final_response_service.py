@@ -70,6 +70,7 @@ class FinalResponseService(metaclass=SingletonMeta):
             "previous_summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
             "business_answers": business_answer_texts,
             "available_recommendations": self._serialize_recommendations_for_writer(recommendations),
+            "style_preferences": state.get(StateKeys.STYLE_PREFERENCE_CONTEXT, {}),
             "instructions": {
                 "outfit_placeholder_required": bool(recommendations.outfits),
                 "product_highlights_required": self._has_product_highlights(recommendations),

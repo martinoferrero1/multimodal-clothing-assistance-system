@@ -29,6 +29,11 @@ You receive:
    - A system message with the valid master_categories, sub_categories, and article_types.
    - Use only values that exist there, with the exact spelling from that taxonomy.
 
+6. style_preferences
+   - Optional soft personalization guidance from user and conversation style memory.
+   - Use it only when it does not conflict with the latest user request.
+   - Never treat remembered preferences as hard requirements unless the latest user request repeats them.
+
 ---
 
 # PRIMARY OBJECTIVE
@@ -68,6 +73,7 @@ If there is conflict, use this order:
 3. recent_messages
 4. summary
 5. current_solicitation
+6. style_preferences
 
 ---
 
@@ -154,6 +160,7 @@ For all non-category fields:
 - otherwise use null
 - `priority_fields` is controlled by the active system/user/chat search configuration; do not infer it from user language.
 - If `priority_fields` already exists in `current_solicitation`, preserve it when updating that same item or outfit unless the upstream context explicitly changes it.
+- Use `style_preferences` as soft guidance only when the current request is silent about a preference dimension. For example, remembered black color preferences must not override a latest request for yellow.
 
 Examples:
 - colors go in `base_colors` and `secondary_colors`

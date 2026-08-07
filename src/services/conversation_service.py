@@ -8,6 +8,7 @@ from api.schemas import (
     ConversationRead,
     ConversationSearchPreferencesRead,
     ConversationSearchPreferencesUpdate,
+    ConversationStylePreferencesUpdate,
     MessageImageAttachment,
 )
 from core.metaclasses.singleton_meta import SingletonMeta
@@ -16,6 +17,7 @@ from infra.db.models.chat_models import ChatMessage, ChatUser, Conversation, Mes
 from schemas.outfit_maker.product_solicitation import SearchPriorityField
 from services.conversation_runtime_service import ConversationRuntimeService
 from services.search_preferences_service import get_search_preferences_service
+from services.style_preferences_service import get_style_preferences_service
 from sqlalchemy import case, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -35,8 +37,9 @@ class ConversationService(metaclass=SingletonMeta):
         session.add(conversation)
         await session.commit()
         await session.refresh(conversation)
-        user_priority_fields = await self._get_user_priority_fields(session, user_id)
-        return self._build_conversation_read(conversation, user_priority_fields)
+        user = await self._get_user(session, user_id)
+        user_priority_fields = get_search_preferences_service().user_priority_fields(user.search_preferences)
+        return self._build_conversation_read(conversation, user_priority_fields, user.style_preferences)
 
     async def list_user_conversations(
         self,
@@ -50,9 +53,10 @@ class ConversationService(metaclass=SingletonMeta):
             .order_by(Conversation.updated_at.desc(), Conversation.created_at.desc())
         )
         conversations = list(result.all())
-        user_priority_fields = await self._get_user_priority_fields(session, user_id)
+        user = await self._get_user(session, user_id)
+        user_priority_fields = get_search_preferences_service().user_priority_fields(user.search_preferences)
         return [
-            self._build_conversation_read(conversation, user_priority_fields)
+            self._build_conversation_read(conversation, user_priority_fields, user.style_preferences)
             for conversation in conversations
         ]
 
@@ -63,8 +67,9 @@ class ConversationService(metaclass=SingletonMeta):
         conversation_id: str,
     ) -> ConversationRead:
         conversation = await self._get_user_conversation(session, user_id, conversation_id, load_messages=True)
-        user_priority_fields = await self._get_user_priority_fields(session, user_id)
-        return self._build_conversation_read(conversation, user_priority_fields)
+        user = await self._get_user(session, user_id)
+        user_priority_fields = get_search_preferences_service().user_priority_fields(user.search_preferences)
+        return self._build_conversation_read(conversation, user_priority_fields, user.style_preferences)
 
     async def list_conversation_messages(
         self,
@@ -100,12 +105,17 @@ class ConversationService(metaclass=SingletonMeta):
             conversation.search_preferences,
             user.search_preferences,
         )
+        style_preference_context = get_style_preferences_service().effective_context(
+            user.style_preferences,
+            conversation.style_preferences,
+        )
         try:
             turn = await chat_runtime.process_user_message(
                 session,
                 conversation,
                 content,
                 search_priority_fields=search_priority_fields,
+                style_preference_context=style_preference_context.model_dump(mode="json"),
                 image_attachments=image_attachments,
             )
         except ValueError as exc:
@@ -150,6 +160,7 @@ class ConversationService(metaclass=SingletonMeta):
         self,
         conversation: Conversation,
         user_priority_fields: list[SearchPriorityField],
+        user_style_preferences: dict | None,
     ) -> ConversationRead:
         messages = self._loaded_messages(conversation)
         last_message = messages[-1] if messages else None
@@ -170,6 +181,10 @@ class ConversationService(metaclass=SingletonMeta):
             search_preferences=ConversationSearchPreferencesRead(
                 priority_fields=override_priority_fields,
                 effective_priority_fields=effective_priority_fields,
+            ),
+            style_preferences=get_style_preferences_service().conversation_preferences(
+                conversation.style_preferences,
+                user_style_preferences,
             ),
             message_count=len(messages),
             last_message_preview=build_message_preview(last_message.content if last_message else None),
@@ -213,7 +228,26 @@ class ConversationService(metaclass=SingletonMeta):
         await session.commit()
         await session.refresh(conversation)
         user_priority_fields = await self._get_user_priority_fields(session, user_id)
-        return self._build_conversation_read(conversation, user_priority_fields)
+        user = await self._get_user(session, user_id)
+        return self._build_conversation_read(conversation, user_priority_fields, user.style_preferences)
+
+    async def update_conversation_style_preferences(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        conversation_id: str,
+        payload: ConversationStylePreferencesUpdate,
+    ) -> ConversationRead:
+        conversation = await self._get_user_conversation(session, user_id, conversation_id)
+        user = await self._get_user(session, user_id)
+        conversation.style_preferences = get_style_preferences_service().storage_from_conversation_update(
+            conversation.style_preferences,
+            payload,
+        )
+        await session.commit()
+        await session.refresh(conversation)
+        user_priority_fields = get_search_preferences_service().user_priority_fields(user.search_preferences)
+        return self._build_conversation_read(conversation, user_priority_fields, user.style_preferences)
     
     async def delete_conversation(
         self,

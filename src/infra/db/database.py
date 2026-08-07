@@ -66,6 +66,8 @@ class Database(metaclass=SingletonMeta):
                     connection.execute(text("ALTER TABLE chat_users ADD COLUMN password_hash VARCHAR(255)"))
                 if "search_preferences" not in user_column_names:
                     connection.execute(text("ALTER TABLE chat_users ADD COLUMN search_preferences JSON"))
+                if "style_preferences" not in user_column_names:
+                    connection.execute(text("ALTER TABLE chat_users ADD COLUMN style_preferences JSON"))
 
             if inspector.has_table("conversations"):
                 conversation_column_names = {
@@ -73,6 +75,8 @@ class Database(metaclass=SingletonMeta):
                 }
                 if "search_preferences" not in conversation_column_names:
                     connection.execute(text("ALTER TABLE conversations ADD COLUMN search_preferences JSON"))
+                if "style_preferences" not in conversation_column_names:
+                    connection.execute(text("ALTER TABLE conversations ADD COLUMN style_preferences JSON"))
 
             if inspector.has_table("chat_messages"):
                 message_column_names = {

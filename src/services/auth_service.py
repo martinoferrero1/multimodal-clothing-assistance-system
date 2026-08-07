@@ -12,6 +12,8 @@ from api.schemas import (
     AuthToken,
     SearchPreferencesRead,
     SearchPreferencesUpdate,
+    UserStylePreferencesRead,
+    UserStylePreferencesUpdate,
     UserLogin,
     UserRead,
     UserRegister,
@@ -21,6 +23,7 @@ from core.settings import settings
 from fastapi import HTTPException, status
 from infra.db.models.chat_models import ChatUser
 from services.search_preferences_service import get_search_preferences_service
+from services.style_preferences_service import get_style_preferences_service
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +99,52 @@ class AuthenticationService(metaclass=SingletonMeta):
         await session.refresh(user)
         return self.build_user_read(user).search_preferences
 
+    async def update_user_style_preferences(
+        self,
+        session: AsyncSession,
+        user: ChatUser,
+        payload: UserStylePreferencesUpdate,
+    ) -> UserStylePreferencesRead:
+        user.style_preferences = get_style_preferences_service().storage_from_user_update(
+            user.style_preferences,
+            payload,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return self.build_user_read(user).style_preferences
+
+    async def clear_user_explicit_style_preferences(
+        self,
+        session: AsyncSession,
+        user: ChatUser,
+    ) -> UserStylePreferencesRead:
+        user.style_preferences = get_style_preferences_service().storage_with_cleared_explicit(
+            user.style_preferences
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return self.build_user_read(user).style_preferences
+
+    async def remove_user_inferred_style_preference(
+        self,
+        session: AsyncSession,
+        user: ChatUser,
+        inferred_id: str,
+    ) -> UserStylePreferencesRead:
+        next_storage, removed = get_style_preferences_service().storage_without_inferred(
+            user.style_preferences,
+            inferred_id,
+        )
+        if not removed:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inferred preference not found.")
+        user.style_preferences = next_storage
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return self.build_user_read(user).style_preferences
+
     def build_user_read(self, user: ChatUser) -> UserRead:
         priority_fields = get_search_preferences_service().user_priority_fields(
             user.search_preferences
@@ -105,6 +154,7 @@ class AuthenticationService(metaclass=SingletonMeta):
             display_name=user.display_name,
             email=user.email,
             search_preferences=SearchPreferencesRead(priority_fields=priority_fields),
+            style_preferences=get_style_preferences_service().user_preferences(user.style_preferences),
             created_at=user.created_at,
         )
 

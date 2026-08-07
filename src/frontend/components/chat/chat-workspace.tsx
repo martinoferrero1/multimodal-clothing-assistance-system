@@ -23,6 +23,7 @@ import {
   listMessages,
   sendMessage,
   updateConversationSearchPreferences,
+  updateConversationStylePreferences,
 } from "@/lib/api-client";
 import { formatShortDate, formatShortTime } from "@/lib/format";
 import {
@@ -36,6 +37,7 @@ import type {
   Conversation,
   FinalResponsePayload,
   SearchPriorityField,
+  StylePreferenceDetails,
 } from "@/lib/types";
 import { AssistantMessageBody } from "./assistant-message-body";
 import { getProductImage, getProductMeta } from "@/lib/format";
@@ -48,6 +50,11 @@ type PendingImage = {
   id: string;
   file: File;
   dataUrl: string;
+};
+
+type ChatStyleDraft = {
+  use_personalized_styles: boolean | null;
+  temporary_notes: string;
 };
 
 const MAX_PENDING_IMAGES = 3;
@@ -89,6 +96,23 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+function temporaryStyleDetailsFromNote(note: string): StylePreferenceDetails {
+  const cleanNote = note.trim() || null;
+  return {
+    liked_styles: [],
+    disliked_styles: [],
+    preferred_colors: [],
+    avoided_colors: [],
+    preferred_brands: [],
+    avoided_brands: [],
+    preferred_fits: [],
+    occasions: [],
+    budget_notes: null,
+    sizing_notes: null,
+    freeform_notes: cleanNote,
+  };
+}
+
 export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const auth = useAuth();
   const router = useRouter();
@@ -104,6 +128,10 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
   const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
   const [chatPriorityDraft, setChatPriorityDraft] = useState<SearchPriorityField[] | null>(null);
+  const [chatStyleDraft, setChatStyleDraft] = useState<ChatStyleDraft>({
+    use_personalized_styles: null,
+    temporary_notes: "",
+  });
   const [savingChatPreferences, setSavingChatPreferences] = useState(false);
   const [chatPreferencesError, setChatPreferencesError] = useState<string | null>(null);
   const [showRecommendationPanel, setShowRecommendationPanel] = useState(
@@ -400,6 +428,10 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
   function handleOpenChatSettings() {
     setChatPriorityDraft(conversation?.search_preferences?.priority_fields ?? null);
+    setChatStyleDraft({
+      use_personalized_styles: conversation?.style_preferences?.use_personalized_styles ?? null,
+      temporary_notes: conversation?.style_preferences?.temporary.freeform_notes ?? "",
+    });
     setChatPreferencesError(null);
     setChatSettingsOpen(true);
   }
@@ -419,10 +451,18 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
         setConversation(activeConversation);
       }
 
-      const updatedConversation = await updateConversationSearchPreferences(
+      let updatedConversation = await updateConversationSearchPreferences(
         auth.token,
         activeConversation.id,
         chatPriorityDraft,
+      );
+      updatedConversation = await updateConversationStylePreferences(
+        auth.token,
+        activeConversation.id,
+        {
+          use_personalized_styles: chatStyleDraft.use_personalized_styles,
+          temporary: temporaryStyleDetailsFromNote(chatStyleDraft.temporary_notes),
+        },
       );
       setConversation(updatedConversation);
       await refreshConversations();
@@ -731,10 +771,12 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
         <ChatSearchPreferencesModal
           draftPriorityFields={chatPriorityDraft}
           effectivePriorityFields={effectiveSearchPriorityFields}
+          styleDraft={chatStyleDraft}
           error={chatPreferencesError}
           saving={savingChatPreferences}
           onClose={() => setChatSettingsOpen(false)}
           onDraftChange={setChatPriorityDraft}
+          onStyleDraftChange={setChatStyleDraft}
           onSave={handleSaveChatPreferences}
         />
       ) : null}
@@ -745,20 +787,24 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 type ChatSearchPreferencesModalProps = {
   draftPriorityFields: SearchPriorityField[] | null;
   effectivePriorityFields: SearchPriorityField[];
+  styleDraft: ChatStyleDraft;
   error: string | null;
   saving: boolean;
   onClose: () => void;
   onDraftChange: (fields: SearchPriorityField[] | null) => void;
+  onStyleDraftChange: (draft: ChatStyleDraft) => void;
   onSave: () => void;
 };
 
 function ChatSearchPreferencesModal({
   draftPriorityFields,
   effectivePriorityFields,
+  styleDraft,
   error,
   saving,
   onClose,
   onDraftChange,
+  onStyleDraftChange,
   onSave,
 }: ChatSearchPreferencesModalProps) {
   const usesCustomPriorities = draftPriorityFields !== null;
@@ -864,6 +910,54 @@ function ChatSearchPreferencesModal({
             })}
           </div>
         ) : null}
+
+        <div className="mt-6 rounded-[1.2rem] border border-[var(--line)] bg-white/58 p-4">
+          <p className="text-sm font-semibold text-[var(--text)]">Personalized styles</p>
+          <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+            Choose whether this chat should use your saved style memory and add temporary style guidance for this conversation only.
+          </p>
+          <div className="mt-4 grid grid-cols-3 rounded-[1.1rem] border border-[var(--line)] bg-white/52 p-1">
+            {[
+              { label: "Inherit", value: null },
+              { label: "Use", value: true },
+              { label: "Ignore", value: false },
+            ].map((option) => (
+              <button
+                key={option.label}
+                className={`rounded-[0.9rem] px-3 py-3 text-sm font-semibold transition ${
+                  styleDraft.use_personalized_styles === option.value
+                    ? "bg-[var(--text)] text-[var(--accent-ink)]"
+                    : "text-[var(--muted)] hover:text-[var(--text)]"
+                }`}
+                type="button"
+                onClick={() =>
+                  onStyleDraftChange({
+                    ...styleDraft,
+                    use_personalized_styles: option.value,
+                  })
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <label className="mt-4 block">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              Temporary style notes
+            </span>
+            <textarea
+              className="mt-2 min-h-[5rem] w-full resize-y rounded-[1rem] border border-[var(--line)] bg-white/70 px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+              placeholder="Example: make this conversation more formal, avoid sneakers"
+              value={styleDraft.temporary_notes}
+              onChange={(event) =>
+                onStyleDraftChange({
+                  ...styleDraft,
+                  temporary_notes: event.target.value,
+                })
+              }
+            />
+          </label>
+        </div>
 
         {error ? (
           <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
