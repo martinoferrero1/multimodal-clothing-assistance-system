@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Menu, Sparkles, X } from "lucide-react";
 
-import { SettingsView } from "@/components/settings/settings-view";
+import { SettingsView, type SettingsSection } from "@/components/settings/settings-view";
 import { Sidebar } from "@/components/workspace/sidebar";
 import { readPreferences } from "@/lib/storage";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -12,7 +12,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [compactSidebar, setCompactSidebar] = useState(() => readPreferences().compactSidebar);
+  const settingsSectionTitle = settingsSection === "general" ? "General" : "Account";
 
   useEffect(() => {
     function syncPreferences() {
@@ -87,19 +89,31 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             aria-label="Close settings"
             onClick={() => setSettingsOpen(false)}
           />
-          <div className="glass-strong hairline soft-shadow scroll-modal relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-5xl overflow-y-auto rounded-l-[2rem] px-5 py-5 sm:px-6">
-            <div className="mb-4 flex justify-end">
-              <button
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/60 transition hover:bg-white/85"
-                type="button"
-                aria-label="Close settings"
-                onClick={() => setSettingsOpen(false)}
-              >
-                <X size={18} />
-              </button>
+          <div className="glass-strong hairline soft-shadow relative z-10 flex h-[min(44rem,calc(100dvh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-l-[2rem]">
+            <div className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)] border-b border-[var(--line)] lg:grid-cols-[16rem_minmax(0,1fr)]">
+              <div className="flex items-center px-4 py-3 lg:border-r lg:border-[var(--line)]">
+                <button
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
+                  type="button"
+                  aria-label="Close settings"
+                  onClick={() => setSettingsOpen(false)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex items-center px-5 py-3 sm:px-6">
+                <h2 className="text-base font-semibold leading-none text-[var(--text)]">
+                  {settingsSectionTitle}
+                </h2>
+              </div>
             </div>
 
-            <SettingsView />
+            <div className="scroll-modal min-h-0 flex-1 overflow-y-auto">
+              <SettingsView
+                activeSection={settingsSection}
+                onSectionChange={setSettingsSection}
+              />
+            </div>
           </div>
         </div>
       ) : null}

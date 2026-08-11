@@ -20,8 +20,13 @@ import {
 import { readPreferences, writePreferences } from "@/lib/storage";
 import type { SearchPriorityField, SettingsPreferences, StylePreferenceDetails } from "@/lib/types";
 
-type SettingsSection = "general" | "account";
+export type SettingsSection = "general" | "account";
 type StyleDraft = Record<keyof StylePreferenceDetails, string>;
+
+type SettingsViewProps = {
+  activeSection: SettingsSection;
+  onSectionChange: (section: SettingsSection) => void;
+};
 
 const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; label: string; multiline?: boolean }> = [
   { key: "liked_styles", label: "Liked styles" },
@@ -37,11 +42,10 @@ const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; label: string
   { key: "freeform_notes", label: "Style notes", multiline: true },
 ];
 
-export function SettingsView() {
+export function SettingsView({ activeSection, onSectionChange }: SettingsViewProps) {
   const auth = useAuth();
   const authPriorityFields = auth.user?.search_preferences?.priority_fields ?? [];
   const [preferences, setPreferences] = useState<SettingsPreferences>(() => readPreferences());
-  const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [optimisticSearchPriorityFields, setOptimisticSearchPriorityFields] =
     useState<SearchPriorityField[] | null>(null);
   const [savingSearchPreferences, setSavingSearchPreferences] = useState(false);
@@ -189,9 +193,9 @@ export function SettingsView() {
   ];
 
   return (
-    <div className="grid gap-4 lg:min-h-[28rem] lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="rounded-[1.8rem] border border-[var(--line)] bg-white/58 p-3">
-        <div className="space-y-2">
+    <div className="grid min-h-full lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside className="h-fit self-start px-3 py-4 lg:sticky lg:top-0 lg:border-r lg:border-[var(--line)]">
+        <div className="space-y-1">
           {sections.map((section) => {
             const Icon = section.icon;
             const active = activeSection === section.id;
@@ -199,13 +203,15 @@ export function SettingsView() {
             return (
               <button
                 key={section.id}
-                className={`flex w-full items-start gap-3 rounded-[1.2rem] px-4 py-4 text-left transition ${active ? "bg-[rgba(143,79,43,0.12)] text-[var(--text)]" : "text-[var(--muted)] hover:bg-white/72 hover:text-[var(--text)]"}`}
+                className={`flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left transition ${
+                  active
+                    ? "border-[var(--accent)] text-[var(--text)]"
+                    : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
+                }`}
                 type="button"
-                onClick={() => setActiveSection(section.id)}
+                onClick={() => onSectionChange(section.id)}
               >
-                <span
-                  className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${active ? "bg-[rgba(143,79,43,0.16)]" : "bg-white/72"}`}
-                >
+                <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center">
                   <Icon size={16} />
                 </span>
                 <span>
@@ -220,11 +226,10 @@ export function SettingsView() {
         </div>
       </aside>
 
-      <div className="space-y-4">
+      <div className="px-5 py-5 sm:px-6 lg:px-8">
         {activeSection === "general" ? (
-          <article className="min-h-[28rem] rounded-[1.8rem] border border-[var(--line)] bg-white/72 p-6">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">General</p>
-            <div className="mt-6 space-y-4">
+          <div className="space-y-7 pb-8">
+            <div className="space-y-0">
               <PreferenceRow
                 checked={preferences.compactSidebar}
                 description="Reduce the sidebar width to give the workspace more room."
@@ -247,7 +252,9 @@ export function SettingsView() {
                   })
                 }
               />
-              <section className="rounded-[1.4rem] border border-[var(--line)] bg-white/68 px-4 py-4">
+            </div>
+
+            <section className="border-b border-[var(--line)] pb-7">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-[var(--text)]">Search priorities</p>
@@ -280,8 +287,9 @@ export function SettingsView() {
                     {searchPreferencesError}
                   </p>
                 ) : null}
-              </section>
-              <section className="rounded-[1.4rem] border border-[var(--line)] bg-white/68 px-4 py-4">
+            </section>
+
+            <section className="pb-2">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-[var(--text)]">Personalized style memory</p>
@@ -348,12 +356,12 @@ export function SettingsView() {
                   ) : null}
                 </div>
 
-                <div className="mt-6 rounded-[1.1rem] border border-[var(--line)] bg-white/58 p-4">
+                <div className="mt-6 border-t border-[var(--line)] pt-5">
                   <p className="text-sm font-semibold text-[var(--text)]">Inferred preferences</p>
                   {stylePreferences?.inferred?.length ? (
-                    <div className="mt-3 space-y-3">
+                    <div className="mt-3 divide-y divide-[var(--line)]">
                       {stylePreferences.inferred.map((entry) => (
-                        <div key={entry.id} className="flex flex-col gap-3 rounded-[1rem] bg-white/72 p-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div key={entry.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-start sm:justify-between">
                           <div>
                             <p className="text-sm font-semibold text-[var(--text)]">
                               {entry.kind}: {entry.value}
@@ -385,28 +393,31 @@ export function SettingsView() {
                     {stylePreferencesError}
                   </p>
                 ) : null}
-              </section>
-            </div>
-          </article>
+            </section>
+          </div>
         ) : null}
 
         {activeSection === "account" ? (
-          <article className="min-h-[28rem] rounded-[1.8rem] border border-[var(--line)] bg-white/72 p-6">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Account</p>
-            <h2 className="serif mt-3 text-3xl leading-none">{auth.user?.display_name}</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[1.2rem] bg-[rgba(143,79,43,0.06)] p-4">
+          <div className="max-w-2xl space-y-8 pb-8">
+            <div>
+              <p className="text-sm font-semibold text-[var(--muted)]">Signed in as</p>
+              <h3 className="mt-3 text-2xl font-semibold leading-none text-[var(--text)]">
+                {auth.user?.display_name}
+              </h3>
+            </div>
+            <div className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+              <div className="grid gap-2 py-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Email</p>
-                <p className="mt-2 text-sm text-[var(--text)]">{auth.user?.email || "Not available"}</p>
+                <p className="text-sm text-[var(--text)]">{auth.user?.email || "Not available"}</p>
               </div>
-              <div className="rounded-[1.2rem] bg-[rgba(143,79,43,0.06)] p-4">
+              <div className="grid gap-2 py-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Member since</p>
-                <p className="mt-2 text-sm text-[var(--text)]">
+                <p className="text-sm text-[var(--text)]">
                   {auth.user?.created_at ? formatShortDate(auth.user.created_at) : "Not available"}
                 </p>
               </div>
             </div>
-          </article>
+          </div>
         ) : null}
       </div>
     </div>
@@ -502,7 +513,7 @@ type PreferenceRowProps = {
 function PreferenceRow({ checked, description, label, onToggle }: PreferenceRowProps) {
   return (
     <button
-      className="flex w-full items-start justify-between gap-4 rounded-[1.4rem] border border-[var(--line)] bg-white/68 px-4 py-4 text-left transition hover:bg-white/90"
+      className="flex w-full items-start justify-between gap-4 border-b border-[var(--line)] py-4 text-left transition hover:text-[var(--text)]"
       type="button"
       onClick={onToggle}
     >
@@ -538,10 +549,10 @@ function SearchPriorityToggle({
 }: SearchPriorityToggleProps) {
   return (
     <button
-      className={`flex min-h-[5.5rem] items-start gap-3 rounded-[1.1rem] border px-3 py-3 text-left transition ${
+      className={`flex min-h-[5.5rem] items-start gap-3 border-b px-0 py-3 text-left transition ${
         checked
-          ? "border-[rgba(143,79,43,0.34)] bg-[rgba(143,79,43,0.09)]"
-          : "border-[var(--line)] bg-white/62 hover:bg-white/86"
+          ? "border-[rgba(143,79,43,0.34)]"
+          : "border-[var(--line)]"
       } ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
       type="button"
       aria-pressed={checked}
