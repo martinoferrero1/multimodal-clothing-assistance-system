@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import sessionmaker, Session
 from core.settings import settings
 from infra.db.models.base import Base
+import infra.db.models.catalog_models as _catalog_models  # noqa: F401
+import infra.db.models.chat_models as _chat_models  # noqa: F401
 from core.metaclasses.singleton_meta import SingletonMeta
 
 

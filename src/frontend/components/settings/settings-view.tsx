@@ -359,7 +359,7 @@ export function SettingsView() {
                               {entry.kind}: {entry.value}
                             </p>
                             <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                              {Math.round(entry.confidence * 100)}% confidence{entry.evidence ? ` · ${entry.evidence}` : ""}
+                              {formatInferredPreferenceMetadata(entry)}{entry.evidence ? ` · ${entry.evidence}` : ""}
                             </p>
                           </div>
                           <button
@@ -440,6 +440,20 @@ function stylePreferencesToDraft(details: StylePreferenceDetails | undefined): S
     sizing_notes: safeDetails.sizing_notes ?? "",
     freeform_notes: safeDetails.freeform_notes ?? "",
   };
+}
+
+function formatInferredPreferenceMetadata(entry: { confidence: number; occurrence_count: number | null; last_seen_at: string | null; source: string | null }) {
+  const parts = [`${Math.round(entry.confidence * 100)}% confidence`];
+  if (entry.occurrence_count) {
+    parts.push(`${entry.occurrence_count} observation${entry.occurrence_count === 1 ? "" : "s"}`);
+  }
+  if (entry.last_seen_at) {
+    parts.push(`last seen ${formatShortDate(entry.last_seen_at)}`);
+  }
+  if (entry.source === "learned") {
+    parts.push("learned automatically");
+  }
+  return parts.join(" · ");
 }
 
 function draftToStylePreferences(draft: StyleDraft): StylePreferenceDetails {

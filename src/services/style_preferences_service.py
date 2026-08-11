@@ -131,11 +131,19 @@ class StylePreferencesService(metaclass=SingletonMeta):
         temporary_guidance = self._details_guidance(conversation_read.temporary, "For this conversation")
         guidance.extend(temporary_guidance)
 
-        explicit = user_read.explicit if use_user_memory else StylePreferenceDetails()
-        inferred = user_read.inferred if use_user_memory else []
+        explicit = (
+            self._details_without_temporary_conflicts(user_read.explicit, conversation_read.temporary)
+            if use_user_memory
+            else StylePreferenceDetails()
+        )
+        inferred = (
+            self._inferred_without_stronger_conflicts(user_read.inferred, conversation_read.temporary, explicit)
+            if use_user_memory
+            else []
+        )
         if use_user_memory:
-            guidance.extend(self._details_guidance(user_read.explicit, "User generally"))
-            guidance.extend(self._inferred_guidance(user_read.inferred))
+            guidance.extend(self._details_guidance(explicit, "User generally"))
+            guidance.extend(self._inferred_guidance(inferred))
 
         sources = {
             "temporary": conversation_read.temporary.model_dump(mode="json"),
@@ -180,6 +188,14 @@ class StylePreferencesService(metaclass=SingletonMeta):
                     evidence=self._clean_note(item.get("evidence")),
                     created_at=self._clean_note(item.get("created_at")),
                     updated_at=self._clean_note(item.get("updated_at")),
+                    source=self._clean_note(item.get("source")),
+                    field=self._clean_note(item.get("field")),
+                    polarity=self._clean_note(item.get("polarity")),
+                    occurrence_count=self._clean_int(item.get("occurrence_count")),
+                    first_seen_at=self._clean_note(item.get("first_seen_at")),
+                    last_seen_at=self._clean_note(item.get("last_seen_at")),
+                    score=self._clean_float(item.get("score")),
+                    aggregate_id=self._clean_note(item.get("aggregate_id")),
                 )
             )
         return entries
@@ -253,11 +269,91 @@ class StylePreferencesService(metaclass=SingletonMeta):
             )
         return guidance
 
+    def _details_without_temporary_conflicts(
+        self,
+        explicit: StylePreferenceDetails,
+        temporary: StylePreferenceDetails,
+    ) -> StylePreferenceDetails:
+        data = explicit.model_dump(mode="json")
+        for field in (
+            "liked_styles",
+            "disliked_styles",
+            "preferred_colors",
+            "avoided_colors",
+            "preferred_brands",
+            "avoided_brands",
+            "preferred_fits",
+            "occasions",
+        ):
+            if getattr(temporary, field):
+                data[field] = []
+        for field in ("budget_notes", "sizing_notes", "freeform_notes"):
+            if getattr(temporary, field):
+                data[field] = None
+        return StylePreferenceDetails.model_validate(data)
+
+    def _inferred_without_stronger_conflicts(
+        self,
+        entries: list[InferredStylePreferenceRead],
+        temporary: StylePreferenceDetails,
+        explicit: StylePreferenceDetails,
+    ) -> list[InferredStylePreferenceRead]:
+        blocked_dimensions = self._blocked_inferred_dimensions(temporary) | self._blocked_inferred_dimensions(explicit)
+        if not blocked_dimensions:
+            return entries[:12]
+        filtered = [entry for entry in entries if self._inferred_dimension(entry) not in blocked_dimensions]
+        return filtered[:12]
+
+    def _blocked_inferred_dimensions(self, details: StylePreferenceDetails) -> set[str]:
+        blocked: set[str] = set()
+        if details.preferred_colors or details.avoided_colors:
+            blocked.add("color")
+        if details.preferred_brands or details.avoided_brands:
+            blocked.add("brand")
+        if details.liked_styles or details.disliked_styles or details.preferred_fits:
+            blocked.add("style")
+        if details.occasions or details.freeform_notes:
+            blocked.add("usage")
+        if details.budget_notes:
+            blocked.add("max_price")
+        return blocked
+
+    def _inferred_dimension(self, entry: InferredStylePreferenceRead) -> str:
+        kind = entry.kind.casefold()
+        field = (entry.field or "").casefold()
+        if "color" in kind or "color" in field or "colour" in field:
+            return "color"
+        if "brand" in kind or "brand" in field:
+            return "brand"
+        if "style" in kind or "fit" in kind or "style" in field or "fit" in field:
+            return "style"
+        if "usage" in kind or "occasion" in kind or "usage" in field:
+            return "usage"
+        if "price" in kind or "budget" in kind or "price" in field:
+            return "max_price"
+        return field or kind
+
     def _clean_note(self, value: Any) -> str | None:
         if value is None:
             return None
         normalized = str(value).strip()
         return normalized or None
+
+    def _clean_int(self, value: Any) -> int | None:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _clean_float(self, value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
 
 def get_style_preferences_service() -> StylePreferencesService:

@@ -75,6 +75,44 @@ class StylePreferencesServiceTest(unittest.TestCase):
 
         self.assertEqual(priority_fields, ["gender", "category"])
 
+    def test_explicit_preferences_outrank_learned_inferred_preferences(self) -> None:
+        service = StylePreferencesService()
+        user_storage = service.storage_from_user_update(
+            None,
+            UserStylePreferencesUpdate(
+                explicit=StylePreferenceDetails(preferred_brands=["Adidas"]),
+                inferred=[
+                    {
+                        "kind": "preferred_brand",
+                        "value": "Nike",
+                        "confidence": 0.9,
+                        "evidence": "Repeated Nike requests.",
+                    }
+                ],
+            ),
+        )
+
+        context = service.effective_context(user_storage, None)
+
+        self.assertIn("Adidas", " ".join(context.guidance))
+        self.assertNotIn("Nike", " ".join(context.guidance))
+
+    def test_conversation_temporary_preferences_outrank_durable_memory(self) -> None:
+        service = StylePreferencesService()
+        user_storage = service.storage_from_user_update(
+            None,
+            UserStylePreferencesUpdate(explicit=StylePreferenceDetails(liked_styles=["casual"])),
+        )
+        conversation_storage = service.storage_from_conversation_update(
+            None,
+            ConversationStylePreferencesUpdate(temporary=StylePreferenceDetails(liked_styles=["formal"])),
+        )
+
+        context = service.effective_context(user_storage, conversation_storage)
+
+        self.assertIn("formal", " ".join(context.guidance))
+        self.assertNotIn("casual", " ".join(context.guidance))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -147,6 +147,39 @@ label[for] {
   background: transparent;
 }
 
+.scroll-modal {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(143, 79, 43, 0.38) transparent;
+}
+
+.scroll-modal::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.scroll-modal::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 0.85rem;
+}
+
+.scroll-modal::-webkit-scrollbar-thumb {
+  background: rgba(143, 79, 43, 0.3);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+
+.scroll-modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(143, 79, 43, 0.48);
+  background-clip: padding-box;
+}
+
+.scroll-modal::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .thread-fade {
   mask-image: linear-gradient(to bottom, transparent 0, black 18px, black calc(100% - 18px), transparent 100%);
 }

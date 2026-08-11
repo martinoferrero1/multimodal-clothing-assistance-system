@@ -70,6 +70,14 @@ export type InferredStylePreference = {
   evidence: string | null;
   created_at: string | null;
   updated_at: string | null;
+  source: string | null;
+  field: string | null;
+  polarity: string | null;
+  occurrence_count: number | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  score: number | null;
+  aggregate_id: string | null;
 };
 
 export type UserStylePreferences = {

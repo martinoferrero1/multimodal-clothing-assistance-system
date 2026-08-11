@@ -24,6 +24,7 @@ from fastapi import HTTPException, status
 from infra.db.models.chat_models import ChatUser
 from services.search_preferences_service import get_search_preferences_service
 from services.style_preferences_service import get_style_preferences_service
+from services.preference_learning_service import get_preference_learning_service
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -133,6 +134,12 @@ class AuthenticationService(metaclass=SingletonMeta):
         user: ChatUser,
         inferred_id: str,
     ) -> UserStylePreferencesRead:
+        await get_preference_learning_service().suppress_inferred_preference(
+            session,
+            user_id=user.id,
+            raw_preferences=user.style_preferences,
+            inferred_id=inferred_id,
+        )
         next_storage, removed = get_style_preferences_service().storage_without_inferred(
             user.style_preferences,
             inferred_id,

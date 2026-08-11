@@ -749,7 +749,10 @@ def _style_search_terms(
     for entry in _style_inferred_sources(style_preference_context):
         value = str(entry.get("value") or "").strip()
         kind = str(entry.get("kind") or "").casefold()
+        polarity = str(entry.get("polarity") or "positive").casefold()
         if not value:
+            continue
+        if polarity == "negative" or "avoid" in kind or "disliked" in kind:
             continue
         if "color" in kind and (garment.base_colors or garment.secondary_colors):
             continue
@@ -795,10 +798,13 @@ def _style_preference_score(
             confidence = max(0.0, min(1.0, float(entry.get("confidence", 0.5))))
         except (TypeError, ValueError):
             confidence = 0.5
+        polarity = str(entry.get("polarity") or "positive").casefold()
+        is_negative = polarity == "negative" or "avoid" in kind or "disliked" in kind
+        direction = -1 if is_negative else 1
         if "color" in kind and not request_has_color and _matches_any_normalized(product_colors, [value]):
-            score += 0.2 * confidence
+            score += direction * 0.2 * confidence
         if "brand" in kind and not request_has_brand and _matches_any_normalized(product_brand, [value]):
-            score += 0.15 * confidence
+            score += direction * 0.15 * confidence
 
     return score
 

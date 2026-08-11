@@ -747,7 +747,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
             aria-label="Close outfit viewer"
             onClick={() => setOutfitModalOpen(false)}
           />
-          <div className="glass-strong hairline soft-shadow relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-[2rem] px-5 py-5 sm:px-6">
+          <div className="glass-strong hairline soft-shadow scroll-modal relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto rounded-[2rem] px-5 py-5 sm:px-6">
             <div className="mb-4 flex items-center justify-end gap-4">
               <button
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/60 transition hover:bg-white/85"

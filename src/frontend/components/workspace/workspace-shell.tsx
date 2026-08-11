@@ -87,7 +87,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             aria-label="Close settings"
             onClick={() => setSettingsOpen(false)}
           />
-          <div className="glass-strong hairline soft-shadow relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-[2rem] px-5 py-5 sm:px-6">
+          <div className="glass-strong hairline soft-shadow scroll-modal relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-5xl overflow-y-auto rounded-[2rem] px-5 py-5 sm:px-6">
             <div className="mb-4 flex justify-end">
               <button
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/60 transition hover:bg-white/85"

@@ -113,6 +113,14 @@ class InferredStylePreferenceRead(BaseModel):
     evidence: str | None = None
     created_at: str | None = None
     updated_at: str | None = None
+    source: str | None = None
+    field: str | None = None
+    polarity: str | None = None
+    occurrence_count: int | None = None
+    first_seen_at: str | None = None
+    last_seen_at: str | None = None
+    score: float | None = None
+    aggregate_id: str | None = None
 
 
 class InferredStylePreferenceUpdate(BaseModel):
