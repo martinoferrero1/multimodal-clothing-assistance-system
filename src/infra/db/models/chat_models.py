@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from enum import Enum
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, case, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint, case, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infra.db.models.base import Base
@@ -23,6 +23,7 @@ class ChatUser(Base):
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     search_preferences: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    style_preferences: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -45,6 +46,7 @@ class Conversation(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_message_count: Mapped[int] = mapped_column(default=0, nullable=False)
     search_preferences: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    style_preferences: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -92,3 +94,67 @@ class ChatMessage(Base):
     )
 
     conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="messages")
+
+
+class UserPreferenceSignal(Base):
+    __tablename__ = "user_preference_signals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("chat_users.id"), nullable=False, index=True)
+    conversation_id: Mapped[str | None] = mapped_column(ForeignKey("conversations.id"), nullable=True, index=True)
+    message_id: Mapped[str | None] = mapped_column(ForeignKey("chat_messages.id"), nullable=True, index=True)
+    field: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalized_value: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    polarity: Mapped[str] = mapped_column(String(20), nullable=False, default="positive")
+    source: Mapped[str] = mapped_column(String(40), nullable=False)
+    strength: Mapped[float] = mapped_column(Float, nullable=False)
+    evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
+class UserPreferenceAggregate(Base):
+    __tablename__ = "user_preference_aggregates"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "field",
+            "normalized_value",
+            "polarity",
+            name="uq_user_preference_aggregate_value",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("chat_users.id"), nullable=False, index=True)
+    field: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalized_value: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    polarity: Mapped[str] = mapped_column(String(20), nullable=False, default="positive")
+    observation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    weighted_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    recent_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    first_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    suppressed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    suppressed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        nullable=False,
+    )

@@ -56,7 +56,7 @@ export function LoginForm() {
             Email
           </span>
           <input
-            className="w-full rounded-[1.2rem] border border-[var(--line)] bg-white/60 px-5 py-4 outline-none transition focus:border-[var(--line-strong)]"
+            className="w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-5 py-4 outline-none transition focus:border-[var(--accent)]"
             type="email"
             placeholder="your-email@example.com"
             value={email}
@@ -71,7 +71,7 @@ export function LoginForm() {
           </span>
           <div className="relative">
             <input
-              className="w-full rounded-[1.2rem] border border-[var(--line)] bg-white/60 px-5 py-4 pr-14 outline-none transition focus:border-[var(--line-strong)]"
+              className="w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-5 py-4 pr-14 outline-none transition focus:border-[var(--accent)]"
               type={showPassword ? "text" : "password"}
               placeholder="********"
               value={password}
@@ -91,13 +91,13 @@ export function LoginForm() {
         </label>
 
         {error ? (
-          <div className="rounded-[1rem] border border-[rgba(186,26,26,0.16)] bg-[rgba(255,234,229,0.8)] px-4 py-3 text-sm text-[#8c2616]">
+          <div className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-surface)] px-4 py-3 text-sm text-[var(--danger)]">
             {error}
           </div>
         ) : null}
 
         <button
-          className="inline-flex w-full items-center justify-center gap-2 rounded-[1.2rem] bg-[var(--text)] px-5 py-4 text-sm font-semibold text-[var(--accent-ink)] transition hover:translate-y-[-1px] hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--text)] px-5 py-4 text-sm font-semibold text-[var(--accent-ink)] transition hover:translate-y-[-1px] hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={submitting || auth.status === "loading"}
           type="submit"
         >

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Iterable
@@ -14,6 +15,7 @@ from langgraph.types import Command
 from schemas.outfit_maker.product_solicitation import SearchPriorityField
 from services.image_analysis_service import ImageAnalysisService
 from services.image_similarity_service import ImageSimilarityService
+from services.preference_learning_service import get_preference_learning_service
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from state import StateKeys, SumaryKeys
@@ -62,6 +64,8 @@ Create a short summary that captures:
 Return only the summary as plain text.
 """.strip()
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ChatTurnResult:
@@ -83,6 +87,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         conversation: Conversation,
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        style_preference_context: dict[str, Any] | None = None,
         image_attachments: list[MessageImageAttachment] | None = None,
     ) -> ChatTurnResult:
         clean_content = content.strip()
@@ -119,12 +124,14 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
                 config,
                 workflow_content,
                 search_priority_fields,
+                style_preference_context or {},
                 image_search_features,
             )
         else:
             workflow_input = self._build_initial_state(
                 workflow_content,
                 search_priority_fields,
+                style_preference_context or {},
                 image_search_features,
             )
 
@@ -144,6 +151,15 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         session.add(assistant_message)
         await session.flush()
 
+        await self._record_preference_learning(
+            session,
+            conversation,
+            user_message,
+            display_content,
+            result,
+            style_preference_context or {},
+        )
+
         summary, summary_message_count = await asyncio.to_thread(
             self._load_conversation_state_from_checkpoint,
             config,
@@ -160,6 +176,28 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             user_message=user_message,
             assistant_message=assistant_message,
         )
+
+    async def _record_preference_learning(
+        self,
+        session: AsyncSession,
+        conversation: Conversation,
+        user_message: ChatMessage,
+        display_content: str,
+        graph_result: dict[str, Any],
+        style_preference_context: dict[str, Any],
+    ) -> None:
+        try:
+            await get_preference_learning_service().record_turn(
+                session,
+                user_id=conversation.user_id,
+                conversation_id=conversation.id,
+                message_id=user_message.id,
+                message_content=display_content,
+                request=graph_result.get(StateKeys.CURRENT_OUTFIT_REQUEST),
+                learning_enabled=bool(style_preference_context.get("use_user_memory", True)),
+            )
+        except Exception:
+            logger.exception("Preference learning failed for conversation %s", conversation.id)
 
     def _default_image_search_content(self, attachments: list[dict[str, Any]]) -> str:
         if len(attachments) == 1:
@@ -193,6 +231,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         self,
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        style_preference_context: dict[str, Any],
         image_search_features: list[dict[str, Any]],
     ) -> dict:
         return {
@@ -208,6 +247,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             StateKeys.BUSINESS_QA_QUERIES: None,
             StateKeys.OUTFIT_SEARCH_INTENTS: None,
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
+            StateKeys.STYLE_PREFERENCE_CONTEXT: style_preference_context,
             StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
             StateKeys.BUSINESS_ANSWERS: None,
             StateKeys.CURRENT_OUTFIT_REQUEST: None,
@@ -222,6 +262,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         config: dict[str, Any],
         content: str,
         search_priority_fields: list[SearchPriorityField],
+        style_preference_context: dict[str, Any],
         image_search_features: list[dict[str, Any]],
     ) -> Command:
         with self._graph_lock:
@@ -233,6 +274,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
         update = {
             StateKeys.MESSAGES: [HumanMessage(content=content)],
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
+            StateKeys.STYLE_PREFERENCE_CONTEXT: style_preference_context,
             StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
             StateKeys.PREVIOUS_SUMMARY: {
                 SumaryKeys.CONTENT: previous_summary.get(SumaryKeys.CONTENT),

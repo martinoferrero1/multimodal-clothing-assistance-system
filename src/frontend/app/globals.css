@@ -3,19 +3,32 @@
 :root {
   --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Garamond, Georgia, serif;
   --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
-  --bg: #f7f1ea;
-  --bg-strong: #efe3d6;
-  --panel: rgba(255, 252, 247, 0.78);
-  --panel-strong: rgba(255, 249, 241, 0.94);
-  --workspace-panel: #fff9f1;
-  --line: rgba(91, 66, 43, 0.15);
-  --line-strong: rgba(91, 66, 43, 0.26);
-  --text: #1d1814;
-  --muted: #6d5a4b;
-  --accent: #8f4f2b;
-  --accent-soft: #dcbca4;
-  --accent-ink: #fffaf5;
-  --shadow: 0 30px 80px rgba(76, 47, 26, 0.14);
+  --bg: #131313;
+  --bg-strong: #0e0e0e;
+  --surface-lowest: #0e0e0e;
+  --surface-low: #1c1b1b;
+  --surface: #201f1f;
+  --surface-high: #2a2a2a;
+  --surface-highest: #353534;
+  --panel: rgba(32, 31, 31, 0.78);
+  --panel-strong: rgba(42, 42, 42, 0.94);
+  --workspace-panel: #171717;
+  --chrome-panel: rgba(19, 19, 19, 0.84);
+  --sidebar-panel: #171717;
+  --recommendation-panel: #1f1f1f;
+  --modal-panel: #201f1f;
+  --line: rgba(255, 255, 255, 0.1);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #e5e2e1;
+  --muted: #b8b0b1;
+  --muted-soft: #8f8788;
+  --accent: #d0bcff;
+  --accent-soft: rgba(208, 188, 255, 0.16);
+  --accent-ink: #1b1b1b;
+  --danger: #ffb4ab;
+  --danger-surface: rgba(147, 0, 10, 0.24);
+  --danger-line: rgba(255, 180, 171, 0.28);
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.36);
 }
 
 * {
@@ -23,10 +36,7 @@
 }
 
 html {
-  background:
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.72), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(208, 162, 124, 0.18), transparent 36%),
-    linear-gradient(135deg, #f9f4ef 0%, #f3ece4 48%, #ebe0d5 100%);
+  background: var(--bg);
 }
 
 body {
@@ -61,7 +71,7 @@ label[for] {
 }
 
 ::selection {
-  background: rgba(143, 79, 43, 0.18);
+  background: rgba(208, 188, 255, 0.32);
   color: var(--text);
 }
 
@@ -81,8 +91,96 @@ label[for] {
   -webkit-backdrop-filter: blur(28px);
 }
 
+.app-background {
+  background:
+    linear-gradient(180deg, var(--bg) 0%, #151515 46%, var(--bg) 100%);
+}
+
 .workspace-panel {
   background: var(--workspace-panel);
+  border: 1px solid var(--line-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.surface-chrome {
+  color: var(--text);
+  background: var(--chrome-panel);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.surface-sidebar {
+  color: var(--text);
+  background: rgba(19, 19, 19, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.04),
+    12px 0 34px rgba(0, 0, 0, 0.16);
+}
+
+.surface-recommendation {
+  --surface-low: rgba(255, 255, 255, 0.56);
+  --surface: rgba(255, 255, 255, 0.68);
+  --surface-high: rgba(255, 255, 255, 0.84);
+  --surface-highest: rgba(255, 255, 255, 0.96);
+  --line: rgba(25, 23, 28, 0.12);
+  --line-strong: rgba(25, 23, 28, 0.2);
+  --text: #1f1d22;
+  --muted: #5e5962;
+  --accent-soft: rgba(208, 188, 255, 0.4);
+  --accent-ink: #ffffff;
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.76)),
+    linear-gradient(145deg, rgba(208, 188, 255, 0.24), rgba(255, 255, 255, 0.72));
+  backdrop-filter: blur(34px) saturate(145%);
+  -webkit-backdrop-filter: blur(34px) saturate(145%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 18px 42px rgba(0, 0, 0, 0.1);
+}
+
+.surface-sidebar .scroll-modal {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+.surface-sidebar .scroll-modal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.24);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.surface-recommendation .scroll-modal {
+  scrollbar-color: rgba(38, 34, 42, 0.24) transparent;
+}
+
+.surface-recommendation .scroll-modal::-webkit-scrollbar-thumb {
+  background: rgba(38, 34, 42, 0.18);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+.modal-shell {
+  background: var(--modal-panel);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow);
+}
+
+.modal-body {
+  background: rgba(28, 27, 27, 0.78);
+}
+
+.option-row {
+  border-radius: 0.5rem;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.option-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .hairline {
@@ -102,7 +200,7 @@ label[for] {
 
 .scroll-muted {
   scrollbar-width: thin;
-  scrollbar-color: rgba(143, 79, 43, 0.28) transparent;
+  scrollbar-color: rgba(208, 188, 255, 0.24) transparent;
 }
 
 .scroll-muted::-webkit-scrollbar {
@@ -111,14 +209,14 @@ label[for] {
 }
 
 .scroll-muted::-webkit-scrollbar-thumb {
-  background: rgba(143, 79, 43, 0.24);
+  background: rgba(208, 188, 255, 0.22);
   border-radius: 9999px;
 }
 
 .scroll-chat {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: rgba(109, 90, 75, 0.34) transparent;
+  scrollbar-color: rgba(208, 188, 255, 0.22) transparent;
 }
 
 .scroll-chat::-webkit-scrollbar {
@@ -132,18 +230,51 @@ label[for] {
 }
 
 .scroll-chat::-webkit-scrollbar-thumb {
-  background: rgba(109, 90, 75, 0.32);
+  background: rgba(208, 188, 255, 0.2);
   border: 3px solid transparent;
   border-radius: 9999px;
   background-clip: padding-box;
 }
 
 .scroll-chat::-webkit-scrollbar-thumb:hover {
-  background: rgba(109, 90, 75, 0.44);
+  background: rgba(208, 188, 255, 0.32);
   background-clip: padding-box;
 }
 
 .scroll-chat::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scroll-modal {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(208, 188, 255, 0.28) transparent;
+}
+
+.scroll-modal::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.scroll-modal::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 0.85rem;
+}
+
+.scroll-modal::-webkit-scrollbar-thumb {
+  background: rgba(208, 188, 255, 0.24);
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  background-clip: padding-box;
+}
+
+.scroll-modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(208, 188, 255, 0.38);
+  background-clip: padding-box;
+}
+
+.scroll-modal::-webkit-scrollbar-corner {
   background: transparent;
 }
 

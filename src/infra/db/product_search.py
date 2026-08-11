@@ -42,6 +42,7 @@ def search_product_candidates(
     request: ItemSpecList | None,
     options_per_item: int = DEFAULT_OPTIONS_PER_ITEM,
     priority_fields: list[SearchPriorityField] | None = None,
+    style_preference_context: dict[str, Any] | None = None,
     image_search_features: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     if request is None:
@@ -63,6 +64,7 @@ def search_product_candidates(
                 item,
                 options_per_item,
                 configured_priority_fields,
+                style_preference_context or {},
                 image_search_features,
             )
             for item in request.items
@@ -75,6 +77,7 @@ def _search_item(
     item: ItemSpec,
     options_per_item: int,
     configured_priority_fields: list[SearchPriorityField] | None,
+    style_preference_context: dict[str, Any],
     image_search_features: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
     if isinstance(item, OutfitSpec):
@@ -88,6 +91,7 @@ def _search_item(
                     _merge_outfit_defaults(item, garment),
                     options_per_item,
                     configured_priority_fields,
+                    style_preference_context,
                     image_search_features,
                 )
                 for garment in item.items
@@ -102,6 +106,7 @@ def _search_item(
             item,
             options_per_item,
             configured_priority_fields,
+            style_preference_context,
             image_search_features,
         ),
     }
@@ -131,9 +136,10 @@ def _search_garment(
     garment: GarmentSpec,
     options_per_item: int,
     configured_priority_fields: list[SearchPriorityField] | None,
+    style_preference_context: dict[str, Any],
     image_search_features: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
-    semantic_query = _request_search_text(garment)
+    semantic_query = _request_search_text(garment, style_preference_context)
     priority_fields = _effective_priority_fields(garment, configured_priority_fields)
     active_priority_fields = _active_priority_fields(garment, priority_fields)
     priority_products = _priority_filtered_products(products, garment, active_priority_fields)
@@ -143,6 +149,7 @@ def _search_garment(
         products,
         garment,
         semantic_query,
+        style_preference_context,
         active_priority_fields,
         priority_products,
         options_per_item,
@@ -155,6 +162,7 @@ def _search_garment(
             products,
             garment,
             semantic_query,
+            style_preference_context,
             active_priority_fields,
             priority_products,
             options_per_item,
@@ -186,17 +194,18 @@ def _rank_text_search_candidates(
     products: list[Product],
     garment: GarmentSpec,
     semantic_query: str,
+    style_preference_context: dict[str, Any],
     active_priority_fields: list[SearchPriorityField],
     priority_products: list[Product],
     options_per_item: int,
 ) -> list[tuple[float, Product]]:
     if active_priority_fields and len(priority_products) >= options_per_item:
         semantic_scores = _semantic_similarity_scores(session, semantic_query, priority_products)
-        return _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
+        return _rank_products(priority_products, garment, semantic_scores, active_priority_fields, style_preference_context)
     elif active_priority_fields:
         semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
-        ranked_priority = _rank_products(priority_products, garment, semantic_scores, active_priority_fields)
-        ranked_fallback = _rank_products(products, garment, semantic_scores, [])
+        ranked_priority = _rank_products(priority_products, garment, semantic_scores, active_priority_fields, style_preference_context)
+        ranked_fallback = _rank_products(products, garment, semantic_scores, [], style_preference_context)
         ranked = _merge_priority_and_fallback_rankings(
             ranked_priority,
             ranked_fallback,
@@ -205,7 +214,7 @@ def _rank_text_search_candidates(
         return ranked
 
     semantic_scores = _semantic_similarity_scores(session, semantic_query, products)
-    return _rank_products(products, garment, semantic_scores, [])
+    return _rank_products(products, garment, semantic_scores, [], style_preference_context)
 
 
 def _rank_direct_visual_search_pool(
@@ -213,6 +222,7 @@ def _rank_direct_visual_search_pool(
     products: list[Product],
     garment: GarmentSpec,
     semantic_query: str,
+    style_preference_context: dict[str, Any],
     active_priority_fields: list[SearchPriorityField],
     priority_products: list[Product],
     options_per_item: int,
@@ -223,7 +233,7 @@ def _rank_direct_visual_search_pool(
         else products
     )
     semantic_scores = _semantic_similarity_scores(session, semantic_query, eligible_products)
-    return _rank_products(eligible_products, garment, semantic_scores, active_priority_fields)
+    return _rank_products(eligible_products, garment, semantic_scores, active_priority_fields, style_preference_context)
 
 
 def _rank_products(
@@ -231,10 +241,11 @@ def _rank_products(
     garment: GarmentSpec,
     semantic_scores: dict[int, float],
     priority_fields: list[SearchPriorityField],
+    style_preference_context: dict[str, Any] | None = None,
 ) -> list[tuple[float, Product]]:
     return sorted(
         (
-            (_score_product(product, garment, semantic_scores.get(product.id), priority_fields), product)
+            (_score_product(product, garment, semantic_scores.get(product.id), priority_fields, style_preference_context), product)
             for product in products
         ),
         key=lambda pair: (
@@ -338,13 +349,14 @@ def _score_product(
     garment: GarmentSpec,
     semantic_score: float | None,
     priority_fields: list[SearchPriorityField],
+    style_preference_context: dict[str, Any] | None = None,
 ) -> float:
     score = 0.0
 
     if semantic_score is not None:
         score += semantic_score * SEMANTIC_WEIGHT
     else:
-        score += _text_similarity(_request_search_text(garment), _product_search_text(product)) * SEMANTIC_WEIGHT
+        score += _text_similarity(_request_search_text(garment, style_preference_context), _product_search_text(product)) * SEMANTIC_WEIGHT
 
     score += _soft_match(garment.master_categories, [_name(product.master_category)], 1.0)
     score += _soft_match(garment.sub_categories, [_name(product.sub_category)], 1.3)
@@ -356,6 +368,7 @@ def _score_product(
     score += _year_score(garment.years, product.year) * 0.7
     score += _price_score(garment.max_price, product.price) * 0.9
     score += _priority_match_score(product, garment, priority_fields)
+    score += _style_preference_score(product, garment, style_preference_context or {})
 
     return round(score, 4)
 
@@ -675,7 +688,10 @@ def _embed_documents(embedding_model, texts: list[str]) -> list[list[float]]:
     return [embedding_model.embed_query(text) for text in texts]
 
 
-def _request_search_text(garment: GarmentSpec) -> str:
+def _request_search_text(
+    garment: GarmentSpec,
+    style_preference_context: dict[str, Any] | None = None,
+) -> str:
     values: list[str] = []
     for field_values in (
         garment.product_names,
@@ -691,6 +707,7 @@ def _request_search_text(garment: GarmentSpec) -> str:
     ):
         if field_values:
             values.extend(str(value) for value in field_values if value)
+    values.extend(_style_search_terms(garment, style_preference_context or {}))
     return _normalize(" ".join(values))
 
 
@@ -709,6 +726,114 @@ def _product_search_text(product: Product) -> str:
         _name(product.colour2),
     ]
     return _normalize(" ".join(value for value in values if value))
+
+
+def _style_search_terms(
+    garment: GarmentSpec,
+    style_preference_context: dict[str, Any],
+) -> list[str]:
+    if not style_preference_context.get("enabled"):
+        return []
+
+    terms: list[str] = []
+    for details in _style_detail_sources(style_preference_context):
+        terms.extend(_string_list(details.get("liked_styles")))
+        terms.extend(_string_list(details.get("preferred_fits")))
+        if not garment.usage:
+            terms.extend(_string_list(details.get("occasions")))
+        if not garment.brands:
+            terms.extend(_string_list(details.get("preferred_brands")))
+        if not garment.base_colors and not garment.secondary_colors:
+            terms.extend(_string_list(details.get("preferred_colors")))
+
+    for entry in _style_inferred_sources(style_preference_context):
+        value = str(entry.get("value") or "").strip()
+        kind = str(entry.get("kind") or "").casefold()
+        polarity = str(entry.get("polarity") or "positive").casefold()
+        if not value:
+            continue
+        if polarity == "negative" or "avoid" in kind or "disliked" in kind:
+            continue
+        if "color" in kind and (garment.base_colors or garment.secondary_colors):
+            continue
+        if "brand" in kind and garment.brands:
+            continue
+        terms.append(value)
+
+    return terms
+
+
+def _style_preference_score(
+    product: Product,
+    garment: GarmentSpec,
+    style_preference_context: dict[str, Any],
+) -> float:
+    if not style_preference_context.get("enabled"):
+        return 0.0
+
+    score = 0.0
+    product_colors = [_name(product.base_colour), _name(product.colour1), _name(product.colour2)]
+    product_brand = [_name(product.brand)]
+    request_has_color = bool(garment.base_colors or garment.secondary_colors)
+    request_has_brand = bool(garment.brands)
+
+    for details in _style_detail_sources(style_preference_context):
+        if not request_has_color:
+            if _matches_any_normalized(product_colors, _string_list(details.get("preferred_colors"))):
+                score += 0.35
+            if _matches_any_normalized(product_colors, _string_list(details.get("avoided_colors"))):
+                score -= 0.45
+        if not request_has_brand:
+            if _matches_any_normalized(product_brand, _string_list(details.get("preferred_brands"))):
+                score += 0.25
+            if _matches_any_normalized(product_brand, _string_list(details.get("avoided_brands"))):
+                score -= 0.35
+
+    for entry in _style_inferred_sources(style_preference_context):
+        kind = str(entry.get("kind") or "").casefold()
+        value = str(entry.get("value") or "").strip()
+        if not value:
+            continue
+        try:
+            confidence = max(0.0, min(1.0, float(entry.get("confidence", 0.5))))
+        except (TypeError, ValueError):
+            confidence = 0.5
+        polarity = str(entry.get("polarity") or "positive").casefold()
+        is_negative = polarity == "negative" or "avoid" in kind or "disliked" in kind
+        direction = -1 if is_negative else 1
+        if "color" in kind and not request_has_color and _matches_any_normalized(product_colors, [value]):
+            score += direction * 0.2 * confidence
+        if "brand" in kind and not request_has_brand and _matches_any_normalized(product_brand, [value]):
+            score += direction * 0.15 * confidence
+
+    return score
+
+
+def _style_detail_sources(style_preference_context: dict[str, Any]) -> list[dict[str, Any]]:
+    sources = style_preference_context.get("sources")
+    if not isinstance(sources, dict):
+        return []
+    return [
+        details
+        for details in (sources.get("temporary"), sources.get("explicit"))
+        if isinstance(details, dict)
+    ]
+
+
+def _style_inferred_sources(style_preference_context: dict[str, Any]) -> list[dict[str, Any]]:
+    sources = style_preference_context.get("sources")
+    if not isinstance(sources, dict):
+        return []
+    inferred = sources.get("inferred")
+    if not isinstance(inferred, list):
+        return []
+    return [entry for entry in inferred if isinstance(entry, dict)]
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
 
 
 def _soft_match(

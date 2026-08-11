@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, PanelsTopLeft, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
-import { ApiError, updateUserSearchPreferences } from "@/lib/api-client";
+import {
+  ApiError,
+  clearUserExplicitStylePreferences,
+  removeUserInferredStylePreference,
+  updateUserSearchPreferences,
+  updateUserStylePreferences,
+} from "@/lib/api-client";
 import { formatShortDate } from "@/lib/format";
 import {
   SEARCH_PRIORITY_OPTIONS,
@@ -12,20 +18,49 @@ import {
   togglePriorityField,
 } from "@/lib/search-preferences";
 import { readPreferences, writePreferences } from "@/lib/storage";
-import type { SearchPriorityField, SettingsPreferences } from "@/lib/types";
+import type { SearchPriorityField, SettingsPreferences, StylePreferenceDetails } from "@/lib/types";
 
-type SettingsSection = "general" | "account";
+export type SettingsSection = "general" | "account";
+type StyleDraft = Record<keyof StylePreferenceDetails, string>;
 
-export function SettingsView() {
+type SettingsViewProps = {
+  activeSection: SettingsSection;
+  onSectionChange: (section: SettingsSection) => void;
+};
+
+const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; label: string; multiline?: boolean }> = [
+  { key: "liked_styles", label: "Liked styles" },
+  { key: "disliked_styles", label: "Styles to avoid" },
+  { key: "preferred_colors", label: "Preferred colors" },
+  { key: "avoided_colors", label: "Colors to avoid" },
+  { key: "preferred_brands", label: "Preferred brands" },
+  { key: "avoided_brands", label: "Brands to avoid" },
+  { key: "preferred_fits", label: "Preferred fits" },
+  { key: "occasions", label: "Occasions" },
+  { key: "budget_notes", label: "Budget notes", multiline: true },
+  { key: "sizing_notes", label: "Sizing notes", multiline: true },
+  { key: "freeform_notes", label: "Style notes", multiline: true },
+];
+
+export function SettingsView({ activeSection, onSectionChange }: SettingsViewProps) {
   const auth = useAuth();
   const authPriorityFields = auth.user?.search_preferences?.priority_fields ?? [];
   const [preferences, setPreferences] = useState<SettingsPreferences>(() => readPreferences());
-  const [activeSection, setActiveSection] = useState<SettingsSection>("general");
   const [optimisticSearchPriorityFields, setOptimisticSearchPriorityFields] =
     useState<SearchPriorityField[] | null>(null);
   const [savingSearchPreferences, setSavingSearchPreferences] = useState(false);
   const [searchPreferencesError, setSearchPreferencesError] = useState<string | null>(null);
+  const [styleDraft, setStyleDraft] = useState<StyleDraft>(() => stylePreferencesToDraft(auth.user?.style_preferences?.explicit));
+  const [savingStylePreferences, setSavingStylePreferences] = useState(false);
+  const [stylePreferencesError, setStylePreferencesError] = useState<string | null>(null);
   const searchPriorityFields = optimisticSearchPriorityFields ?? authPriorityFields;
+  const stylePreferences = auth.user?.style_preferences;
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setStyleDraft(stylePreferencesToDraft(auth.user?.style_preferences?.explicit));
+    });
+  }, [auth.user?.style_preferences?.explicit]);
 
   function updatePreferences(nextPreferences: SettingsPreferences) {
     setPreferences(nextPreferences);
@@ -60,6 +95,88 @@ export function SettingsView() {
     }
   }
 
+  async function handlePersonalizedStylesToggle() {
+    if (!auth.token || savingStylePreferences || !stylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await updateUserStylePreferences(auth.token, {
+        use_personalized_styles: !stylePreferences.use_personalized_styles,
+      });
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not update personalized style usage.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
+    }
+  }
+
+  async function handleSaveExplicitStylePreferences() {
+    if (!auth.token || savingStylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await updateUserStylePreferences(auth.token, { explicit: draftToStylePreferences(styleDraft) });
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not save your style preferences.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
+    }
+  }
+
+  async function handleClearExplicitStylePreferences() {
+    if (!auth.token || savingStylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await clearUserExplicitStylePreferences(auth.token);
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not clear your style preferences.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
+    }
+  }
+
+  async function handleRemoveInferredStylePreference(inferredId: string) {
+    if (!auth.token || savingStylePreferences) {
+      return;
+    }
+    setSavingStylePreferences(true);
+    setStylePreferencesError(null);
+    try {
+      await removeUserInferredStylePreference(auth.token, inferredId);
+      await auth.refreshUser();
+    } catch (caughtError) {
+      setStylePreferencesError(
+        caughtError instanceof ApiError
+          ? caughtError.message
+          : "We could not remove the inferred preference.",
+      );
+    } finally {
+      setSavingStylePreferences(false);
+    }
+  }
+
   const sections = [
     {
       id: "general" as const,
@@ -76,9 +193,9 @@ export function SettingsView() {
   ];
 
   return (
-    <div className="grid gap-4 lg:min-h-[28rem] lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="rounded-[1.8rem] border border-[var(--line)] bg-white/58 p-3">
-        <div className="space-y-2">
+    <div className="grid min-h-full lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside className="h-fit self-start px-3 py-4 lg:sticky lg:top-0 lg:border-r lg:border-[var(--line)]">
+        <div className="space-y-1">
           {sections.map((section) => {
             const Icon = section.icon;
             const active = activeSection === section.id;
@@ -86,13 +203,15 @@ export function SettingsView() {
             return (
               <button
                 key={section.id}
-                className={`flex w-full items-start gap-3 rounded-[1.2rem] px-4 py-4 text-left transition ${active ? "bg-[rgba(143,79,43,0.12)] text-[var(--text)]" : "text-[var(--muted)] hover:bg-white/72 hover:text-[var(--text)]"}`}
+                className={`option-row flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left ${
+                  active
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]"
+                    : "border-transparent text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                }`}
                 type="button"
-                onClick={() => setActiveSection(section.id)}
+                onClick={() => onSectionChange(section.id)}
               >
-                <span
-                  className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${active ? "bg-[rgba(143,79,43,0.16)]" : "bg-white/72"}`}
-                >
+                <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center">
                   <Icon size={16} />
                 </span>
                 <span>
@@ -107,11 +226,10 @@ export function SettingsView() {
         </div>
       </aside>
 
-      <div className="space-y-4">
+      <div className="px-5 py-5 sm:px-6 lg:px-8">
         {activeSection === "general" ? (
-          <article className="min-h-[28rem] rounded-[1.8rem] border border-[var(--line)] bg-white/72 p-6">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">General</p>
-            <div className="mt-6 space-y-4">
+          <div className="space-y-7 pb-8">
+            <div className="space-y-0">
               <PreferenceRow
                 checked={preferences.compactSidebar}
                 description="Reduce the sidebar width to give the workspace more room."
@@ -125,7 +243,7 @@ export function SettingsView() {
               />
               <PreferenceRow
                 checked={preferences.showRecommendationPanel}
-                description="Show or hide the side panel where outfits and garments are rendered."
+                description="Use a side panel for outfit details when available. Turn it off to open recommendations in a dedicated modal instead."
                 label="Recommendation panel"
                 onToggle={() =>
                   updatePreferences({
@@ -134,7 +252,9 @@ export function SettingsView() {
                   })
                 }
               />
-              <section className="rounded-[1.4rem] border border-[var(--line)] bg-white/68 px-4 py-4">
+            </div>
+
+            <section className="border-b border-[var(--line)] pb-7">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-[var(--text)]">Search priorities</p>
@@ -163,36 +283,224 @@ export function SettingsView() {
                 </div>
 
                 {searchPreferencesError ? (
-                  <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
+                  <p className="mt-4 rounded-[1rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
                     {searchPreferencesError}
                   </p>
                 ) : null}
-              </section>
-            </div>
-          </article>
+            </section>
+
+            <section className="pb-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text)]">Personalized style memory</p>
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      Let recommendations use your saved and inferred style preferences when your current request does not conflict.
+                    </p>
+                  </div>
+                  <button
+                    className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${stylePreferences?.use_personalized_styles ? "bg-[var(--accent)]" : "bg-[var(--surface-high)]"}`}
+                    type="button"
+                    disabled={!auth.token || savingStylePreferences}
+                    aria-pressed={stylePreferences?.use_personalized_styles ?? true}
+                    onClick={handlePersonalizedStylesToggle}
+                  >
+                    <span
+                      className={`h-5 w-5 rounded-full bg-[var(--text)] transition ${stylePreferences?.use_personalized_styles ? "translate-x-5" : "translate-x-0"}`}
+                    />
+                  </button>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {styleDraftFields.map((field) => (
+                    <label key={field.key} className={field.multiline ? "sm:col-span-2" : ""}>
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                        {field.label}
+                      </span>
+                      <textarea
+                        className="mt-2 min-h-[3.2rem] w-full resize-y rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+                        rows={field.multiline ? 3 : 1}
+                        placeholder={field.multiline ? "Add a note" : "Comma-separated values"}
+                        value={styleDraft[field.key]}
+                        onChange={(event) =>
+                          setStyleDraft((current) => ({
+                            ...current,
+                            [field.key]: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    type="button"
+                    disabled={!auth.token || savingStylePreferences}
+                    onClick={handleSaveExplicitStylePreferences}
+                  >
+                    Save style preferences
+                  </button>
+                  <button
+                    className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                    type="button"
+                    disabled={!auth.token || savingStylePreferences}
+                    onClick={handleClearExplicitStylePreferences}
+                  >
+                    Clear explicit preferences
+                  </button>
+                  {savingStylePreferences ? (
+                    <span className="self-center text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
+                      Saving
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-6 border-t border-[var(--line)] pt-5">
+                  <p className="text-sm font-semibold text-[var(--text)]">Inferred preferences</p>
+                  {stylePreferences?.inferred?.length ? (
+                    <div className="mt-3 divide-y divide-[var(--line)]">
+                      {stylePreferences.inferred.map((entry) => (
+                        <div key={entry.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-[var(--text)]">
+                              {entry.kind}: {entry.value}
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                              {formatInferredPreferenceMetadata(entry)}{entry.evidence ? ` · ${entry.evidence}` : ""}
+                            </p>
+                          </div>
+                          <button
+                            className="rounded-md border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                            type="button"
+                            disabled={!auth.token || savingStylePreferences}
+                            onClick={() => handleRemoveInferredStylePreference(entry.id)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+                      No inferred style preferences yet.
+                    </p>
+                  )}
+                </div>
+
+                {stylePreferencesError ? (
+                  <p className="mt-4 rounded-[1rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
+                    {stylePreferencesError}
+                  </p>
+                ) : null}
+            </section>
+          </div>
         ) : null}
 
         {activeSection === "account" ? (
-          <article className="min-h-[28rem] rounded-[1.8rem] border border-[var(--line)] bg-white/72 p-6">
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">Account</p>
-            <h2 className="serif mt-3 text-3xl leading-none">{auth.user?.display_name}</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-[1.2rem] bg-[rgba(143,79,43,0.06)] p-4">
+          <div className="max-w-2xl space-y-8 pb-8">
+            <div>
+              <p className="text-sm font-semibold text-[var(--muted)]">Signed in as</p>
+              <h3 className="mt-3 text-2xl font-semibold leading-none text-[var(--text)]">
+                {auth.user?.display_name}
+              </h3>
+            </div>
+            <div className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
+              <div className="grid gap-2 py-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Email</p>
-                <p className="mt-2 text-sm text-[var(--text)]">{auth.user?.email || "Not available"}</p>
+                <p className="text-sm text-[var(--text)]">{auth.user?.email || "Not available"}</p>
               </div>
-              <div className="rounded-[1.2rem] bg-[rgba(143,79,43,0.06)] p-4">
+              <div className="grid gap-2 py-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Member since</p>
-                <p className="mt-2 text-sm text-[var(--text)]">
+                <p className="text-sm text-[var(--text)]">
                   {auth.user?.created_at ? formatShortDate(auth.user.created_at) : "Not available"}
                 </p>
               </div>
             </div>
-          </article>
+          </div>
         ) : null}
       </div>
     </div>
   );
+}
+
+function stylePreferencesToDraft(details: StylePreferenceDetails | undefined): StyleDraft {
+  const safeDetails = details ?? {
+    liked_styles: [],
+    disliked_styles: [],
+    preferred_colors: [],
+    avoided_colors: [],
+    preferred_brands: [],
+    avoided_brands: [],
+    preferred_fits: [],
+    occasions: [],
+    budget_notes: null,
+    sizing_notes: null,
+    freeform_notes: null,
+  };
+  return {
+    liked_styles: safeDetails.liked_styles.join(", "),
+    disliked_styles: safeDetails.disliked_styles.join(", "),
+    preferred_colors: safeDetails.preferred_colors.join(", "),
+    avoided_colors: safeDetails.avoided_colors.join(", "),
+    preferred_brands: safeDetails.preferred_brands.join(", "),
+    avoided_brands: safeDetails.avoided_brands.join(", "),
+    preferred_fits: safeDetails.preferred_fits.join(", "),
+    occasions: safeDetails.occasions.join(", "),
+    budget_notes: safeDetails.budget_notes ?? "",
+    sizing_notes: safeDetails.sizing_notes ?? "",
+    freeform_notes: safeDetails.freeform_notes ?? "",
+  };
+}
+
+function formatInferredPreferenceMetadata(entry: { confidence: number; occurrence_count: number | null; last_seen_at: string | null; source: string | null }) {
+  const parts = [`${Math.round(entry.confidence * 100)}% confidence`];
+  if (entry.occurrence_count) {
+    parts.push(`${entry.occurrence_count} observation${entry.occurrence_count === 1 ? "" : "s"}`);
+  }
+  if (entry.last_seen_at) {
+    parts.push(`last seen ${formatShortDate(entry.last_seen_at)}`);
+  }
+  if (entry.source === "learned") {
+    parts.push("learned automatically");
+  }
+  return parts.join(" · ");
+}
+
+function draftToStylePreferences(draft: StyleDraft): StylePreferenceDetails {
+  return {
+    liked_styles: parseCsv(draft.liked_styles),
+    disliked_styles: parseCsv(draft.disliked_styles),
+    preferred_colors: parseCsv(draft.preferred_colors),
+    avoided_colors: parseCsv(draft.avoided_colors),
+    preferred_brands: parseCsv(draft.preferred_brands),
+    avoided_brands: parseCsv(draft.avoided_brands),
+    preferred_fits: parseCsv(draft.preferred_fits),
+    occasions: parseCsv(draft.occasions),
+    budget_notes: cleanNote(draft.budget_notes),
+    sizing_notes: cleanNote(draft.sizing_notes),
+    freeform_notes: cleanNote(draft.freeform_notes),
+  };
+}
+
+function parseCsv(value: string): string[] {
+  const seen = new Set<string>();
+  const values: string[] = [];
+  for (const item of value.split(/[;,]/)) {
+    const normalized = item.trim();
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) {
+      continue;
+    }
+    values.push(normalized);
+    seen.add(key);
+  }
+  return values;
+}
+
+function cleanNote(value: string): string | null {
+  const normalized = value.trim();
+  return normalized || null;
 }
 
 type PreferenceRowProps = {
@@ -205,7 +513,7 @@ type PreferenceRowProps = {
 function PreferenceRow({ checked, description, label, onToggle }: PreferenceRowProps) {
   return (
     <button
-      className="flex w-full items-start justify-between gap-4 rounded-[1.4rem] border border-[var(--line)] bg-white/68 px-4 py-4 text-left transition hover:bg-white/90"
+      className="option-row flex w-full items-start justify-between gap-4 border-b border-[var(--line)] px-2 py-4 text-left hover:bg-[var(--surface)] hover:text-[var(--text)]"
       type="button"
       onClick={onToggle}
     >
@@ -214,10 +522,10 @@ function PreferenceRow({ checked, description, label, onToggle }: PreferenceRowP
         <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{description}</p>
       </div>
       <span
-        className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${checked ? "bg-[var(--accent)]" : "bg-[rgba(143,79,43,0.18)]"}`}
+        className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${checked ? "bg-[var(--accent)]" : "bg-[var(--surface-high)]"}`}
       >
         <span
-          className={`h-5 w-5 rounded-full bg-white transition ${checked ? "translate-x-5" : "translate-x-0"}`}
+          className={`h-5 w-5 rounded-full bg-[var(--text)] transition ${checked ? "translate-x-5" : "translate-x-0"}`}
         />
       </span>
     </button>
@@ -241,10 +549,10 @@ function SearchPriorityToggle({
 }: SearchPriorityToggleProps) {
   return (
     <button
-      className={`flex min-h-[5.5rem] items-start gap-3 rounded-[1.1rem] border px-3 py-3 text-left transition ${
+      className={`option-row flex min-h-[5.5rem] items-start gap-3 border-b px-2 py-3 text-left ${
         checked
-          ? "border-[rgba(143,79,43,0.34)] bg-[rgba(143,79,43,0.09)]"
-          : "border-[var(--line)] bg-white/62 hover:bg-white/86"
+          ? "border-[rgba(208,188,255,0.42)] bg-[var(--accent-soft)]"
+          : "border-[var(--line)] hover:bg-[var(--surface)]"
       } ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
       type="button"
       aria-pressed={checked}
@@ -255,7 +563,7 @@ function SearchPriorityToggle({
         className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[0.55rem] border ${
           checked
             ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]"
-            : "border-[var(--line-strong)] bg-white/70 text-transparent"
+            : "border-[var(--line-strong)] bg-[var(--surface-high)] text-transparent"
         }`}
       >
         <Check size={14} />

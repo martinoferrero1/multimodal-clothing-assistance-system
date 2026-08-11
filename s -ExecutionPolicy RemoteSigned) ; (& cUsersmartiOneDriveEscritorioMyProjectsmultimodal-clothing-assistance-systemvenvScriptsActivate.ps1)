@@ -1,0 +1,258 @@
+[33mcommit c759bf3103418d58b56a772c31b672705ab91ec8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32manalyze-many-garments-in-a-single-image[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Jul 23 13:24:25 2026 -0300
+
+    The pointer turns into a hand on hover, and pressing Enter (without Shift) now sends messages directly
+
+[33mcommit 253e725bfe8939abb5645ef109f8334ece9a8594[m
+Merge: 8ceb37f6 c5b52e28
+Author: martinoferrero1 <104446106+martinoferrero1@users.noreply.github.com>
+Date:   Thu Jul 23 12:18:49 2026 -0300
+
+    Merge pull request #4 from martinoferrero1/create-different-img-analysis-modes
+    
+    Create different img analysis modes
+
+[33mcommit c5b52e286b84c2c0037fa90603b8170de9a3a10c[m[33m ([m[1;31morigin/create-different-img-analysis-modes[m[33m, [m[1;32mcreate-different-img-analysis-modes[m[33m)[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Jul 23 12:15:56 2026 -0300
+
+    Configure different types of image search, based purely on semantic features extracted from the image or on visual similarity
+
+[33mcommit ec18a216662b7e1ca90bf0f6200622cc608f8411[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Jul 23 12:11:36 2026 -0300
+
+    Introduce OpenCode to the project
+
+[33mcommit 8ceb37f641f62cf9fea85b3e6f9dd61aab4f983a[m
+Merge: 8187b207 779e07dc
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Fri Jul 17 17:57:34 2026 -0300
+
+    Merge branch 'main' of https://github.com/martinoferrero1/multimodal-clothing-assistance-system
+
+[33mcommit 8187b207b82e0b0859a9a038bf266efcd24b6204[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Fri Jul 17 17:57:11 2026 -0300
+
+    Add OpenCode to the project
+
+[33mcommit 779e07dcfdecefb90ebd0224987e41b4abf04d0e[m
+Merge: 21039a66 7cbe4e4f
+Author: martinoferrero1 <104446106+martinoferrero1@users.noreply.github.com>
+Date:   Fri Jul 17 17:24:23 2026 -0300
+
+    Merge pull request #3 from martinoferrero1/implementation-of-semantic-image-search
+    
+    Implementation of semantic image search
+
+[33mcommit 7cbe4e4fe12af12a465e57ac8a2fe2d2d907bb85[m[33m ([m[1;31morigin/implementation-of-semantic-image-search[m[33m, [m[1;32mimplementation-of-semantic-image-search[m[33m)[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Fri Jul 17 16:26:22 2026 -0300
+
+    implement image inalysis as a structured output and introduce some tests for that
+
+[33mcommit 331246d8147333d91edb5788f44d3dfad7bb601a[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Tue Jul 14 15:52:09 2026 -0300
+
+    first implementation of semantic image search
+
+[33mcommit 21039a66d94b8edcc64ad08731102230c3b4c748[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Tue Jul 14 15:13:39 2026 -0300
+
+    Reduce the default session expiration time
+
+[33mcommit 62f8c722d2a616627c65c35854054a5c82107c88[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Fri Jun 19 01:21:30 2026 -0300
+
+    Allow to configure search preferences in general settings and for each chat
+
+[33mcommit 5b062133ff10c454709d156ed8f53aace4bce009[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Fri Jun 19 01:00:00 2026 -0300
+
+    Modify assistant response message to include at most one card of featured products inside it
+
+[33mcommit 9013d679a65ad0367aaa0b0668813cc65ad87866[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Sat May 30 01:38:20 2026 -0300
+
+    Add support for specifying priority features for product searches (currently only via .env)
+
+[33mcommit 4843434ff80241bca77c4f3f8b4073bd021f256e[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Wed May 20 16:36:00 2026 -0300
+
+    Persist product embeddings
+
+[33mcommit ee589c8c461178a47ddf8c677e873f0953835b88[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Tue May 19 16:55:38 2026 -0300
+
+    Add license to README (MIT)
+
+[33mcommit 96aa19337b920166f8085c110ac36df232a9d212[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Tue May 19 16:43:01 2026 -0300
+
+    Add basic README for the project so far
+
+[33mcommit 7231210f0b5500461a29388b835130da88c4c7b7[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon May 11 18:51:09 2026 -0300
+
+    Fix problems with background transitions and delete scroll of sidebar and recommendation panel
+
+[33mcommit 354ab7144aa33d2e1e870f53719a85a6a1cded30[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon May 11 17:29:52 2026 -0300
+
+    Modify the structure and style of the assistant's response message
+
+[33mcommit df5908cfad1c919f1a803611eb44f54f086fc343[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu May 7 16:26:41 2026 -0300
+
+    Modify answer to include all the featured products for an user request (before the answer was only showing the recommended outfits)
+
+[33mcommit 37a30be2167b26ba5b6d8f3b5857de371cd5f59b[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon May 4 13:12:15 2026 -0300
+
+    Solve problem of messages getting jumbled when a chat is loaded or refreshed
+
+[33mcommit 5decfc6d0b058122c4a8516b4bf85b2d4e5b4e69[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon May 4 12:34:37 2026 -0300
+
+    Refactor db models organization
+
+[33mcommit d8a28ab6ba51da124d578b627384ff4dbdd30dc1[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon May 4 11:27:14 2026 -0300
+
+    Remove deprecated option 'baseUrl' from tsconfig.json on the frontend
+
+[33mcommit af67aa125cf6d69f9b95e2d67c82e4cc71675cb8[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon May 4 01:51:14 2026 -0300
+
+    Add front so far (basic UI for register, login, chat (not yet fully usable) and settings)
+
+[33mcommit 74b64a128cae66c6c0a30620aeb090f60f2e0124[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon May 4 01:48:24 2026 -0300
+
+    Modify .gitignore, .dockerignore and docker-compose (with hot reloading) for frontend inclusion
+
+[33mcommit 593310a23c99613023316d42ab98cae7a0247d78[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Fri May 1 19:09:45 2026 -0300
+
+    Include authentication (login and register), separate db operations into separate services and replace some synchronous operations with asynchronous ones
+
+[33mcommit e9c9787f3e9c21ab9b907b2e65279aa97277c760[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Apr 30 17:32:56 2026 -0300
+
+    Create base api and modify checkpointer
+
+[33mcommit 01c464832d4871f52d258e170201457ea7f87896[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Apr 30 13:57:34 2026 -0300
+
+    Modify embeddings service and product and product search
+
+[33mcommit 5771d2ccc5c5f2e525a54d8a3be9653131a93bd3[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Apr 30 01:02:32 2026 -0300
+
+    Restructure functionalities and separate them into services used by the nodes and implement basic business QA based on RAG
+
+[33mcommit 809ef064bbfdc15164be5d899acf867f1aea80d9[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Wed Apr 29 17:16:07 2026 -0300
+
+    Replace structured final answer with a hybrid response with an expert agent
+
+[33mcommit 20d556694c78111da3598cb6ea1c15aaf690c55d[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Wed Apr 29 16:03:51 2026 -0300
+
+    Build response based on the answers from experts (with basic implementation of the outfit creator, but just for now)
+
+[33mcommit af824c66b34d2fefe1196caf166112efd8c6fb37[m
+Merge: 1819d393 65a6a36d
+Author: martinoferrero1 <104446106+martinoferrero1@users.noreply.github.com>
+Date:   Tue Apr 28 17:49:00 2026 -0300
+
+    Merge pull request #2 from martinoferrero1/implement-structured-extraction-of-type-hierarchy
+    
+    implement extraction by hierarchy
+
+[33mcommit 65a6a36d066bf53ea23b7d1909bee21d5ce3d705[m[33m ([m[1;31morigin/implement-structured-extraction-of-type-hierarchy[m[33m, [m[1;32mimplement-structured-extraction-of-type-hierarchy[m[33m)[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Tue Apr 28 13:34:58 2026 -0300
+
+    implement extraction by hierarchy
+
+[33mcommit 1819d39316c35e4b97bb9398d0515d4a9f3055de[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon Apr 27 19:06:05 2026 -0300
+
+    Reimplement the system and add db search to find options for outfit creation
+
+[33mcommit e6bf556d9853a6612579ef59db7082982f837714[m
+Merge: f2e5d3c6 82dd3433
+Author: martinoferrero1 <104446106+martinoferrero1@users.noreply.github.com>
+Date:   Mon Apr 6 17:43:19 2026 -0300
+
+    Merge pull request #1 from martinoferrero1/reimplementing-outfit-maker
+    
+    finishing reimplementation of outfit maker and other details
+
+[33mcommit 82dd3433ff1f85e4f598cb95f79fb9e66bc22865[m[33m ([m[1;31morigin/reimplementing-outfit-maker[m[33m, [m[1;32mreimplementing-outfit-maker[m[33m)[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Mon Apr 6 17:40:38 2026 -0300
+
+    finishing reimplementation of outfit maker and other details
+
+[33mcommit f2e5d3c6ffef9aeca0f18ce20614eb1185dd1efd[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Tue Mar 31 11:56:38 2026 -0300
+
+    New modifications and introducing a router for the outfit maker agent
+
+[33mcommit 7abdc672480a02819f3550ebb6b3b7c3d4014f0c[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Wed Mar 18 21:06:45 2026 -0300
+
+    Solving some problems and formatting the response after the garment request (at least for now, later probably with the front)
+
+[33mcommit d31dbddbc046d561003368e585839cb15f5bf015[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Fri Mar 13 16:07:04 2026 -0300
+
+    Solve some errors and modify prompts and schemas from product solicitation capture to improve results
+
+[33mcommit 26b4c0dd2a02e95ea58a4b1f807a866bdaf57a74[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Mar 12 16:41:37 2026 -0300
+
+    Solve some problems and add main
+
+[33mcommit 3eae4a2262276da472adcada72da6d35ea4ee5e3[m
+Author: martinoferrero1 <martinoferrero02@gmail.com>
+Date:   Thu Mar 12 11:35:54 2026 -0300
+
+    Add work so far
+
+[33mcommit fb727eb23db36eaba75d76c9480bb88ba9edfa8c[m
+Author: martinoferrero1 <104446106+martinoferrero1@users.noreply.github.com>
+Date:   Thu Jan 22 11:50:16 2026 -0300
+
+    Initial commit

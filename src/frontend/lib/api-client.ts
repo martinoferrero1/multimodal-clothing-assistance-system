@@ -3,10 +3,13 @@ import type {
   ChatMessage,
   ChatTurnResponse,
   Conversation,
+  ConversationStylePreferencesUpdate,
   HealthResponse,
   SearchPreferences,
   SearchPriorityField,
   User,
+  UserStylePreferences,
+  UserStylePreferencesUpdate,
 } from "@/lib/types";
 
 type RequestOptions = {
@@ -120,6 +123,34 @@ export async function updateUserSearchPreferences(
   });
 }
 
+export async function updateUserStylePreferences(
+  token: string,
+  payload: UserStylePreferencesUpdate,
+): Promise<UserStylePreferences> {
+  return apiRequest<UserStylePreferences>("api/users/me/style-preferences", {
+    method: "PUT",
+    token,
+    body: payload,
+  });
+}
+
+export async function clearUserExplicitStylePreferences(token: string): Promise<UserStylePreferences> {
+  return apiRequest<UserStylePreferences>("api/users/me/style-preferences/explicit", {
+    method: "DELETE",
+    token,
+  });
+}
+
+export async function removeUserInferredStylePreference(
+  token: string,
+  inferredId: string,
+): Promise<UserStylePreferences> {
+  return apiRequest<UserStylePreferences>(`api/users/me/style-preferences/inferred/${inferredId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export async function getHealth(): Promise<HealthResponse> {
   return apiRequest<HealthResponse>("health");
 }
@@ -149,6 +180,18 @@ export async function updateConversationSearchPreferences(
     method: "PUT",
     token,
     body: { priority_fields: priorityFields },
+  });
+}
+
+export async function updateConversationStylePreferences(
+  token: string,
+  conversationId: string,
+  payload: ConversationStylePreferencesUpdate,
+): Promise<Conversation> {
+  return apiRequest<Conversation>(`api/conversations/${conversationId}/style-preferences`, {
+    method: "PUT",
+    token,
+    body: payload,
   });
 }
 

@@ -146,7 +146,6 @@ export function AssistantMessageBody({
 
 function ProductHighlightsSection({
   payload,
-  title,
 }: {
   payload: FinalResponsePayload;
   title: string;
@@ -158,23 +157,16 @@ function ProductHighlightsSection({
   }
 
   return (
-    <section className="rounded-[1.4rem] border border-[var(--line)] bg-white/68 p-4">
+    <section className="rounded-[1.4rem] border border-[var(--line)] bg-[rgba(32,31,31,0.62)] p-4">
       <div className="space-y-3">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
-          Products
-        </p>
-        <h3 className="mt-2 serif text-2xl leading-none">{title}</h3>
-      </div>
-
-      <div className="mt-4 space-y-3">
         {groups.map((group) => (
           <div
             key={`${group.group_label}-${group.products[0]?.id ?? "empty"}`}
-            className="space-y-3 rounded-[1.15rem] bg-[rgba(143,79,43,0.06)] p-4"
+            className="space-y-3 rounded-[1.15rem] bg-[var(--surface-low)] p-4"
           >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">{group.group_label}</p>
-              <span className="rounded-full bg-[rgba(143,79,43,0.08)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+              <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
                 {group.products.length} picks
               </span>
             </div>
@@ -185,7 +177,7 @@ function ProductHighlightsSection({
                 return (
                   <article
                     key={`${group.group_label}-${product.id}-${itemIndex}`}
-                    className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-3 rounded-[1.1rem] bg-white/72 p-3"
+                    className="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3"
                   >
                     {image ? (
                       <Image
@@ -196,7 +188,7 @@ function ProductHighlightsSection({
                         height={300}
                       />
                     ) : (
-                      <div className="flex aspect-[4/5] items-center justify-center rounded-[0.95rem] bg-white/70 text-center text-[11px] text-[var(--muted)]">
+                      <div className="flex aspect-[4/5] items-center justify-center rounded-[0.95rem] bg-[var(--surface-high)] text-center text-[11px] text-[var(--muted)]">
                         No image
                       </div>
                     )}
@@ -231,7 +223,6 @@ function ProductHighlightsSection({
 function OutfitRecommendationsSection({
   messageId,
   payload,
-  title,
   activeRecommendationMessageId,
   activeOutfitIndex,
   onSelectOutfit,
@@ -250,15 +241,8 @@ function OutfitRecommendationsSection({
   }
 
   return (
-    <section className="rounded-[1.4rem] border border-[var(--line)] bg-white/68 p-4">
-      <div className="space-y-3">
-        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
-          Outfits
-        </p>
-        <h3 className="mt-2 serif text-2xl leading-none">{title}</h3>
-      </div>
-
-      <div className="mt-4 grid gap-3">
+    <section className="rounded-[1.4rem] border border-[var(--line)] bg-[rgba(32,31,31,0.62)] p-4">
+      <div className="grid gap-3">
         {payload.recommendations.outfits.map((outfit, index) => {
           const isSelected =
             activeRecommendationMessageId === messageId && activeOutfitIndex === index;
@@ -269,8 +253,8 @@ function OutfitRecommendationsSection({
               type="button"
               className={`rounded-[1.4rem] border p-4 text-left transition ${
                 isSelected
-                  ? "border-[var(--text)] bg-[rgba(143,79,43,0.12)]"
-                  : "border-[var(--line)] bg-white/72 hover:border-[var(--line-strong)]"
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                  : "border-[var(--line)] bg-[var(--surface)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-high)]"
               }`}
               onClick={() => onSelectOutfit(messageId, index)}
             >
@@ -280,28 +264,13 @@ function OutfitRecommendationsSection({
                     {outfit.summary_label}
                   </h4>
                 </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${
-                    isSelected
-                      ? "bg-[var(--text)] text-[var(--accent-ink)]"
-                      : "bg-[rgba(143,79,43,0.08)] text-[var(--muted)]"
-                  }`}
-                >
-                  {isSelected
-                    ? recommendationSurface === "panel"
-                      ? "Open in panel"
-                      : "Showing now"
-                    : recommendationSurface === "panel"
-                      ? "View outfit"
-                      : "Open outfit"}
-                </span>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {outfit.items.map((item, itemIndex) => (
                   <span
                     key={`${messageId}-outfit-chip-${index}-${itemIndex}`}
-                    className="rounded-full bg-[rgba(143,79,43,0.08)] px-3 py-1 text-xs text-[var(--muted)]"
+                    className="rounded-full bg-[var(--surface-high)] px-3 py-1 text-xs text-[var(--muted)]"
                   >
                     {item.summary_label}
                   </span>

@@ -6,11 +6,11 @@ information Q&A, and outfit/product recommendations based on natural-language
 user requests.
 
 > Status: under active development. The conversational backend,
-> authentication, conversation persistence, business-information RAG, and
-> text-based product search are already implemented. User image uploads and
-> backend-configurable image search modes are implemented for the chat flow.
-> Persistent saved outfits as first-class entities are part of the product
-> vision and are still being built.
+> authentication, conversation persistence, business-information RAG,
+> text/image-assisted product search, user style preferences, and the current
+> Next.js chat workspace are implemented. Persistent saved outfits as
+> first-class entities are part of the product vision and are still being
+> built.
 
 ## Project Vision
 
@@ -28,11 +28,12 @@ needed, retrieves store information when relevant, searches the catalog, and
 returns a structured answer with recommendations ready to be rendered in the
 frontend.
 
-The multimodal vision includes letting users upload reference images or similar
-products to improve search and recommendations. In the current state, the
-request extraction schema already includes image fields, product records include
-multiple image references, and the frontend renders recommended product images,
-but the API and UI are still primarily text-based.
+The multimodal flow lets users upload reference images or similar products to
+improve search and recommendations. Uploaded images are accepted by the chat API,
+analyzed by the configured image provider, and combined with structured request
+extraction and catalog search. Product records include multiple image
+references, and the frontend renders product and outfit recommendations with
+their available images.
 
 ## Implemented Features
 
@@ -41,7 +42,11 @@ but the API and UI are still primarily text-based.
 - Conversation creation, retrieval, and deletion.
 - Persistent user and assistant messages.
 - Assistant responses with structured payloads for the frontend.
-- Visual recommendation panel for products and outfits.
+- Chat image uploads for multimodal recommendation turns.
+- Visual recommendation surfaces for products and outfits, including a desktop
+  side panel and modal fallback.
+- User style preferences with explicit, inferred, temporary conversation, and
+  personalization toggle support.
 - LangGraph-based agent orchestration.
 - Conversation checkpoints by `thread_id`.
 - Incremental summarization for longer conversations.
@@ -53,8 +58,8 @@ but the API and UI are still primarily text-based.
 - Automatic catalog seeding from CSV.
 - SQLite support for local development and PostgreSQL support for Docker
   Compose deployments.
-- Next.js frontend with chat, sidebar, conversation history, login, register,
-  and UI preferences.
+- Next.js frontend with chat, upload controls, collapsible sidebar,
+  conversation history, login, register, settings modal, and UI preferences.
 
 ## In Development / Roadmap
 
@@ -62,10 +67,10 @@ but the API and UI are still primarily text-based.
 - Saving personalized outfits as dedicated database entities.
 - Editing previously saved outfits.
 - Favorites, collections, or wishlist flows.
-- Dedicated "Create your style" frontend flow.
+- More guided onboarding for creating and tuning style preferences.
 - Dedicated endpoints for outfit management.
 - Improved stock/availability and real pricing logic.
-- Automated backend and frontend tests.
+- Broader frontend test coverage and CI automation.
 - Versioned database migrations.
 
 ## Architecture Overview
@@ -218,6 +223,10 @@ Users:
 
 - `GET /api/users/me`
 - `GET /api/users/{user_id}`
+- `PUT /api/users/me/search-preferences`
+- `PUT /api/users/me/style-preferences`
+- `DELETE /api/users/me/style-preferences/explicit`
+- `DELETE /api/users/me/style-preferences/inferred/{inferred_id}`
 - `POST /api/users/me/conversations`
 - `GET /api/users/me/conversations`
 - `DELETE /api/users/me/conversations`
@@ -226,7 +235,10 @@ Conversations:
 
 - `GET /api/conversations/{conversation_id}`
 - `GET /api/conversations/{conversation_id}/messages`
+- `PUT /api/conversations/{conversation_id}/search-preferences`
+- `PUT /api/conversations/{conversation_id}/style-preferences`
 - `POST /api/conversations/{conversation_id}/messages`
+- `POST /api/conversations/{conversation_id}/messages/with-images`
 - `POST /api/conversations/{conversation_id}/messages/stream`
 - `DELETE /api/conversations/{conversation_id}`
 
@@ -442,11 +454,23 @@ Main screens and components:
 - Login and registration.
 - Redirects based on session state.
 - Authenticated workspace.
-- Sidebar with conversation history.
-- Main chat workspace.
-- Recommendation panel.
-- Outfit modal on smaller screens.
-- Interface preferences.
+- Collapsible sidebar with conversation history and account/settings access.
+- Main chat workspace with image attachments, centered GPT-style message flow,
+  and structured assistant recommendation rendering.
+- Product recommendation groups shown directly inside assistant messages.
+- Outfit recommendation cards that open a desktop side panel when enabled, or a
+  dedicated modal when panel mode is disabled or unavailable.
+- Settings modal for global interface preferences, search priorities, explicit
+  style preferences, inferred style preference review/removal, and personalized
+  style usage.
+- Conversation settings modal for temporary style notes, conversation-level
+  personalization override, and conversation-specific search priorities.
+
+Interface preferences are stored in browser `localStorage`; changes dispatch a
+`preferences:changed` browser event so the sidebar, settings modal, and chat
+workspace stay synchronized. Disabling the recommendation panel clears any
+currently marked outfit selection and future outfit cards open in the modal
+surface instead.
 
 The client communicates with the backend through an internal proxy:
 
@@ -573,11 +597,11 @@ Configure `.env` in the project root.
 Start the API:
 
 ```bash
-uvicorn api.app:app --host 0.0.0.0 --port 8000
+PYTHONPATH=src uvicorn api.app:app --host 0.0.0.0 --port 8000
 ```
 
-On Windows/PowerShell, when running outside the container, you may need to set
-`PYTHONPATH` so `api.app` can resolve imports under `src`:
+On Windows/PowerShell, set `PYTHONPATH` so `api.app` can resolve imports under
+`src`:
 
 ```powershell
 $env:PYTHONPATH="src"
@@ -662,7 +686,20 @@ docker compose up --build
 Run only the local backend:
 
 ```bash
+PYTHONPATH=src uvicorn api.app:app --host 0.0.0.0 --port 8000
+```
+
+On Windows/PowerShell:
+
+```powershell
+$env:PYTHONPATH="src"
 uvicorn api.app:app --host 0.0.0.0 --port 8000
+```
+
+Run backend tests:
+
+```bash
+PYTHONPATH=src python -m pytest tests/
 ```
 
 Run the frontend:

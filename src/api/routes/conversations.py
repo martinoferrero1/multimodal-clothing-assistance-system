@@ -16,6 +16,7 @@ from api.schemas import (
     ChatTurnResponse,
     ConversationRead,
     ConversationSearchPreferencesUpdate,
+    ConversationStylePreferencesUpdate,
     MessageImageAttachment,
     MessageCreate,
 )
@@ -62,6 +63,22 @@ async def update_conversation_search_preferences(
     conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> ConversationRead:
     return await conversation_service.update_conversation_search_preferences(
+        session,
+        current_user.id,
+        conversation_id,
+        payload,
+    )
+
+
+@router.put("/{conversation_id}/style-preferences", response_model=ConversationRead)
+async def update_conversation_style_preferences(
+    conversation_id: str,
+    payload: ConversationStylePreferencesUpdate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
+) -> ConversationRead:
+    return await conversation_service.update_conversation_style_preferences(
         session,
         current_user.id,
         conversation_id,

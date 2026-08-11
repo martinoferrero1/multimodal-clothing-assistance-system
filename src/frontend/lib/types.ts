@@ -3,6 +3,7 @@ export type User = {
   display_name: string;
   email: string | null;
   search_preferences: SearchPreferences;
+  style_preferences: UserStylePreferences;
   created_at: string;
 };
 
@@ -23,6 +24,7 @@ export type Conversation = {
   title: string;
   summary: string | null;
   search_preferences: ConversationSearchPreferences;
+  style_preferences: ConversationStylePreferences;
   message_count: number;
   last_message_preview: string | null;
   created_at: string;
@@ -44,6 +46,60 @@ export type SearchPreferences = {
 export type ConversationSearchPreferences = {
   priority_fields: SearchPriorityField[] | null;
   effective_priority_fields: SearchPriorityField[];
+};
+
+export type StylePreferenceDetails = {
+  liked_styles: string[];
+  disliked_styles: string[];
+  preferred_colors: string[];
+  avoided_colors: string[];
+  preferred_brands: string[];
+  avoided_brands: string[];
+  preferred_fits: string[];
+  occasions: string[];
+  budget_notes: string | null;
+  sizing_notes: string | null;
+  freeform_notes: string | null;
+};
+
+export type InferredStylePreference = {
+  id: string;
+  kind: string;
+  value: string;
+  confidence: number;
+  evidence: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  source: string | null;
+  field: string | null;
+  polarity: string | null;
+  occurrence_count: number | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  score: number | null;
+  aggregate_id: string | null;
+};
+
+export type UserStylePreferences = {
+  use_personalized_styles: boolean;
+  explicit: StylePreferenceDetails;
+  inferred: InferredStylePreference[];
+};
+
+export type ConversationStylePreferences = {
+  use_personalized_styles: boolean | null;
+  effective_use_personalized_styles: boolean;
+  temporary: StylePreferenceDetails;
+};
+
+export type UserStylePreferencesUpdate = {
+  use_personalized_styles?: boolean | null;
+  explicit?: Partial<StylePreferenceDetails> | null;
+};
+
+export type ConversationStylePreferencesUpdate = {
+  use_personalized_styles?: boolean | null;
+  temporary?: Partial<StylePreferenceDetails> | null;
 };
 
 export type ProductRecommendation = {

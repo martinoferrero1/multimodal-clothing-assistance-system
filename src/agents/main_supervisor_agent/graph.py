@@ -127,6 +127,7 @@ class SupervisorGraph(BaseGraph):
         context = {
             "search_intents": state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []),
             "priority_fields": state.get(StateKeys.SEARCH_PRIORITY_FIELDS, []),
+            "style_preferences": state.get(StateKeys.STYLE_PREFERENCE_CONTEXT, {}),
             "current_solicitation": current_request.model_dump() if current_request else None,
             "summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
         }
@@ -163,6 +164,7 @@ class SupervisorGraph(BaseGraph):
         product_candidates = search_product_candidates(
             state.get(StateKeys.CURRENT_OUTFIT_REQUEST),
             priority_fields=state.get(StateKeys.SEARCH_PRIORITY_FIELDS, []),
+            style_preference_context=state.get(StateKeys.STYLE_PREFERENCE_CONTEXT, {}),
             image_search_features=state.get(StateKeys.IMAGE_SEARCH_FEATURES, []),
         )
         logger.info("Found product candidates for %s request item(s)", len(product_candidates))

@@ -19,13 +19,10 @@ export function AuthShell({
 }: AuthShellProps) {
   return (
     <main className="relative flex min-h-screen overflow-hidden">
-      <div className="page-orb left-[-8rem] top-[-5rem] h-72 w-72 bg-[rgba(236,203,172,0.42)]" />
-      <div className="page-orb bottom-[-7rem] right-[-3rem] h-80 w-80 bg-[rgba(162,108,72,0.18)]" />
-
       <section className="relative hidden min-h-screen flex-1 overflow-hidden lg:flex">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center grayscale-[12%]" />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(24,18,14,0.72),rgba(24,18,14,0.18))]" />
-        <div className="relative z-10 flex h-full flex-col justify-between p-12 text-[var(--accent-ink)] xl:p-16">
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,14,14,0.82),rgba(14,14,14,0.3))]" />
+        <div className="relative z-10 flex h-full flex-col justify-between p-12 text-[var(--text)] xl:p-16">
           <div className="space-y-4">
             <h2 className="serif max-w-md text-5xl leading-none xl:text-6xl">
               Your AI-Fashion Assistant
