@@ -203,10 +203,10 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
             return (
               <button
                 key={section.id}
-                className={`flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left transition ${
+                className={`option-row flex w-full items-start gap-3 border-l-2 px-3 py-3 text-left ${
                   active
-                    ? "border-[var(--accent)] text-[var(--text)]"
-                    : "border-transparent text-[var(--muted)] hover:text-[var(--text)]"
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]"
+                    : "border-transparent text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
                 }`}
                 type="button"
                 onClick={() => onSectionChange(section.id)}
@@ -243,7 +243,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
               />
               <PreferenceRow
                 checked={preferences.showRecommendationPanel}
-                description="Show or hide the side panel where outfits and garments are rendered."
+                description="Use a side panel for outfit details when available. Turn it off to open recommendations in a dedicated modal instead."
                 label="Recommendation panel"
                 onToggle={() =>
                   updatePreferences({
@@ -283,7 +283,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                 </div>
 
                 {searchPreferencesError ? (
-                  <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
+                  <p className="mt-4 rounded-[1rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
                     {searchPreferencesError}
                   </p>
                 ) : null}
@@ -298,14 +298,14 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                     </p>
                   </div>
                   <button
-                    className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${stylePreferences?.use_personalized_styles ? "bg-[var(--accent)]" : "bg-[rgba(143,79,43,0.18)]"}`}
+                    className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${stylePreferences?.use_personalized_styles ? "bg-[var(--accent)]" : "bg-[var(--surface-high)]"}`}
                     type="button"
                     disabled={!auth.token || savingStylePreferences}
                     aria-pressed={stylePreferences?.use_personalized_styles ?? true}
                     onClick={handlePersonalizedStylesToggle}
                   >
                     <span
-                      className={`h-5 w-5 rounded-full bg-white transition ${stylePreferences?.use_personalized_styles ? "translate-x-5" : "translate-x-0"}`}
+                      className={`h-5 w-5 rounded-full bg-[var(--text)] transition ${stylePreferences?.use_personalized_styles ? "translate-x-5" : "translate-x-0"}`}
                     />
                   </button>
                 </div>
@@ -317,7 +317,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                         {field.label}
                       </span>
                       <textarea
-                        className="mt-2 min-h-[3.2rem] w-full resize-y rounded-[1rem] border border-[var(--line)] bg-white/70 px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+                        className="mt-2 min-h-[3.2rem] w-full resize-y rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
                         rows={field.multiline ? 3 : 1}
                         placeholder={field.multiline ? "Add a note" : "Comma-separated values"}
                         value={styleDraft[field.key]}
@@ -334,7 +334,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
 
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
-                    className="rounded-full bg-[var(--text)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                     type="button"
                     disabled={!auth.token || savingStylePreferences}
                     onClick={handleSaveExplicitStylePreferences}
@@ -342,7 +342,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                     Save style preferences
                   </button>
                   <button
-                    className="rounded-full border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
                     type="button"
                     disabled={!auth.token || savingStylePreferences}
                     onClick={handleClearExplicitStylePreferences}
@@ -371,7 +371,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                             </p>
                           </div>
                           <button
-                            className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-md border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
                             type="button"
                             disabled={!auth.token || savingStylePreferences}
                             onClick={() => handleRemoveInferredStylePreference(entry.id)}
@@ -389,7 +389,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                 </div>
 
                 {stylePreferencesError ? (
-                  <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
+                  <p className="mt-4 rounded-[1rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
                     {stylePreferencesError}
                   </p>
                 ) : null}
@@ -513,7 +513,7 @@ type PreferenceRowProps = {
 function PreferenceRow({ checked, description, label, onToggle }: PreferenceRowProps) {
   return (
     <button
-      className="flex w-full items-start justify-between gap-4 border-b border-[var(--line)] py-4 text-left transition hover:text-[var(--text)]"
+      className="option-row flex w-full items-start justify-between gap-4 border-b border-[var(--line)] px-2 py-4 text-left hover:bg-[var(--surface)] hover:text-[var(--text)]"
       type="button"
       onClick={onToggle}
     >
@@ -522,10 +522,10 @@ function PreferenceRow({ checked, description, label, onToggle }: PreferenceRowP
         <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{description}</p>
       </div>
       <span
-        className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${checked ? "bg-[var(--accent)]" : "bg-[rgba(143,79,43,0.18)]"}`}
+        className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${checked ? "bg-[var(--accent)]" : "bg-[var(--surface-high)]"}`}
       >
         <span
-          className={`h-5 w-5 rounded-full bg-white transition ${checked ? "translate-x-5" : "translate-x-0"}`}
+          className={`h-5 w-5 rounded-full bg-[var(--text)] transition ${checked ? "translate-x-5" : "translate-x-0"}`}
         />
       </span>
     </button>
@@ -549,10 +549,10 @@ function SearchPriorityToggle({
 }: SearchPriorityToggleProps) {
   return (
     <button
-      className={`flex min-h-[5.5rem] items-start gap-3 border-b px-0 py-3 text-left transition ${
+      className={`option-row flex min-h-[5.5rem] items-start gap-3 border-b px-2 py-3 text-left ${
         checked
-          ? "border-[rgba(143,79,43,0.34)]"
-          : "border-[var(--line)]"
+          ? "border-[rgba(208,188,255,0.42)] bg-[var(--accent-soft)]"
+          : "border-[var(--line)] hover:bg-[var(--surface)]"
       } ${disabled ? "cursor-not-allowed opacity-70" : ""}`}
       type="button"
       aria-pressed={checked}
@@ -563,7 +563,7 @@ function SearchPriorityToggle({
         className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[0.55rem] border ${
           checked
             ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]"
-            : "border-[var(--line-strong)] bg-white/70 text-transparent"
+            : "border-[var(--line-strong)] bg-[var(--surface-high)] text-transparent"
         }`}
       >
         <Check size={14} />

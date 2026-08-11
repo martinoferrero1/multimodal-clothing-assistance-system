@@ -10,6 +10,7 @@ import {
   MessageCirclePlus,
   Plus,
   Settings2,
+  Shirt,
   Sparkles,
   X,
 } from "lucide-react";
@@ -137,6 +138,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const [showRecommendationPanel, setShowRecommendationPanel] = useState(
     () => readPreferences().showRecommendationPanel,
   );
+  const [recommendationPanelHidden, setRecommendationPanelHidden] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(() =>
     typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false,
   );
@@ -153,6 +155,13 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     function syncPreferences() {
       const nextShowRecommendationPanel = readPreferences().showRecommendationPanel;
       setShowRecommendationPanel(nextShowRecommendationPanel);
+      if (nextShowRecommendationPanel) {
+        setRecommendationPanelHidden(false);
+      } else {
+        setRecommendationPanelHidden(false);
+        setOutfitModalOpen(false);
+        setSelectedOutfitState({ messageId: null, outfitIndex: 0 });
+      }
       if (nextShowRecommendationPanel && window.matchMedia("(min-width: 1024px)").matches) {
         setOutfitModalOpen(false);
       }
@@ -232,7 +241,12 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     hasValidSelectedOutfit && activeRecommendationMessage?.id === selectedRecommendationMessage?.id
       ? selectedOutfitState.outfitIndex
       : 0;
-  const usesRecommendationPanel = showRecommendationPanel && isLargeScreen;
+  const activeOutfitTitle =
+    activeRecommendationPayload?.recommendations.outfits[activeOutfitIndex]?.summary_label ??
+    "Outfit details";
+  const canUseRecommendationPanel = showRecommendationPanel && isLargeScreen;
+  const usesRecommendationPanel = canUseRecommendationPanel && !recommendationPanelHidden;
+  const shouldMarkSelectedOutfit = usesRecommendationPanel || outfitModalOpen;
   const userDefaultPriorityFields = auth.user?.search_preferences?.priority_fields ?? [];
   const conversationOverridePriorityFields =
     conversation?.search_preferences?.priority_fields ?? null;
@@ -247,6 +261,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOutfitModalOpen(false);
+        setSelectedOutfitState({ messageId: null, outfitIndex: 0 });
       }
     }
 
@@ -421,9 +436,28 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
   function handleSelectOutfit(messageId: string, outfitIndex: number) {
     setSelectedOutfitState({ messageId, outfitIndex });
+    if (canUseRecommendationPanel) {
+      setRecommendationPanelHidden(false);
+      return;
+    }
+
     if (!usesRecommendationPanel) {
       setOutfitModalOpen(true);
     }
+  }
+
+  function handleClearOutfitSelection() {
+    setSelectedOutfitState({ messageId: null, outfitIndex: 0 });
+  }
+
+  function handleCloseOutfitModal() {
+    setOutfitModalOpen(false);
+    handleClearOutfitSelection();
+  }
+
+  function handleHideRecommendationPanel() {
+    setRecommendationPanelHidden(true);
+    handleClearOutfitSelection();
   }
 
   function handleOpenChatSettings() {
@@ -486,15 +520,17 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
   return (
     <section
-      className={`grid min-h-[calc(100vh-2rem)] gap-4 pb-4 lg:h-full lg:min-h-0 lg:pt-4 ${
-        usesRecommendationPanel
-          ? "lg:grid-cols-[minmax(0,1fr)_21rem] lg:overflow-hidden"
+      className={`relative grid min-h-[calc(100vh-2rem)] gap-4 transition-[grid-template-columns,gap] duration-300 ease-out lg:h-full lg:min-h-0 lg:pt-4 ${
+        canUseRecommendationPanel
+          ? recommendationPanelHidden
+            ? "lg:grid-cols-[minmax(0,1fr)_0rem] lg:gap-0 lg:overflow-hidden"
+            : "lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-4 lg:overflow-hidden"
           : "grid-cols-1"
       }`}
     >
-      <div className="workspace-panel hairline flex min-h-[75vh] flex-col rounded-l-[2rem] rounded-br-[2rem] lg:h-full lg:min-h-0">
+      <div className="flex min-h-[75vh] flex-col lg:h-full lg:min-h-0">
         <div
-          className={`thread-fade scroll-muted min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 ${
+          className={`thread-fade scroll-muted min-h-0 flex-1 overflow-y-auto px-5 py-8 sm:px-8 ${
             !loading && !error && messages.length === 0
               ? "flex items-center justify-center"
               : ""
@@ -502,7 +538,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
         >
           {loading ? (
             <div className="flex h-full items-center justify-center">
-              <div className="inline-flex items-center gap-3 rounded-full bg-white/70 px-5 py-3 text-sm text-[var(--muted)]">
+              <div className="inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm text-[var(--muted)]">
                 <LoaderCircle size={16} className="animate-spin" />
                 Loading conversation...
               </div>
@@ -510,13 +546,13 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           ) : null}
 
           {!loading && error ? (
-            <div className="rounded-[1.4rem] border border-[rgba(186,26,26,0.16)] bg-[rgba(255,234,229,0.8)] px-5 py-4 text-sm text-[#8c2616]">
+            <div className="mx-auto w-full max-w-4xl rounded-[1.4rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-5 py-4 text-sm text-[var(--danger)]">
               {error}
             </div>
           ) : null}
 
           {!loading && !error && messages.length === 0 ? (
-            <div className="animate-rise-in rounded-[1.8rem] border border-dashed border-[var(--line-strong)] bg-white/55 p-8 text-center">
+            <div className="mx-auto w-full max-w-4xl animate-rise-in rounded-lg border border-dashed border-[var(--line-strong)] bg-[rgba(208,188,255,0.06)] p-8 text-center">
               <div className="flex items-center justify-center gap-3 text-[var(--text)]">
                 <Sparkles size={30} className="shrink-0 text-[var(--accent)]" />
                 <h2 className="serif text-4xl leading-none">
@@ -532,9 +568,9 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           ) : null}
 
           {!loading && !error && messages.length > 0 ? (
-            <div className="space-y-6">
+            <div className="mx-auto w-full max-w-4xl space-y-8">
               <div className="flex justify-center">
-                <span className="rounded-full bg-white/70 px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
+                <span className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
                   {formatShortDate(messages[messages.length - 1].created_at)}
                 </span>
               </div>
@@ -545,13 +581,13 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                 return (
                   <div
                     key={message.id}
-                    className={`animate-rise-in flex ${isUser ? "justify-end" : "justify-start"}`}
+                    className={`animate-rise-in flex w-full ${isUser ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={
                         isUser
-                          ? "max-w-3xl rounded-[1.6rem] bg-[var(--text)] px-5 py-4 text-[var(--accent-ink)]"
-                          : "max-w-5xl text-[var(--text)]"
+                          ? "max-w-[78%] rounded-[1.6rem] bg-[var(--surface-highest)] px-5 py-4 text-[var(--text)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]"
+                          : "w-full text-[var(--text)]"
                       }
                     >
                       {isUser ? (
@@ -587,12 +623,14 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                         <AssistantMessageBody
                           message={message}
                           activeRecommendationMessageId={
-                            activeRecommendationMessage?.id ?? null
+                            shouldMarkSelectedOutfit
+                              ? activeRecommendationMessage?.id ?? null
+                              : null
                           }
                           activeOutfitIndex={activeOutfitIndex}
                           onSelectOutfit={handleSelectOutfit}
                           recommendationSurface={
-                            usesRecommendationPanel ? "panel" : "modal"
+                            canUseRecommendationPanel ? "panel" : "modal"
                           }
                         />
                       )}
@@ -605,16 +643,16 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
         </div>
 
         <form
-          className="border-t border-[var(--line)] px-5 py-5 sm:px-8"
+          className="px-5 pb-5 pt-3 sm:px-8"
           onSubmit={handleSend}
         >
-          <div className="rounded-[1.8rem] border border-[var(--line)] bg-white/70 p-3 shadow-[0_18px_40px_rgba(76,47,26,0.08)]">
+          <div className="mx-auto w-full max-w-4xl rounded-[1.4rem] border border-[var(--line)] bg-[rgba(32,31,31,0.78)] p-3 shadow-[0_18px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
             {selectedImages.length > 0 ? (
               <div className="mb-3 flex flex-wrap gap-2 px-1">
                 {selectedImages.map((image) => (
                   <div
                     key={image.id}
-                    className="relative h-20 w-20 overflow-hidden rounded-[1rem] border border-[var(--line)] bg-white"
+                    className="relative h-20 w-20 overflow-hidden rounded-[1rem] border border-[var(--line)] bg-[var(--surface-high)]"
                   >
                     <Image
                       alt={image.file.name}
@@ -625,7 +663,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                       unoptimized
                     />
                     <button
-                      className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(32,20,12,0.72)] text-white transition hover:bg-[rgba(32,20,12,0.9)]"
+                      className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black/90"
                       type="button"
                       aria-label={`Remove ${image.file.name}`}
                       onClick={() => handleRemoveSelectedImage(image.id)}
@@ -649,9 +687,9 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                 </button>
 
                 {attachmentMenuOpen ? (
-                  <div className="absolute bottom-14 left-0 z-30 w-56 rounded-[1.2rem] border border-[var(--line)] bg-white/95 p-2 shadow-[0_18px_40px_rgba(76,47,26,0.14)] backdrop-blur">
+                  <div className="absolute bottom-14 left-0 z-30 w-56 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.34)] backdrop-blur">
                     <button
-                      className="flex w-full items-center gap-3 rounded-[0.9rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(143,79,43,0.08)]"
+                      className="flex w-full items-center gap-3 rounded-[0.5rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--accent-soft)]"
                       type="button"
                       onClick={handleOpenImagePicker}
                     >
@@ -659,7 +697,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                       Upload image
                     </button>
                     <button
-                      className="flex w-full items-center gap-3 rounded-[0.9rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(143,79,43,0.08)]"
+                      className="flex w-full items-center gap-3 rounded-[0.5rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--accent-soft)]"
                       type="button"
                       onClick={() => {
                         setAttachmentMenuOpen(false);
@@ -715,54 +753,101 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
         </form>
       </div>
 
-      {usesRecommendationPanel ? (
-        <aside className="glass-strong hairline hidden min-h-[75vh] flex-col rounded-[2rem] lg:flex lg:h-full lg:min-h-0 lg:overflow-hidden">
-          <div className="border-b border-[var(--line)] px-6 py-6">
-            <p className="text-xs uppercase tracking-[0.32em] text-[var(--muted)]">
-              Recommendation panel
-            </p>
+      {canUseRecommendationPanel && recommendationPanelHidden ? (
+        <button
+          className="surface-recommendation absolute right-0 top-4 hidden items-center gap-2 rounded-lg border border-[var(--line)] px-3 py-2 text-xs font-semibold text-[var(--muted)] shadow-[0_14px_32px_rgba(0,0,0,0.12)] transition hover:text-[var(--text)] lg:inline-flex"
+          type="button"
+          onClick={() => setRecommendationPanelHidden(false)}
+        >
+          <Shirt size={15} />
+          View outfits
+        </button>
+      ) : null}
+
+      {canUseRecommendationPanel ? (
+        <aside
+          className={`surface-recommendation hairline hidden min-h-[75vh] w-full min-w-0 flex-col rounded-xl transition-[opacity,transform,filter] duration-300 ease-out lg:flex lg:h-full lg:min-h-0 lg:overflow-hidden ${
+            recommendationPanelHidden
+              ? "pointer-events-none translate-x-3 opacity-0 blur-[1px]"
+              : "translate-x-0 opacity-100 blur-0"
+          }`}
+          aria-hidden={recommendationPanelHidden}
+        >
+          <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] px-6 py-5">
+            <h3 className="min-w-0 truncate text-base font-semibold capitalize text-[var(--text)]">
+              {activeRecommendationPayload ? activeOutfitTitle : "Recommendations"}
+            </h3>
+            <button
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
+              type="button"
+              aria-label="Hide recommendation panel"
+              onClick={handleHideRecommendationPanel}
+            >
+              <X size={16} />
+            </button>
           </div>
 
-          <div className="flex-1 space-y-6 overflow-hidden p-6">
+          <div className="scroll-modal min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
             {!activeRecommendationPayload ||
             activeRecommendationPayload.recommendations.outfits.length === 0 ? (
-              <div className="rounded-[1.6rem] border border-dashed border-[var(--line-strong)] bg-white/60 p-5 text-sm leading-7 text-[var(--muted)]">
+              <div className="border-y border-dashed border-[var(--line-strong)] py-5 text-sm leading-7 text-[var(--muted)]">
                 Select an outfit from the conversation to inspect it here.
               </div>
             ) : (
-              <RecommendationContent
-                payload={activeRecommendationPayload}
-                selectedOutfitIndex={activeOutfitIndex}
-              />
+              <>
+                <div className="flex justify-center">
+                  <button
+                    className="rounded-lg bg-[var(--text)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)] shadow-[0_10px_24px_rgba(0,0,0,0.16)] transition hover:opacity-90"
+                    type="button"
+                    onClick={handleClearOutfitSelection}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <RecommendationContent
+                  payload={activeRecommendationPayload}
+                  selectedOutfitIndex={activeOutfitIndex}
+                />
+              </>
             )}
           </div>
         </aside>
       ) : null}
 
       {outfitModalOpen && activeRecommendationPayload ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(32,20,12,0.42)] p-4 sm:p-6">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 sm:p-6">
           <button
             className="absolute inset-0 cursor-default"
             type="button"
+            tabIndex={-1}
             aria-label="Close outfit viewer"
-            onClick={() => setOutfitModalOpen(false)}
+            onClick={handleCloseOutfitModal}
           />
-          <div className="glass-strong hairline soft-shadow scroll-modal relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto rounded-l-[2rem] px-5 py-5 sm:px-6">
-            <div className="mb-4 flex items-center justify-end gap-4">
+          <div
+            className="modal-shell relative z-10 flex h-[min(44rem,calc(100dvh-2rem))] w-full max-w-4xl flex-col overflow-hidden rounded-xl sm:h-[min(44rem,calc(100dvh-3rem))]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="outfit-dialog-title"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--line)] px-5 py-4 sm:px-6">
+              <h3 id="outfit-dialog-title" className="text-base font-semibold capitalize text-[var(--text)]">{activeOutfitTitle}</h3>
               <button
-                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/60 transition hover:bg-white/85"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
                 type="button"
+                autoFocus
                 aria-label="Close outfit viewer"
-                onClick={() => setOutfitModalOpen(false)}
+                onClick={handleCloseOutfitModal}
               >
                 <X size={18} />
               </button>
             </div>
 
-            <RecommendationContent
-              payload={activeRecommendationPayload}
-              selectedOutfitIndex={activeOutfitIndex}
-            />
+            <div className="modal-body scroll-modal min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+              <RecommendationContent
+                payload={activeRecommendationPayload}
+                selectedOutfitIndex={activeOutfitIndex}
+              />
+            </div>
           </div>
         </div>
       ) : null}
@@ -810,30 +895,48 @@ function ChatSearchPreferencesModal({
   const usesCustomPriorities = draftPriorityFields !== null;
   const visiblePriorityFields = draftPriorityFields ?? effectivePriorityFields;
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   function handleToggleField(field: SearchPriorityField) {
     const baseFields = draftPriorityFields ?? effectivePriorityFields;
     onDraftChange(togglePriorityField(baseFields, field));
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(32,20,12,0.42)] p-4 sm:p-6">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 sm:p-6">
       <button
         className="absolute inset-0 cursor-default"
         type="button"
+        tabIndex={-1}
         aria-label="Close chat search preferences"
         onClick={onClose}
       />
-      <div className="glass-strong hairline soft-shadow relative z-10 w-full max-w-2xl rounded-[2rem] px-5 py-5 sm:px-6">
-        <div className="flex items-start justify-between gap-4">
+      <div
+        className="modal-shell relative z-10 flex h-[min(42rem,calc(100dvh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-xl sm:h-[min(42rem,calc(100dvh-3rem))]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="chat-preferences-dialog-title"
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--line)] px-5 py-4 sm:px-6">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
-              Search preferences
+            <h3 id="chat-preferences-dialog-title" className="serif text-2xl leading-none sm:text-3xl">Configure Preferences</h3>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              Search and style settings for this conversation.
             </p>
-            <h3 className="serif mt-3 text-3xl leading-none">This chat</h3>
           </div>
           <button
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--line)] bg-white/60 transition hover:bg-white/85"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
             type="button"
+            autoFocus
             aria-label="Close chat search preferences"
             onClick={onClose}
           >
@@ -841,140 +944,147 @@ function ChatSearchPreferencesModal({
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 rounded-[1.1rem] border border-[var(--line)] bg-white/52 p-1">
-          <button
-            className={`rounded-[0.9rem] px-3 py-3 text-sm font-semibold transition ${
-              !usesCustomPriorities
-                ? "bg-[var(--text)] text-[var(--accent-ink)]"
-                : "text-[var(--muted)] hover:text-[var(--text)]"
-            }`}
-            type="button"
-            onClick={() => onDraftChange(null)}
-          >
-            Inherit general
-          </button>
-          <button
-            className={`rounded-[0.9rem] px-3 py-3 text-sm font-semibold transition ${
-              usesCustomPriorities
-                ? "bg-[var(--text)] text-[var(--accent-ink)]"
-                : "text-[var(--muted)] hover:text-[var(--text)]"
-            }`}
-            type="button"
-            onClick={() => onDraftChange([...effectivePriorityFields])}
-          >
-            Customize
-          </button>
-        </div>
-
-        <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-          {usesCustomPriorities ? "Custom: " : "Inherited: "}
-          {formatPriorityFields(visiblePriorityFields)}
-        </p>
-
-        {usesCustomPriorities ? (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {SEARCH_PRIORITY_OPTIONS.map((option) => {
-              const checked = visiblePriorityFields.includes(option.field);
-
-              return (
-                <button
-                  key={option.field}
-                  className={`flex min-h-[5rem] items-start gap-3 rounded-[1.1rem] border px-3 py-3 text-left transition ${
-                    checked
-                      ? "border-[rgba(143,79,43,0.34)] bg-[rgba(143,79,43,0.09)]"
-                      : "border-[var(--line)] bg-white/62 hover:bg-white/86"
-                  }`}
-                  type="button"
-                  aria-pressed={checked}
-                  onClick={() => handleToggleField(option.field)}
-                >
-                  <span
-                    className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[0.55rem] border ${
-                      checked
-                        ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]"
-                        : "border-[var(--line-strong)] bg-white/70 text-transparent"
-                    }`}
-                  >
-                    <Check size={14} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-[var(--text)]">
-                      {option.label}
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
-                      {option.description}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        <div className="mt-6 rounded-[1.2rem] border border-[var(--line)] bg-white/58 p-4">
-          <p className="text-sm font-semibold text-[var(--text)]">Personalized styles</p>
-          <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-            Choose whether this chat should use your saved style memory and add temporary style guidance for this conversation only.
-          </p>
-          <div className="mt-4 grid grid-cols-3 rounded-[1.1rem] border border-[var(--line)] bg-white/52 p-1">
-            {[
-              { label: "Inherit", value: null },
-              { label: "Use", value: true },
-              { label: "Ignore", value: false },
-            ].map((option) => (
+        <div className="modal-body scroll-modal min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              Search behavior
+            </p>
+            <div className="mt-3 grid grid-cols-2 rounded-lg border border-[var(--line)] bg-[var(--surface-low)] p-1">
               <button
-                key={option.label}
-                className={`rounded-[0.9rem] px-3 py-3 text-sm font-semibold transition ${
-                  styleDraft.use_personalized_styles === option.value
+                className={`option-row px-3 py-3 text-sm font-semibold ${
+                  !usesCustomPriorities
                     ? "bg-[var(--text)] text-[var(--accent-ink)]"
                     : "text-[var(--muted)] hover:text-[var(--text)]"
                 }`}
                 type="button"
-                onClick={() =>
+                onClick={() => onDraftChange(null)}
+              >
+                Inherit general
+              </button>
+              <button
+                className={`option-row px-3 py-3 text-sm font-semibold ${
+                  usesCustomPriorities
+                    ? "bg-[var(--text)] text-[var(--accent-ink)]"
+                    : "text-[var(--muted)] hover:text-[var(--text)]"
+                }`}
+                type="button"
+                onClick={() => onDraftChange([...effectivePriorityFields])}
+              >
+                Customize
+              </button>
+            </div>
+
+            <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
+              {usesCustomPriorities ? "Custom: " : "Inherited: "}
+              {formatPriorityFields(visiblePriorityFields)}
+            </p>
+
+            {usesCustomPriorities ? (
+              <div className="mt-4 grid gap-x-4 sm:grid-cols-2">
+                {SEARCH_PRIORITY_OPTIONS.map((option) => {
+                  const checked = visiblePriorityFields.includes(option.field);
+
+                  return (
+                    <button
+                      key={option.field}
+                      className={`option-row flex min-h-[5rem] items-start gap-3 border-b px-2 py-3 text-left ${
+                        checked
+                          ? "border-[rgba(208,188,255,0.42)] bg-[var(--accent-soft)]"
+                          : "border-[var(--line)] hover:bg-[var(--surface)]"
+                      }`}
+                      type="button"
+                      aria-pressed={checked}
+                      onClick={() => handleToggleField(option.field)}
+                    >
+                      <span
+                        className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
+                          checked
+                            ? "border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-ink)]"
+                            : "border-[var(--line-strong)] bg-[var(--surface-high)] text-transparent"
+                        }`}
+                      >
+                        <Check size={14} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-[var(--text)]">
+                          {option.label}
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
+                          {option.description}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="mt-7 border-t border-[var(--line)] pt-6">
+            <p className="text-sm font-semibold text-[var(--text)]">Personalized styles</p>
+            <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+              Choose whether this chat should use your saved style memory and add temporary style guidance for this conversation only.
+            </p>
+            <div className="mt-4 grid grid-cols-3 rounded-lg border border-[var(--line)] bg-[var(--surface-low)] p-1">
+              {[
+                { label: "Inherit", value: null },
+                { label: "Use", value: true },
+                { label: "Ignore", value: false },
+              ].map((option) => (
+                <button
+                  key={option.label}
+                  className={`option-row px-3 py-3 text-sm font-semibold ${
+                    styleDraft.use_personalized_styles === option.value
+                      ? "bg-[var(--text)] text-[var(--accent-ink)]"
+                      : "text-[var(--muted)] hover:text-[var(--text)]"
+                  }`}
+                  type="button"
+                  onClick={() =>
+                    onStyleDraftChange({
+                      ...styleDraft,
+                      use_personalized_styles: option.value,
+                    })
+                  }
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <label className="mt-4 block">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                Temporary style notes
+              </span>
+              <textarea
+                className="mt-2 min-h-[5rem] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
+                placeholder="Example: make this conversation more formal, avoid sneakers"
+                value={styleDraft.temporary_notes}
+                onChange={(event) =>
                   onStyleDraftChange({
                     ...styleDraft,
-                    use_personalized_styles: option.value,
+                    temporary_notes: event.target.value,
                   })
                 }
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <label className="mt-4 block">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-              Temporary style notes
-            </span>
-            <textarea
-              className="mt-2 min-h-[5rem] w-full resize-y rounded-[1rem] border border-[var(--line)] bg-white/70 px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
-              placeholder="Example: make this conversation more formal, avoid sneakers"
-              value={styleDraft.temporary_notes}
-              onChange={(event) =>
-                onStyleDraftChange({
-                  ...styleDraft,
-                  temporary_notes: event.target.value,
-                })
-              }
-            />
-          </label>
+              />
+            </label>
+          </section>
+
+          {error ? (
+            <p className="mt-4 rounded-lg border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
+              {error}
+            </p>
+          ) : null}
         </div>
 
-        {error ? (
-          <p className="mt-4 rounded-[1rem] bg-[rgba(255,234,229,0.8)] px-3 py-2 text-sm text-[#8c2616]">
-            {error}
-          </p>
-        ) : null}
-
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-[var(--line)] px-5 py-4 sm:px-6">
           <button
-            className="inline-flex h-11 items-center justify-center rounded-full border border-[var(--line)] px-5 text-sm font-semibold text-[var(--muted)] transition hover:bg-white/65 hover:text-[var(--text)]"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-[var(--line)] px-5 text-sm font-semibold text-[var(--muted)] transition hover:bg-[var(--surface-high)] hover:text-[var(--text)]"
             type="button"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
-            className="inline-flex h-11 items-center justify-center rounded-full bg-[var(--accent)] px-5 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--accent)] px-5 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             type="button"
             disabled={saving}
             onClick={onSave}
@@ -1002,47 +1112,42 @@ function RecommendationContent({
   }
 
   return (
-    <article className="space-y-4 rounded-[1.8rem] border border-[var(--line)] bg-white/75 p-5">
-      <div>
-        <h4 className="mt-2 serif text-3xl leading-none capitalize">
-          {selectedOutfit.summary_label}
-        </h4>
-        <p className="mt-3 text-sm leading-7 text-[var(--muted)] capitalize">
-          {selectedOutfit.items.map((item) => item.summary_label).join(" - ")}
-        </p>
-      </div>
-
-      <div className="space-y-3">
+    <article>
+      <div className="divide-y divide-[var(--line)] border-b border-[var(--line)]">
         {selectedOutfit.items.map((item, itemIndex) => {
           const image = getProductImage(item.best_match);
 
           return (
             <article
               key={`${selectedOutfit.summary_label}-${itemIndex}`}
-              className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-4 rounded-[1.25rem] bg-[rgba(143,79,43,0.06)] p-3"
+              className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-4 py-4"
             >
               {image ? (
                 <Image
-                  alt={item.best_match?.product_display_name || item.summary_label}
-                  className="aspect-[4/5] w-full rounded-[1rem] object-cover"
+                  alt={
+                    item.best_match?.product_display_name || item.summary_label
+                  }
+                  className="aspect-[4/5] w-full rounded-lg object-cover"
                   src={image}
                   width={280}
                   height={350}
                 />
               ) : (
-                <div className="flex aspect-[4/5] items-center justify-center rounded-[1rem] bg-white/70 text-center text-[11px] text-[var(--muted)]">
+                <div className="flex aspect-[4/5] items-center justify-center rounded-lg bg-[var(--surface-high)] text-center text-[11px] text-[var(--muted)]">
                   No image
                 </div>
               )}
 
               <div className="min-w-0">
                 <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
-                  {item.best_match?.product_display_name || "No precise match yet"}
+                  {item.best_match?.product_display_name ||
+                    "No precise match yet"}
                 </p>
                 <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
                   {getProductMeta(item.best_match)}
                 </p>
-                {item.best_match?.price !== null && item.best_match?.price !== undefined ? (
+                {item.best_match?.price !== null &&
+                item.best_match?.price !== undefined ? (
                   <div className="mt-3 text-xs font-semibold text-[var(--text)]">
                     ${item.best_match.price.toFixed(2)}
                   </div>

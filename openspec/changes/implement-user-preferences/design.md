@@ -217,6 +217,24 @@ Alternatives considered:
 - Single generic preferences endpoint: rejected because user and conversation scopes have different authorization and lifecycle behavior.
 - Store the personalization toggle only in frontend localStorage: rejected because it changes assistant behavior and must be enforced server-side.
 
+### Decision: Frontend preference controls live in modal surfaces
+
+Global user preferences are surfaced through the workspace Settings modal rather
+than as a separate page. Conversation-specific preferences are surfaced from the
+chat composer settings control. This keeps the chat as the primary workspace
+while still separating global account/style settings from per-conversation
+temporary search and style instructions.
+
+Interface-only preferences, such as compact sidebar and recommendation panel
+mode, remain in browser `localStorage` because they do not affect backend
+recommendation logic. Updating them dispatches `preferences:changed` so active
+workspace components can resync immediately.
+
+Recommendation panel mode controls only the display surface for outfit details:
+when enabled on large screens, outfit cards open in the side panel; when disabled
+or unavailable, they open in a modal. Turning panel mode off clears any active
+outfit selection so the chat does not keep a stale "viewing" marker.
+
 ## Risks / Trade-offs
 
 - Over-personalization -> Mitigate by treating memory as soft guidance and documenting precedence in prompts and service tests.

@@ -7,6 +7,7 @@ import {
   MessageSquarePlus,
   MessagesSquare,
   MoreHorizontal,
+  PanelLeftClose,
   Settings,
   Sparkles,
   X,
@@ -18,12 +19,21 @@ import { buildConversationTitle, formatRelativeDay } from "@/lib/format";
 
 type SidebarProps = {
   compact: boolean;
+  desktopVisible: boolean;
   open: boolean;
+  onCollapse: () => void;
   onClose: () => void;
   onOpenSettings: () => void;
 };
 
-export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps) {
+export function Sidebar({
+  compact,
+  desktopVisible,
+  open,
+  onCollapse,
+  onClose,
+  onOpenSettings,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const auth = useAuth();
@@ -72,20 +82,29 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
         onClick={onClose}
       />
       <aside
-        className={`glass-strong hairline fixed inset-y-0 left-0 z-50 flex w-[19rem] flex-col rounded-r-[2rem] p-4 transition duration-300 lg:sticky lg:top-4 lg:m-4 lg:h-[calc(100vh-2rem)] lg:translate-x-0 lg:rounded-[2rem] ${widthClass} ${open ? "translate-x-0" : "-translate-x-[105%]"}`}
+        className={`surface-sidebar fixed inset-y-0 left-0 z-50 flex w-[19rem] flex-col rounded-r-xl border-r border-[var(--line-strong)] p-3 transition duration-300 lg:sticky lg:top-0 lg:m-0 lg:h-screen lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-l-0 ${desktopVisible ? "lg:flex" : "lg:hidden"} ${widthClass} ${open ? "translate-x-0" : "-translate-x-[105%]"}`}
       >
-        <div className="mb-6 flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--line)] px-2 pb-5 pt-2">
           <div className="space-y-2">
             <div>
               <h2 className="serif text-3xl leading-none">Stylist AI</h2>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                {auth.user?.display_name ?? "Guest stylist"}
+              <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
+                Beta
               </p>
             </div>
           </div>
 
           <button
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] lg:hidden"
+            className="hidden h-9 w-9 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--muted)] transition hover:bg-[var(--surface-high)] hover:text-[var(--text)] lg:inline-flex"
+            onClick={onCollapse}
+            type="button"
+            aria-label="Hide sidebar"
+          >
+            <PanelLeftClose size={17} />
+          </button>
+
+          <button
+            className="inline-flex h-8 w-8 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)] lg:hidden"
             onClick={onClose}
             type="button"
             aria-label="Close menu"
@@ -95,7 +114,7 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
         </div>
 
         <button
-          className="mb-5 inline-flex items-center justify-center gap-2 rounded-[1.2rem] bg-[var(--text)] px-4 py-4 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-95"
+          className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-high)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]"
           type="button"
           onClick={() => {
             router.push("/chat/new");
@@ -106,14 +125,14 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
           New conversation
         </button>
 
-        <nav className="space-y-2">
+        <nav className="mt-4 space-y-1 border-b border-[var(--line)] pb-4">
           {navItems.map((item) => {
             const Icon = item.icon;
 
             return (
               <button
                 key={item.label}
-                className={`flex w-full items-center gap-3 rounded-[1.1rem] px-4 py-3 text-sm transition ${item.active ? "bg-[rgba(143,79,43,0.12)] text-[var(--text)]" : "text-[var(--muted)]"} ${item.disabled ? "cursor-default opacity-70" : "hover:bg-white/55 hover:text-[var(--text)]"}`}
+                className={`option-row flex w-full items-center gap-3 px-3 py-2.5 text-sm ${item.active ? "bg-[var(--accent-soft)] font-semibold text-[var(--text)]" : "text-[var(--muted)]"} ${item.disabled ? "cursor-default opacity-70" : "hover:bg-[var(--surface-high)] hover:text-[var(--text)]"}`}
                 type="button"
                 aria-disabled={item.disabled}
                 onClick={() => {
@@ -132,23 +151,23 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
           })}
         </nav>
 
-        <div className="mt-8 flex-1 overflow-hidden rounded-[1.6rem] border border-[var(--line)] bg-white/35">
-          <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex items-center justify-between border-[var(--line)] px-3 py-3">
             <p className="text-sm text-[var(--text)]">Chat history</p>
-            <span className="rounded-full bg-white/70 px-2 py-1 text-xs text-[var(--muted)]">
+            <span className="text-xs tabular-nums text-[var(--muted)]">
               {conversations.length}
             </span>
           </div>
 
-          <div className="h-full space-y-2 overflow-hidden p-3">
+          <div className="scroll-modal min-h-0 flex-1 space-y-1 overflow-y-auto py-2 pb-4">
             {loading ? (
-              <p className="rounded-[1rem] bg-white/60 px-3 py-4 text-sm text-[var(--muted)]">
+              <p className="px-3 py-4 text-sm text-[var(--muted)]">
                 Loading history...
               </p>
             ) : null}
 
             {!loading && conversations.length === 0 ? (
-              <p className="rounded-[1rem] bg-white/60 px-3 py-4 text-sm text-[var(--muted)]">
+              <p className="px-3 py-4 text-sm text-[var(--muted)]">
                 No conversations have been created yet.
               </p>
             ) : null}
@@ -158,7 +177,7 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
               return (
                 <button
                   key={conversation.id}
-                  className={`block w-full rounded-[1rem] px-3 py-3 text-left transition ${active ? "bg-[rgba(143,79,43,0.14)]" : "bg-white/55 hover:bg-white/80"}`}
+                  className={`option-row block w-full px-3 py-3 text-left ${active ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--surface-high)]"}`}
                   type="button"
                   onClick={() => {
                     router.push(`/chat/${conversation.id}`);
@@ -182,9 +201,9 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
           </div>
         </div>
 
-        <div className="relative mt-4" ref={menuRef}>
+        <div className="relative -mx-3 -mb-3 border-y border-[var(--line)] px-3 pb-3 pt-3" ref={menuRef}>
           <button
-            className="inline-flex w-full items-center justify-between gap-3 rounded-[1.2rem] border border-[var(--line)] px-4 py-3 text-sm text-[var(--muted)] transition hover:bg-white/55 hover:text-[var(--text)]"
+            className="option-row inline-flex w-full items-center justify-between gap-3 border border-transparent px-3 py-3 text-sm text-[var(--muted)] hover:border-[var(--line)] hover:bg-[var(--surface-high)] hover:text-[var(--text)]"
             type="button"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
@@ -195,9 +214,9 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
           </button>
 
           {menuOpen ? (
-            <div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 rounded-[1.2rem] border border-[var(--line)] bg-[rgba(255,248,241,0.96)] p-2 shadow-[0_20px_50px_rgba(76,47,26,0.16)] backdrop-blur">
+            <div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
               <button
-                className="flex w-full items-center gap-3 rounded-[0.95rem] px-3 py-3 text-left text-sm text-[var(--text)] transition hover:bg-white/80"
+                className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--accent-soft)]"
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
@@ -209,7 +228,7 @@ export function Sidebar({ compact, open, onClose, onOpenSettings }: SidebarProps
                 Settings
               </button>
               <button
-                className="flex w-full items-center gap-3 rounded-[0.95rem] px-3 py-3 text-left text-sm text-[var(--text)] transition hover:bg-white/80"
+                className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--accent-soft)]"
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);

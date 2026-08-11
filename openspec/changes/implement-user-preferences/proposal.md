@@ -9,6 +9,7 @@ The assistant currently supports `search_preferences`, but those preferences onl
 - Inject effective style preference context into the recommendation workflow so extraction, product search, outfit building, and final response writing can use it as soft guidance.
 - Enforce precedence so the latest user request always wins over temporary, explicit, inferred, and default preference context.
 - Expose API and frontend settings for viewing/updating explicit preferences, reviewing/removing inferred preferences, and toggling personalized style usage.
+- Present global preference controls in the workspace Settings modal and conversation-scoped controls in the chat settings modal.
 - Keep existing `search_preferences` behavior intact and separate from richer style memory.
 
 ## Capabilities
@@ -25,5 +26,5 @@ The assistant currently supports `search_preferences`, but those preferences onl
 - Backend APIs: authenticated user and conversation endpoints need read/update support for style preferences and personalization toggles.
 - Runtime state: conversation processing needs effective style preference context in graph state.
 - Agent prompts/services: outfit extraction, search/ranking, and final response writing need preference-aware guidance that treats remembered style as soft context.
-- Frontend: settings and chat preference controls need UI for explicit/inferred/temporary preferences and personalization enablement.
+- Frontend: settings and chat preference controls need UI for explicit/inferred/temporary preferences, personalization enablement, and synchronized recommendation viewing preferences.
 - Tests: service-level tests should cover normalization, precedence, toggle behavior, and request-over-memory conflict handling.

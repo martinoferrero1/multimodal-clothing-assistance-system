@@ -44,12 +44,25 @@
 - [x] 6.3 Add settings UI for viewing and removing inferred style preferences separately from explicit preferences.
 - [x] 6.4 Add chat-level controls for temporary style preferences and conversation personalization override.
 - [x] 6.5 Refresh auth and conversation providers after preference updates so UI state stays synchronized.
+- [x] 6.6 Present global settings in a workspace modal and conversation settings in the chat composer modal.
+- [x] 6.7 Keep interface-only preferences synchronized through `preferences:changed`, including recommendation panel mode.
+- [x] 6.8 Clear stale outfit selection when recommendation panel mode is disabled.
 
-## 7. Tests And Validation
+## 7. Frontend Workspace Polish
 
-- [x] 7.1 Add backend tests for style preference normalization and defaulting.
-- [x] 7.2 Add backend tests for effective context precedence and personalization toggle behavior.
-- [x] 7.3 Add backend tests proving existing search priority behavior is unchanged when style preferences are absent or disabled.
-- [x] 7.4 Add backend tests for current-request-over-memory conflicts such as yellow request versus black remembered preference.
-- [ ] 7.5 Run `PYTHONPATH=src python -m pytest tests/`.
-- [x] 7.6 Run `npm run lint` from `src/frontend` after frontend changes.
+- [x] 7.1 Align chat, sidebar, settings, recommendation panel, and modal colors into a cohesive translucent theme.
+- [x] 7.2 Convert the left navigation from a floating bubble into a collapsible sidebar panel with subtle dividers.
+- [x] 7.3 Use a centered, wider GPT-style message column without an enclosing chat card.
+- [x] 7.4 Render product recommendations without duplicate generic section headings.
+- [x] 7.5 Render outfit detail surfaces using the selected outfit name once, with matching flat close controls.
+- [x] 7.6 Support manually hiding and revealing the recommendation panel with a smooth transition.
+
+## 8. Tests And Validation
+
+- [x] 8.1 Add backend tests for style preference normalization and defaulting.
+- [x] 8.2 Add backend tests for effective context precedence and personalization toggle behavior.
+- [x] 8.3 Add backend tests proving existing search priority behavior is unchanged when style preferences are absent or disabled.
+- [x] 8.4 Add backend tests for current-request-over-memory conflicts such as yellow request versus black remembered preference.
+- [ ] 8.5 Run `PYTHONPATH=src python -m pytest tests/` after installing backend test dependencies in the active Python environment.
+- [x] 8.6 Run `npm run lint` from `src/frontend` after frontend changes.
+- [x] 8.7 Run `npm run build` from `src/frontend` after frontend changes.
