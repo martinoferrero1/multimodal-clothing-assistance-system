@@ -492,7 +492,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           : "grid-cols-1"
       }`}
     >
-      <div className="workspace-panel hairline flex min-h-[75vh] flex-col rounded-[2rem] lg:h-full lg:min-h-0 lg:rounded-tr-[0.6rem]">
+      <div className="workspace-panel hairline flex min-h-[75vh] flex-col rounded-l-[2rem] rounded-br-[2rem] lg:h-full lg:min-h-0">
         <div
           className={`thread-fade scroll-muted min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 ${
             !loading && !error && messages.length === 0
@@ -747,7 +747,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
             aria-label="Close outfit viewer"
             onClick={() => setOutfitModalOpen(false)}
           />
-          <div className="glass-strong hairline soft-shadow scroll-modal relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto rounded-[2rem] px-5 py-5 sm:px-6">
+          <div className="glass-strong hairline soft-shadow scroll-modal relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-4xl overflow-y-auto rounded-l-[2rem] px-5 py-5 sm:px-6">
             <div className="mb-4 flex items-center justify-end gap-4">
               <button
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-white/60 transition hover:bg-white/85"
