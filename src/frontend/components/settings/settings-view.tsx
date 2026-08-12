@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, PanelsTopLeft, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { useLocale } from "@/components/providers/locale-provider";
 import {
   ApiError,
   clearUserExplicitStylePreferences,
@@ -19,40 +20,43 @@ import {
 } from "@/lib/search-preferences";
 import { readPreferences, writePreferences } from "@/lib/storage";
 import type { SearchPriorityField, SettingsPreferences, StylePreferenceDetails } from "@/lib/types";
+import type { MessageKey } from "@/lib/i18n";
 
 export type SettingsSection = "general" | "account";
 type StyleDraft = Record<keyof StylePreferenceDetails, string>;
+type LocalizedError = { message: string } | { key: MessageKey };
 
 type SettingsViewProps = {
   activeSection: SettingsSection;
   onSectionChange: (section: SettingsSection) => void;
 };
 
-const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; label: string; multiline?: boolean }> = [
-  { key: "liked_styles", label: "Liked styles" },
-  { key: "disliked_styles", label: "Styles to avoid" },
-  { key: "preferred_colors", label: "Preferred colors" },
-  { key: "avoided_colors", label: "Colors to avoid" },
-  { key: "preferred_brands", label: "Preferred brands" },
-  { key: "avoided_brands", label: "Brands to avoid" },
-  { key: "preferred_fits", label: "Preferred fits" },
-  { key: "occasions", label: "Occasions" },
-  { key: "budget_notes", label: "Budget notes", multiline: true },
-  { key: "sizing_notes", label: "Sizing notes", multiline: true },
-  { key: "freeform_notes", label: "Style notes", multiline: true },
+const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; labelKey: MessageKey; multiline?: boolean }> = [
+  { key: "liked_styles", labelKey: "settings.likedStyles" },
+  { key: "disliked_styles", labelKey: "settings.dislikedStyles" },
+  { key: "preferred_colors", labelKey: "settings.preferredColors" },
+  { key: "avoided_colors", labelKey: "settings.avoidedColors" },
+  { key: "preferred_brands", labelKey: "settings.preferredBrands" },
+  { key: "avoided_brands", labelKey: "settings.avoidedBrands" },
+  { key: "preferred_fits", labelKey: "settings.preferredFits" },
+  { key: "occasions", labelKey: "settings.occasions" },
+  { key: "budget_notes", labelKey: "settings.budgetNotes", multiline: true },
+  { key: "sizing_notes", labelKey: "settings.sizingNotes", multiline: true },
+  { key: "freeform_notes", labelKey: "settings.styleNotes", multiline: true },
 ];
 
 export function SettingsView({ activeSection, onSectionChange }: SettingsViewProps) {
   const auth = useAuth();
+  const { language, t } = useLocale();
   const authPriorityFields = auth.user?.search_preferences?.priority_fields ?? [];
   const [preferences, setPreferences] = useState<SettingsPreferences>(() => readPreferences());
   const [optimisticSearchPriorityFields, setOptimisticSearchPriorityFields] =
     useState<SearchPriorityField[] | null>(null);
   const [savingSearchPreferences, setSavingSearchPreferences] = useState(false);
-  const [searchPreferencesError, setSearchPreferencesError] = useState<string | null>(null);
+  const [searchPreferencesError, setSearchPreferencesError] = useState<LocalizedError | null>(null);
   const [styleDraft, setStyleDraft] = useState<StyleDraft>(() => stylePreferencesToDraft(auth.user?.style_preferences?.explicit));
   const [savingStylePreferences, setSavingStylePreferences] = useState(false);
-  const [stylePreferencesError, setStylePreferencesError] = useState<string | null>(null);
+  const [stylePreferencesError, setStylePreferencesError] = useState<LocalizedError | null>(null);
   const searchPriorityFields = optimisticSearchPriorityFields ?? authPriorityFields;
   const stylePreferences = auth.user?.style_preferences;
 
@@ -61,6 +65,18 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
       setStyleDraft(stylePreferencesToDraft(auth.user?.style_preferences?.explicit));
     });
   }, [auth.user?.style_preferences?.explicit]);
+
+  useEffect(() => {
+    function syncPreferences() {
+      setPreferences(readPreferences());
+    }
+    window.addEventListener("preferences:changed", syncPreferences);
+    window.addEventListener("storage", syncPreferences);
+    return () => {
+      window.removeEventListener("preferences:changed", syncPreferences);
+      window.removeEventListener("storage", syncPreferences);
+    };
+  }, []);
 
   function updatePreferences(nextPreferences: SettingsPreferences) {
     setPreferences(nextPreferences);
@@ -86,9 +102,9 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
     } catch (caughtError) {
       setOptimisticSearchPriorityFields(null);
       setSearchPreferencesError(
-        caughtError instanceof ApiError
-          ? caughtError.message
-          : "We could not save the search priorities.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? { message: caughtError.message }
+          : { key: "settings.searchPrioritiesError" },
       );
     } finally {
       setSavingSearchPreferences(false);
@@ -108,9 +124,9 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
       await auth.refreshUser();
     } catch (caughtError) {
       setStylePreferencesError(
-        caughtError instanceof ApiError
-          ? caughtError.message
-          : "We could not update personalized style usage.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? { message: caughtError.message }
+          : { key: "settings.personalizedStylesError" },
       );
     } finally {
       setSavingStylePreferences(false);
@@ -128,9 +144,9 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
       await auth.refreshUser();
     } catch (caughtError) {
       setStylePreferencesError(
-        caughtError instanceof ApiError
-          ? caughtError.message
-          : "We could not save your style preferences.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? { message: caughtError.message }
+          : { key: "settings.saveStylesError" },
       );
     } finally {
       setSavingStylePreferences(false);
@@ -148,9 +164,9 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
       await auth.refreshUser();
     } catch (caughtError) {
       setStylePreferencesError(
-        caughtError instanceof ApiError
-          ? caughtError.message
-          : "We could not clear your style preferences.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? { message: caughtError.message }
+          : { key: "settings.clearStylesError" },
       );
     } finally {
       setSavingStylePreferences(false);
@@ -168,9 +184,9 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
       await auth.refreshUser();
     } catch (caughtError) {
       setStylePreferencesError(
-        caughtError instanceof ApiError
-          ? caughtError.message
-          : "We could not remove the inferred preference.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? { message: caughtError.message }
+          : { key: "settings.removeInferredError" },
       );
     } finally {
       setSavingStylePreferences(false);
@@ -180,14 +196,14 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
   const sections = [
     {
       id: "general" as const,
-      label: "General",
-      description: "Workspace and interface",
+      label: t("workspace.general"),
+      description: t("settings.generalDescription"),
       icon: PanelsTopLeft,
     },
     {
       id: "account" as const,
-      label: "Account",
-      description: "Profile and access",
+      label: t("workspace.account"),
+      description: t("settings.accountDescription"),
       icon: UserRound,
     },
   ];
@@ -232,8 +248,8 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
             <div className="space-y-0">
               <PreferenceRow
                 checked={preferences.compactSidebar}
-                description="Reduce the sidebar width to give the workspace more room."
-                label="Compact sidebar"
+                description={t("settings.compactSidebarDescription")}
+                label={t("settings.compactSidebar")}
                 onToggle={() =>
                   updatePreferences({
                     ...preferences,
@@ -243,8 +259,8 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
               />
               <PreferenceRow
                 checked={preferences.showRecommendationPanel}
-                description="Use a side panel for outfit details when available. Turn it off to open recommendations in a dedicated modal instead."
-                label="Recommendation panel"
+                description={t("settings.recommendationPanelDescription")}
+                label={t("settings.recommendationPanel")}
                 onToggle={() =>
                   updatePreferences({
                     ...preferences,
@@ -252,19 +268,44 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                   })
                 }
               />
+              <div className="border-b border-[var(--line)] px-2 py-4">
+                <label className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    <span className="block text-sm font-semibold text-[var(--text)]">
+                      {t("settings.language")}
+                    </span>
+                    <span className="mt-2 block text-sm leading-7 text-[var(--muted)]">
+                      {t("settings.languageDescription")}
+                    </span>
+                  </span>
+                  <select
+                    className="min-w-40 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
+                    value={preferences.language}
+                    onChange={(event) =>
+                      updatePreferences({
+                        ...preferences,
+                        language: event.target.value === "es" ? "es" : "en",
+                      })
+                    }
+                  >
+                    <option value="en">{t("settings.languageEnglish")}</option>
+                    <option value="es">{t("settings.languageSpanish")}</option>
+                  </select>
+                </label>
+              </div>
             </div>
 
             <section className="border-b border-[var(--line)] pb-7">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--text)]">Search priorities</p>
+                    <p className="text-sm font-semibold text-[var(--text)]">{t("settings.searchPriorities")}</p>
                     <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-                      {formatPriorityFields(searchPriorityFields)}
+                      {formatPriorityFields(searchPriorityFields, language, t)}
                     </p>
                   </div>
                   {savingSearchPreferences ? (
                     <span className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-                      Saving
+                      {t("common.saving")}
                     </span>
                   ) : null}
                 </div>
@@ -275,8 +316,8 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                       key={option.field}
                       checked={searchPriorityFields.includes(option.field)}
                       disabled={savingSearchPreferences || !auth.token}
-                      description={option.description}
-                      label={option.label}
+                      description={t(option.descriptionKey)}
+                      label={t(option.labelKey)}
                       onToggle={() => handleSearchPriorityToggle(option.field)}
                     />
                   ))}
@@ -284,7 +325,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
 
                 {searchPreferencesError ? (
                   <p className="mt-4 rounded-[1rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
-                    {searchPreferencesError}
+                    {"message" in searchPreferencesError ? searchPreferencesError.message : t(searchPreferencesError.key)}
                   </p>
                 ) : null}
             </section>
@@ -292,14 +333,15 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
             <section className="pb-2">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--text)]">Personalized style memory</p>
+                    <p className="text-sm font-semibold text-[var(--text)]">{t("settings.personalizedStyles")}</p>
                     <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-                      Let recommendations use your saved and inferred style preferences when your current request does not conflict.
+                      {t("settings.personalizedStylesDescription")}
                     </p>
                   </div>
                   <button
                     className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${stylePreferences?.use_personalized_styles ? "bg-[var(--accent)]" : "bg-[var(--surface-high)]"}`}
                     type="button"
+                    aria-label={t("settings.personalizedStylesLabel")}
                     disabled={!auth.token || savingStylePreferences}
                     aria-pressed={stylePreferences?.use_personalized_styles ?? true}
                     onClick={handlePersonalizedStylesToggle}
@@ -314,12 +356,12 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                   {styleDraftFields.map((field) => (
                     <label key={field.key} className={field.multiline ? "sm:col-span-2" : ""}>
                       <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                        {field.label}
+                        {t(field.labelKey)}
                       </span>
                       <textarea
                         className="mt-2 min-h-[3.2rem] w-full resize-y rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
                         rows={field.multiline ? 3 : 1}
-                        placeholder={field.multiline ? "Add a note" : "Comma-separated values"}
+                        placeholder={field.multiline ? t("settings.addNote") : t("settings.commaSeparated")}
                         value={styleDraft[field.key]}
                         onChange={(event) =>
                           setStyleDraft((current) => ({
@@ -339,7 +381,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                     disabled={!auth.token || savingStylePreferences}
                     onClick={handleSaveExplicitStylePreferences}
                   >
-                    Save style preferences
+                    {t("settings.saveStyles")}
                   </button>
                   <button
                     className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
@@ -347,17 +389,17 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                     disabled={!auth.token || savingStylePreferences}
                     onClick={handleClearExplicitStylePreferences}
                   >
-                    Clear explicit preferences
+                    {t("settings.clearStyles")}
                   </button>
                   {savingStylePreferences ? (
                     <span className="self-center text-xs uppercase tracking-[0.22em] text-[var(--muted)]">
-                      Saving
+                      {t("common.saving")}
                     </span>
                   ) : null}
                 </div>
 
                 <div className="mt-6 border-t border-[var(--line)] pt-5">
-                  <p className="text-sm font-semibold text-[var(--text)]">Inferred preferences</p>
+                  <p className="text-sm font-semibold text-[var(--text)]">{t("settings.inferredPreferences")}</p>
                   {stylePreferences?.inferred?.length ? (
                     <div className="mt-3 divide-y divide-[var(--line)]">
                       {stylePreferences.inferred.map((entry) => (
@@ -367,7 +409,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                               {entry.kind}: {entry.value}
                             </p>
                             <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                              {formatInferredPreferenceMetadata(entry)}{entry.evidence ? ` · ${entry.evidence}` : ""}
+                              {formatInferredPreferenceMetadata(entry, language, t)}{entry.evidence ? ` · ${entry.evidence}` : ""}
                             </p>
                           </div>
                           <button
@@ -376,21 +418,21 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                             disabled={!auth.token || savingStylePreferences}
                             onClick={() => handleRemoveInferredStylePreference(entry.id)}
                           >
-                            Remove
+                            {t("common.remove")}
                           </button>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-                      No inferred style preferences yet.
+                      {t("settings.noInferredPreferences")}
                     </p>
                   )}
                 </div>
 
                 {stylePreferencesError ? (
                   <p className="mt-4 rounded-[1rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
-                    {stylePreferencesError}
+                    {"message" in stylePreferencesError ? stylePreferencesError.message : t(stylePreferencesError.key)}
                   </p>
                 ) : null}
             </section>
@@ -400,20 +442,20 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
         {activeSection === "account" ? (
           <div className="max-w-2xl space-y-8 pb-8">
             <div>
-              <p className="text-sm font-semibold text-[var(--muted)]">Signed in as</p>
+              <p className="text-sm font-semibold text-[var(--muted)]">{t("settings.signedInAs")}</p>
               <h3 className="mt-3 text-2xl font-semibold leading-none text-[var(--text)]">
                 {auth.user?.display_name}
               </h3>
             </div>
             <div className="divide-y divide-[var(--line)] border-y border-[var(--line)]">
               <div className="grid gap-2 py-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Email</p>
-                <p className="text-sm text-[var(--text)]">{auth.user?.email || "Not available"}</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">{t("common.email")}</p>
+                <p className="text-sm text-[var(--text)]">{auth.user?.email || t("common.notAvailable")}</p>
               </div>
               <div className="grid gap-2 py-5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center">
-                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Member since</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">{t("settings.memberSince")}</p>
                 <p className="text-sm text-[var(--text)]">
-                  {auth.user?.created_at ? formatShortDate(auth.user.created_at) : "Not available"}
+                  {auth.user?.created_at ? formatShortDate(auth.user.created_at, language) : t("common.notAvailable")}
                 </p>
               </div>
             </div>
@@ -453,16 +495,21 @@ function stylePreferencesToDraft(details: StylePreferenceDetails | undefined): S
   };
 }
 
-function formatInferredPreferenceMetadata(entry: { confidence: number; occurrence_count: number | null; last_seen_at: string | null; source: string | null }) {
-  const parts = [`${Math.round(entry.confidence * 100)}% confidence`];
+function formatInferredPreferenceMetadata(
+  entry: { confidence: number; occurrence_count: number | null; last_seen_at: string | null; source: string | null },
+  language: import("@/lib/i18n").Language,
+  t: import("@/lib/i18n").Translator,
+) {
+  const percent = new Intl.NumberFormat(language, { style: "percent" }).format(entry.confidence);
+  const parts = [t("settings.confidence", { value: percent })];
   if (entry.occurrence_count) {
-    parts.push(`${entry.occurrence_count} observation${entry.occurrence_count === 1 ? "" : "s"}`);
+    parts.push(t(entry.occurrence_count === 1 ? "settings.observation.one" : "settings.observation.other", { count: entry.occurrence_count }));
   }
   if (entry.last_seen_at) {
-    parts.push(`last seen ${formatShortDate(entry.last_seen_at)}`);
+    parts.push(t("settings.lastSeen", { date: formatShortDate(entry.last_seen_at, language) }));
   }
   if (entry.source === "learned") {
-    parts.push("learned automatically");
+    parts.push(t("settings.learnedAutomatically"));
   }
   return parts.join(" · ");
 }

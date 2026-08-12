@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+
+import { useLocale } from "@/components/providers/locale-provider";
 
 type AuthShellProps = {
   title: string;
@@ -17,6 +21,8 @@ export function AuthShell({
   footerAction,
   children,
 }: AuthShellProps) {
+  const { t } = useLocale();
+
   return (
     <main className="relative flex min-h-screen overflow-hidden">
       <section className="relative hidden min-h-screen flex-1 overflow-hidden lg:flex">
@@ -28,7 +34,7 @@ export function AuthShell({
               Lookeate
             </h1>
             <p className="text-sm font-medium uppercase tracking-[0.32em] text-white/75">
-              Your AI-Fashion Assistant
+              {t("auth.tagline")}
             </p>
           </div>
         </div>
@@ -42,7 +48,7 @@ export function AuthShell({
                 Lookeate
               </h1>
               <p className="text-xs font-medium uppercase tracking-[0.28em] text-[var(--muted)]">
-                Your AI-Fashion Assistant
+                {t("auth.tagline")}
               </p>
             </div>
             <div className="space-y-3">

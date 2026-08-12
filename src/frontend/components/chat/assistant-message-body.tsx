@@ -6,21 +6,22 @@ import type {
   FinalResponseSection,
 } from "@/lib/types";
 import Image from "next/image";
-import { getProductImage, getProductMeta } from "@/lib/format";
+import { useLocale } from "@/components/providers/locale-provider";
+import { formatPrice, getProductImage, getProductMeta } from "@/lib/format";
+import { pluralKey } from "@/lib/i18n";
 
 export function AssistantMessageBody({
   message,
   activeRecommendationMessageId,
   activeOutfitIndex,
   onSelectOutfit,
-  recommendationSurface,
 }: {
   message: ChatMessage;
   activeRecommendationMessageId: string | null;
   activeOutfitIndex: number;
   onSelectOutfit: (messageId: string, outfitIndex: number) => void;
-  recommendationSurface: "panel" | "modal";
 }) {
+  const { t } = useLocale();
   const payload = message.final_response_payload;
   const assistantTextClassName =
     "max-w-4xl whitespace-pre-wrap text-[15px] leading-8 font-medium tracking-[0.01em] text-[var(--text)]";
@@ -46,7 +47,7 @@ export function AssistantMessageBody({
         {message.pending ? (
           <div className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
             <LoaderCircle size={14} className="animate-spin" />
-            The assistant is thinking...
+            {t("chat.assistantThinking")}
           </div>
         ) : null}
       </div>
@@ -111,7 +112,6 @@ export function AssistantMessageBody({
             <ProductHighlightsSection
               key={`${message.id}-products-${index}`}
               payload={payload}
-              title={section.title || "Featured products"}
             />
           );
         }
@@ -122,11 +122,9 @@ export function AssistantMessageBody({
               key={`${message.id}-outfits-${index}`}
               messageId={message.id}
               payload={payload}
-              title={section.title || "Recommended outfits"}
               activeRecommendationMessageId={activeRecommendationMessageId}
               activeOutfitIndex={activeOutfitIndex}
               onSelectOutfit={onSelectOutfit}
-              recommendationSurface={recommendationSurface}
             />
           );
         }
@@ -137,7 +135,7 @@ export function AssistantMessageBody({
       {message.pending ? (
         <div className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
           <LoaderCircle size={14} className="animate-spin" />
-          The assistant is thinking...
+          {t("chat.assistantThinking")}
         </div>
       ) : null}
     </div>
@@ -148,8 +146,8 @@ function ProductHighlightsSection({
   payload,
 }: {
   payload: FinalResponsePayload;
-  title: string;
 }) {
+  const { language, t } = useLocale();
   const groups = payload.recommendations.product_highlights ?? [];
 
   if (groups.length === 0) {
@@ -167,7 +165,15 @@ function ProductHighlightsSection({
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text)]">{group.group_label}</p>
               <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
-                {group.products.length} picks
+                {t(
+                  pluralKey(
+                    language,
+                    group.products.length,
+                    "chat.pick.one",
+                    "chat.pick.other",
+                  ),
+                  { count: group.products.length },
+                )}
               </span>
             </div>
 
@@ -189,7 +195,7 @@ function ProductHighlightsSection({
                       />
                     ) : (
                       <div className="flex aspect-[4/5] items-center justify-center rounded-[0.95rem] bg-[var(--surface-high)] text-center text-[11px] text-[var(--muted)]">
-                        No image
+                        {t("common.noImage")}
                       </div>
                     )}
 
@@ -201,11 +207,15 @@ function ProductHighlightsSection({
                         {group.group_label}
                       </p>
                       <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
-                        {getProductMeta(product)}
+                        {getProductMeta(
+                          product,
+                          t("product.noPreciseMatch"),
+                          t("product.curatedSelection"),
+                        )}
                       </p>
                       {product.price !== null && product.price !== undefined ? (
                         <div className="mt-3 text-xs font-semibold text-[var(--text)]">
-                          ${product.price.toFixed(2)}
+                          {formatPrice(product.price, language)}
                         </div>
                       ) : null}
                     </div>
@@ -226,15 +236,12 @@ function OutfitRecommendationsSection({
   activeRecommendationMessageId,
   activeOutfitIndex,
   onSelectOutfit,
-  recommendationSurface,
 }: {
   messageId: string;
   payload: FinalResponsePayload;
-  title: string;
   activeRecommendationMessageId: string | null;
   activeOutfitIndex: number;
   onSelectOutfit: (messageId: string, outfitIndex: number) => void;
-  recommendationSurface: "panel" | "modal";
 }) {
   if (payload.recommendations.outfits.length === 0) {
     return null;

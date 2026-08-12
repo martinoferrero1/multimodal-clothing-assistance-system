@@ -22,10 +22,12 @@ export const AUTH_EXPIRED_EVENT = "digital-atelier-auth-expired";
 
 export class ApiError extends Error {
   status: number;
+  hasExternalMessage: boolean;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, hasExternalMessage = true) {
     super(message);
     this.status = status;
+    this.hasExternalMessage = hasExternalMessage;
   }
 }
 
@@ -39,13 +41,13 @@ async function parseApiResponse<T>(response: Response, hasToken: boolean): Promi
       window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
     }
 
-    const message =
+    const externalMessage =
       typeof payload === "object" && payload && "detail" in payload
         ? String(payload.detail)
         : typeof payload === "string" && payload
           ? payload
-          : "No se pudo completar la solicitud.";
-    throw new ApiError(message, response.status);
+          : null;
+    throw new ApiError(externalMessage ?? "API request failed", response.status, Boolean(externalMessage));
   }
 
   return payload as T;

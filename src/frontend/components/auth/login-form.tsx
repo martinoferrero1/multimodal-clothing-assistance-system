@@ -5,15 +5,17 @@ import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { AuthShell } from "@/components/auth/auth-shell";
-import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useLocale } from "@/components/providers/locale-provider";
+import { ApiError } from "@/lib/api-client";
 
 export function LoginForm() {
   const auth = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | true | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -25,6 +27,18 @@ export function LoginForm() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!email.trim() || !password) {
+      setError(t("auth.validation.required"));
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setError(t("auth.validation.email"));
+      return;
+    }
+    if (password.length < 8) {
+      setError(t("auth.validation.passwordLength"));
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -35,7 +49,9 @@ export function LoginForm() {
       });
     } catch (caughtError) {
       setError(
-        caughtError instanceof ApiError ? caughtError.message : "We could not sign you in.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? caughtError.message
+          : true,
       );
     } finally {
       setSubmitting(false);
@@ -44,21 +60,21 @@ export function LoginForm() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      description="Sign in to continue exploring outfits and recommendations with Lookeate."
-      footerLabel="Don't have an account yet?"
+      title={t("auth.login.title")}
+      description={t("auth.login.description")}
+      footerLabel={t("auth.login.footer")}
       footerHref="/register"
-      footerAction="Create one"
+      footerAction={t("auth.login.create")}
     >
-      <form className="space-y-6" onSubmit={handleSubmit}>
+      <form className="space-y-6" noValidate onSubmit={handleSubmit}>
         <label className="block space-y-3">
           <span className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
-            Email
+            {t("common.email")}
           </span>
           <input
             className="w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-5 py-4 outline-none transition focus:border-[var(--accent)]"
             type="email"
-            placeholder="your-email@example.com"
+            placeholder={t("auth.emailPlaceholder")}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
@@ -67,7 +83,7 @@ export function LoginForm() {
 
         <label className="block space-y-3">
           <span className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
-            Password
+            {t("auth.password")}
           </span>
           <div className="relative">
             <input
@@ -83,7 +99,7 @@ export function LoginForm() {
               className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--muted)] transition hover:text-[var(--text)]"
               type="button"
               onClick={() => setShowPassword((value) => !value)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -92,7 +108,7 @@ export function LoginForm() {
 
         {error ? (
           <div className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-surface)] px-4 py-3 text-sm text-[var(--danger)]">
-            {error}
+            {typeof error === "string" ? error : t("auth.login.error")}
           </div>
         ) : null}
 
@@ -101,7 +117,7 @@ export function LoginForm() {
           disabled={submitting || auth.status === "loading"}
           type="submit"
         >
-          {submitting ? "Signing in..." : "Enter"}
+          {submitting ? t("auth.login.submitting") : t("auth.login.submit")}
           <ArrowRight size={16} />
         </button>
       </form>

@@ -1,4 +1,5 @@
 import type { AuthSession, SettingsPreferences } from "@/lib/types";
+import { isLanguage } from "@/lib/i18n";
 
 const AUTH_KEY = "digital-atelier-session";
 const PREFERENCES_KEY = "digital-atelier-preferences";
@@ -6,6 +7,7 @@ const PREFERENCES_KEY = "digital-atelier-preferences";
 const defaultPreferences: SettingsPreferences = {
   compactSidebar: false,
   showRecommendationPanel: true,
+  language: "en",
 };
 
 export function readSession(): AuthSession | null {
@@ -53,9 +55,11 @@ export function readPreferences(): SettingsPreferences {
   }
 
   try {
+    const stored = JSON.parse(raw) as Partial<SettingsPreferences>;
     return {
       ...defaultPreferences,
-      ...(JSON.parse(raw) as Partial<SettingsPreferences>),
+      ...stored,
+      language: isLanguage(stored.language) ? stored.language : "en",
     };
   } catch {
     return defaultPreferences;

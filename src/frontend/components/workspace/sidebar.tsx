@@ -15,6 +15,7 @@ import {
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useConversations } from "@/components/providers/conversation-provider";
+import { useLocale } from "@/components/providers/locale-provider";
 import { buildConversationTitle, formatRelativeDay } from "@/lib/format";
 
 type SidebarProps = {
@@ -37,20 +38,21 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const auth = useAuth();
+  const { t } = useLocale();
   const { conversations, loading } = useConversations();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const navItems = [
     {
-      label: "Chat",
+      label: t("sidebar.chat"),
       icon: MessagesSquare,
       active: pathname.startsWith("/chat"),
       disabled: false,
       onClick: () => router.push("/chat/new"),
     },
     {
-      label: "Create your style",
+      label: t("sidebar.createStyle"),
       icon: Sparkles,
       active: false,
       disabled: true,
@@ -89,7 +91,7 @@ export function Sidebar({
             <div>
               <h2 className="serif text-3xl leading-none">Lookeate</h2>
               <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                Beta
+                {t("common.beta")}
               </p>
             </div>
           </div>
@@ -98,7 +100,7 @@ export function Sidebar({
             className="hidden h-9 w-9 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--muted)] transition hover:bg-[var(--surface-high)] hover:text-[var(--text)] lg:inline-flex"
             onClick={onCollapse}
             type="button"
-            aria-label="Hide sidebar"
+            aria-label={t("sidebar.hide")}
           >
             <PanelLeftClose size={17} />
           </button>
@@ -107,7 +109,7 @@ export function Sidebar({
             className="inline-flex h-8 w-8 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)] lg:hidden"
             onClick={onClose}
             type="button"
-            aria-label="Close menu"
+            aria-label={t("sidebar.closeMenu")}
           >
             <X size={18} />
           </button>
@@ -122,7 +124,7 @@ export function Sidebar({
           }}
         >
           <MessageSquarePlus size={16} />
-          New conversation
+          {t("sidebar.newConversation")}
         </button>
 
         <nav className="mt-4 space-y-1 border-b border-[var(--line)] pb-4">
@@ -153,7 +155,7 @@ export function Sidebar({
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex items-center justify-between border-[var(--line)] px-3 py-3">
-            <p className="text-sm text-[var(--text)]">Chat history</p>
+            <p className="text-sm text-[var(--text)]">{t("sidebar.chatHistory")}</p>
             <span className="text-xs tabular-nums text-[var(--muted)]">
               {conversations.length}
             </span>
@@ -162,13 +164,13 @@ export function Sidebar({
           <div className="scroll-modal min-h-0 flex-1 space-y-1 overflow-y-auto py-2 pb-4">
             {loading ? (
               <p className="px-3 py-4 text-sm text-[var(--muted)]">
-                Loading history...
+                {t("sidebar.loadingHistory")}
               </p>
             ) : null}
 
             {!loading && conversations.length === 0 ? (
               <p className="px-3 py-4 text-sm text-[var(--muted)]">
-                No conversations have been created yet.
+                {t("sidebar.noConversations")}
               </p>
             ) : null}
 
@@ -186,14 +188,14 @@ export function Sidebar({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="line-clamp-2 text-sm font-semibold text-[var(--text)]">
-                      {buildConversationTitle(conversation)}
+                      {buildConversationTitle(conversation, t("sidebar.newConversation"))}
                     </p>
                     <span className="shrink-0 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
-                      {formatRelativeDay(conversation.updated_at)}
+                      {formatRelativeDay(conversation.updated_at, t)}
                     </span>
                   </div>
                   <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--muted)]">
-                    {conversation.last_message_preview || "No messages yet."}
+                    {conversation.last_message_preview || t("sidebar.noMessages")}
                   </p>
                 </button>
               );
@@ -209,7 +211,9 @@ export function Sidebar({
             aria-haspopup="menu"
             onClick={() => setMenuOpen((value) => !value)}
           >
-            <span className="truncate text-left">{auth.user?.display_name ?? "Account"}</span>
+            <span className="truncate text-left">
+              {auth.user?.display_name ?? t("common.account")}
+            </span>
             <MoreHorizontal size={16} />
           </button>
 
@@ -225,7 +229,7 @@ export function Sidebar({
                 }}
               >
                 <Settings size={16} />
-                Settings
+                {t("sidebar.settings")}
               </button>
               <button
                 className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--accent-soft)]"
@@ -237,7 +241,7 @@ export function Sidebar({
                 }}
               >
                 <LogOut size={16} />
-                Sign out
+                {t("sidebar.signOut")}
               </button>
             </div>
           ) : null}

@@ -1,21 +1,23 @@
 import type { ChatMessage, Conversation, ProductRecommendation } from "@/lib/types";
+import type { Language, Translator } from "@/lib/i18n";
+import { languageLocale } from "@/lib/i18n";
 
-export function formatShortDate(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+export function formatShortDate(value: string, language: Language): string {
+  return new Intl.DateTimeFormat(languageLocale(language), {
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).format(new Date(value));
 }
 
-export function formatShortTime(value: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+export function formatShortTime(value: string, language: Language): string {
+  return new Intl.DateTimeFormat(languageLocale(language), {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
 }
 
-export function formatRelativeDay(value: string): string {
+export function formatRelativeDay(value: string, t: Translator): string {
   const target = new Date(value);
   const now = new Date();
   const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate()).getTime();
@@ -23,30 +25,30 @@ export function formatRelativeDay(value: string): string {
   const diffDays = Math.round((currentDay - targetDay) / 86400000);
 
   if (diffDays === 0) {
-    return "Today";
+    return t("date.today");
   }
 
   if (diffDays === 1) {
-    return "Yesterday";
+    return t("date.yesterday");
   }
 
   if (diffDays < 7) {
-    return "This week";
+    return t("date.thisWeek");
   }
 
   if (diffDays < 14) {
-    return "Last week";
+    return t("date.lastWeek");
   }
 
-  return "Older";
+  return t("date.older");
 }
 
-export function buildConversationTitle(conversation: Conversation): string {
+export function buildConversationTitle(conversation: Conversation, fallback: string): string {
   if (conversation.title.trim()) {
     return conversation.title;
   }
 
-  return "New conversation";
+  return fallback;
 }
 
 export function getMessagePreview(message: ChatMessage): string {
@@ -88,14 +90,25 @@ export function getProductImage(product: ProductRecommendation | null | undefine
   );
 }
 
-export function getProductMeta(product: ProductRecommendation | null | undefined) {
+export function getProductMeta(
+  product: ProductRecommendation | null | undefined,
+  noMatch: string,
+  curatedSelection: string,
+) {
   if (!product) {
-    return "No precise match yet";
+    return noMatch;
   }
 
   return (
     [product.brand, product.base_colour, product.article_type]
       .filter(Boolean)
-      .join(" - ") || "Curated selection"
+      .join(" - ") || curatedSelection
   );
+}
+
+export function formatPrice(value: number, language: Language): string {
+  return new Intl.NumberFormat(languageLocale(language), {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
 }

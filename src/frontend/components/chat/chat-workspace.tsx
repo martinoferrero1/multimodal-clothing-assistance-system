@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useConversations } from "@/components/providers/conversation-provider";
+import { useLocale } from "@/components/providers/locale-provider";
 import {
   ApiError,
   getConversation,
@@ -26,7 +27,15 @@ import {
   updateConversationSearchPreferences,
   updateConversationStylePreferences,
 } from "@/lib/api-client";
-import { formatShortDate, formatShortTime } from "@/lib/format";
+import {
+  formatPrice,
+  formatShortDate,
+  formatShortTime,
+  getProductImage,
+  getProductMeta,
+} from "@/lib/format";
+import { pluralKey } from "@/lib/i18n";
+import type { MessageKey, TranslationParams, Translator } from "@/lib/i18n";
 import {
   SEARCH_PRIORITY_OPTIONS,
   formatPriorityFields,
@@ -41,7 +50,6 @@ import type {
   StylePreferenceDetails,
 } from "@/lib/types";
 import { AssistantMessageBody } from "./assistant-message-body";
-import { getProductImage, getProductMeta } from "@/lib/format";
 
 type ChatWorkspaceProps = {
   conversationId: string;
@@ -57,6 +65,10 @@ type ChatStyleDraft = {
   use_personalized_styles: boolean | null;
   temporary_notes: string;
 };
+
+type DisplayError =
+  | { key: MessageKey; params?: TranslationParams }
+  | { message: string };
 
 const MAX_PENDING_IMAGES = 3;
 const MAX_PENDING_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -114,9 +126,14 @@ function temporaryStyleDetailsFromNote(note: string): StylePreferenceDetails {
   };
 }
 
+function getDisplayError(error: DisplayError, t: Translator) {
+  return "key" in error ? t(error.key, error.params) : error.message;
+}
+
 export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const auth = useAuth();
   const router = useRouter();
+  const { language, t } = useLocale();
   const { createConversation, refreshConversations } = useConversations();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -126,7 +143,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DisplayError | null>(null);
   const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
   const [chatPriorityDraft, setChatPriorityDraft] = useState<SearchPriorityField[] | null>(null);
   const [chatStyleDraft, setChatStyleDraft] = useState<ChatStyleDraft>({
@@ -134,7 +151,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     temporary_notes: "",
   });
   const [savingChatPreferences, setSavingChatPreferences] = useState(false);
-  const [chatPreferencesError, setChatPreferencesError] = useState<string | null>(null);
+  const [chatPreferencesError, setChatPreferencesError] = useState<DisplayError | null>(null);
   const [showRecommendationPanel, setShowRecommendationPanel] = useState(
     () => readPreferences().showRecommendationPanel,
   );
@@ -212,9 +229,9 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
         setMessages(sortMessagesChronologically(currentMessages));
       } catch (caughtError) {
         setError(
-          caughtError instanceof ApiError
-            ? caughtError.message
-            : "We could not load the selected conversation.",
+          caughtError instanceof ApiError && caughtError.hasExternalMessage
+            ? { message: caughtError.message }
+            : { key: "chat.loadError" },
         );
       } finally {
         setLoading(false);
@@ -243,7 +260,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       : 0;
   const activeOutfitTitle =
     activeRecommendationPayload?.recommendations.outfits[activeOutfitIndex]?.summary_label ??
-    "Outfit details";
+    t("chat.outfitDetails");
   const canUseRecommendationPanel = showRecommendationPanel && isLargeScreen;
   const usesRecommendationPanel = canUseRecommendationPanel && !recommendationPanelHidden;
   const shouldMarkSelectedOutfit = usesRecommendationPanel || outfitModalOpen;
@@ -291,8 +308,8 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     const displayContent =
       trimmed ||
       (imagesToSend.length === 1
-        ? `Search products based on ${imagesToSend[0].file.name}.`
-        : "Search products based on the uploaded images.");
+        ? t("chat.searchFromFile", { filename: imagesToSend[0].file.name })
+        : t("chat.searchFromImages"));
 
     const optimisticUserMessage: ChatMessage = {
       id: `pending-user-${Date.now()}`,
@@ -364,9 +381,9 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       setMessages((current) => current.filter((message) => !message.pending));
       setSelectedImages(imagesToSend);
       setError(
-        caughtError instanceof ApiError
-          ? caughtError.message
-          : "We could not send your message to the assistant.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? { message: caughtError.message }
+          : { key: "chat.sendError" },
       );
     } finally {
       setSending(false);
@@ -397,7 +414,15 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     setError(null);
     const remainingSlots = MAX_PENDING_IMAGES - selectedImages.length;
     if (remainingSlots <= 0) {
-      setError(`You can attach up to ${MAX_PENDING_IMAGES} images per message.`);
+      setError({
+        key: pluralKey(
+          language,
+          MAX_PENDING_IMAGES,
+          "chat.imageLimit.one",
+          "chat.imageLimit.other",
+        ),
+        params: { count: MAX_PENDING_IMAGES },
+      });
       return;
     }
 
@@ -405,12 +430,12 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     const pendingImages: PendingImage[] = [];
     for (const file of acceptedFiles) {
       if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
-        setError("Only JPEG, PNG, WEBP, or GIF images are supported.");
+        setError({ key: "chat.imageTypes" });
         continue;
       }
 
       if (file.size > MAX_PENDING_IMAGE_BYTES) {
-        setError("Each image must be 4 MB or smaller.");
+        setError({ key: "chat.imageSize" });
         continue;
       }
 
@@ -422,7 +447,15 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     }
 
     if (files.length > remainingSlots) {
-      setError(`Only the first ${remainingSlots} image(s) were attached.`);
+      setError({
+        key: pluralKey(
+          language,
+          remainingSlots,
+          "chat.imagesAttached.one",
+          "chat.imagesAttached.other",
+        ),
+        params: { count: remainingSlots },
+      });
     }
 
     if (pendingImages.length > 0) {
@@ -509,9 +542,9 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       }
     } catch (caughtError) {
       setChatPreferencesError(
-        caughtError instanceof ApiError
-          ? caughtError.message
-          : "We could not save this chat's search priorities.",
+        caughtError instanceof ApiError && caughtError.hasExternalMessage
+          ? { message: caughtError.message }
+          : { key: "chat.preferencesError" },
       );
     } finally {
       setSavingChatPreferences(false);
@@ -540,14 +573,14 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
             <div className="flex h-full items-center justify-center">
               <div className="inline-flex items-center gap-3 rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm text-[var(--muted)]">
                 <LoaderCircle size={16} className="animate-spin" />
-                Loading conversation...
+                {t("chat.loadingConversation")}
               </div>
             </div>
           ) : null}
 
           {!loading && error ? (
             <div className="mx-auto w-full max-w-4xl rounded-[1.4rem] border border-[var(--danger-line)] bg-[var(--danger-surface)] px-5 py-4 text-sm text-[var(--danger)]">
-              {error}
+              {getDisplayError(error, t)}
             </div>
           ) : null}
 
@@ -556,13 +589,12 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
               <div className="flex items-center justify-center gap-3 text-[var(--text)]">
                 <Sparkles size={30} className="shrink-0 text-[var(--accent)]" />
                 <h2 className="serif text-4xl leading-none">
-                  Describe the look, occasion, or garment.
+                  {t("chat.emptyTitle")}
                 </h2>
               </div>
 
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-                For example: an outfit for a formal event, monochrome pieces, or
-                a specific business and policy question.
+                {t("chat.emptyDescription")}
               </p>
             </div>
           ) : null}
@@ -571,7 +603,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
             <div className="mx-auto w-full max-w-4xl space-y-8">
               <div className="flex justify-center">
                 <span className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-[11px] uppercase tracking-[0.28em] text-[var(--muted)]">
-                  {formatShortDate(messages[messages.length - 1].created_at)}
+                  {formatShortDate(messages[messages.length - 1].created_at, language)}
                 </span>
               </div>
 
@@ -592,8 +624,8 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                     >
                       {isUser ? (
                         <div className="mb-3 flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.26em] opacity-70">
-                          <span> You </span>
-                          <span>{formatShortTime(message.created_at)}</span>
+                          <span> {t("common.you")} </span>
+                          <span>{formatShortTime(message.created_at, language)}</span>
                         </div>
                       ) : null}
 
@@ -629,9 +661,6 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                           }
                           activeOutfitIndex={activeOutfitIndex}
                           onSelectOutfit={handleSelectOutfit}
-                          recommendationSurface={
-                            canUseRecommendationPanel ? "panel" : "modal"
-                          }
                         />
                       )}
                     </div>
@@ -665,7 +694,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                     <button
                       className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black/90"
                       type="button"
-                      aria-label={`Remove ${image.file.name}`}
+                      aria-label={t("chat.removeAttachment", { filename: image.file.name })}
                       onClick={() => handleRemoveSelectedImage(image.id)}
                     >
                       <X size={13} />
@@ -680,7 +709,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:text-[var(--text)]"
                   type="button"
                   onClick={() => setAttachmentMenuOpen((open) => !open)}
-                  aria-label="Open attachment actions"
+                  aria-label={t("chat.openAttachmentActions")}
                   aria-expanded={attachmentMenuOpen}
                 >
                   <Plus size={18} />
@@ -694,7 +723,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                       onClick={handleOpenImagePicker}
                     >
                       <ImagePlus size={17} />
-                      Upload image
+                      {t("chat.uploadImage")}
                     </button>
                     <button
                       className="flex w-full items-center gap-3 rounded-[0.5rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--accent-soft)]"
@@ -705,7 +734,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                       }}
                     >
                       <MessageCirclePlus size={17} />
-                      New conversation
+                      {t("sidebar.newConversation")}
                     </button>
                   </div>
                 ) : null}
@@ -722,14 +751,14 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                 className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:text-[var(--text)]"
                 type="button"
                 onClick={handleOpenChatSettings}
-                aria-label="Chat search preferences"
+                aria-label={t("chat.searchPreferences")}
               >
                 <Settings2 size={18} />
               </button>
 
               <textarea
                 className="min-h-[52px] flex-1 resize-none bg-transparent px-2 py-3 text-sm leading-7 outline-none placeholder:text-[var(--muted)]"
-                placeholder="Write your message to the stylist..."
+                placeholder={t("chat.messagePlaceholder")}
                 rows={1}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -740,7 +769,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                 className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={sending || (!draft.trim() && selectedImages.length === 0)}
                 type="submit"
-                aria-label="Send message"
+                aria-label={t("chat.sendMessage")}
               >
                 {sending ? (
                   <LoaderCircle size={18} className="animate-spin" />
@@ -760,7 +789,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           onClick={() => setRecommendationPanelHidden(false)}
         >
           <Shirt size={15} />
-          View outfits
+          {t("chat.viewOutfits")}
         </button>
       ) : null}
 
@@ -775,12 +804,12 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
         >
           <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] px-6 py-5">
             <h3 className="min-w-0 truncate text-base font-semibold capitalize text-[var(--text)]">
-              {activeRecommendationPayload ? activeOutfitTitle : "Recommendations"}
+              {activeRecommendationPayload ? activeOutfitTitle : t("chat.recommendations")}
             </h3>
             <button
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
               type="button"
-              aria-label="Hide recommendation panel"
+              aria-label={t("chat.hideRecommendationPanel")}
               onClick={handleHideRecommendationPanel}
             >
               <X size={16} />
@@ -791,7 +820,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
             {!activeRecommendationPayload ||
             activeRecommendationPayload.recommendations.outfits.length === 0 ? (
               <div className="border-y border-dashed border-[var(--line-strong)] py-5 text-sm leading-7 text-[var(--muted)]">
-                Select an outfit from the conversation to inspect it here.
+                {t("chat.selectOutfit")}
               </div>
             ) : (
               <>
@@ -801,7 +830,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                     type="button"
                     onClick={handleClearOutfitSelection}
                   >
-                    Clear
+                    {t("common.clear")}
                   </button>
                 </div>
                 <RecommendationContent
@@ -820,7 +849,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
             className="absolute inset-0 cursor-default"
             type="button"
             tabIndex={-1}
-            aria-label="Close outfit viewer"
+            aria-label={t("chat.closeOutfitViewer")}
             onClick={handleCloseOutfitModal}
           />
           <div
@@ -835,7 +864,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                 className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
                 type="button"
                 autoFocus
-                aria-label="Close outfit viewer"
+                aria-label={t("chat.closeOutfitViewer")}
                 onClick={handleCloseOutfitModal}
               >
                 <X size={18} />
@@ -873,7 +902,7 @@ type ChatSearchPreferencesModalProps = {
   draftPriorityFields: SearchPriorityField[] | null;
   effectivePriorityFields: SearchPriorityField[];
   styleDraft: ChatStyleDraft;
-  error: string | null;
+  error: DisplayError | null;
   saving: boolean;
   onClose: () => void;
   onDraftChange: (fields: SearchPriorityField[] | null) => void;
@@ -892,6 +921,7 @@ function ChatSearchPreferencesModal({
   onStyleDraftChange,
   onSave,
 }: ChatSearchPreferencesModalProps) {
+  const { language, t } = useLocale();
   const usesCustomPriorities = draftPriorityFields !== null;
   const visiblePriorityFields = draftPriorityFields ?? effectivePriorityFields;
 
@@ -917,7 +947,7 @@ function ChatSearchPreferencesModal({
         className="absolute inset-0 cursor-default"
         type="button"
         tabIndex={-1}
-        aria-label="Close chat search preferences"
+        aria-label={t("chat.closeSearchPreferences")}
         onClick={onClose}
       />
       <div
@@ -928,16 +958,21 @@ function ChatSearchPreferencesModal({
       >
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--line)] px-5 py-4 sm:px-6">
           <div>
-            <h3 id="chat-preferences-dialog-title" className="serif text-2xl leading-none sm:text-3xl">Configure Preferences</h3>
+            <h3
+              id="chat-preferences-dialog-title"
+              className="serif text-2xl leading-none sm:text-3xl"
+            >
+              {t("chat.configurePreferences")}
+            </h3>
             <p className="mt-2 text-sm text-[var(--muted)]">
-              Search and style settings for this conversation.
+              {t("chat.preferencesDescription")}
             </p>
           </div>
           <button
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
             type="button"
             autoFocus
-            aria-label="Close chat search preferences"
+            aria-label={t("chat.closeSearchPreferences")}
             onClick={onClose}
           >
             <X size={17} />
@@ -947,7 +982,7 @@ function ChatSearchPreferencesModal({
         <div className="modal-body scroll-modal min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
           <section>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-              Search behavior
+              {t("chat.searchBehavior")}
             </p>
             <div className="mt-3 grid grid-cols-2 rounded-lg border border-[var(--line)] bg-[var(--surface-low)] p-1">
               <button
@@ -959,7 +994,7 @@ function ChatSearchPreferencesModal({
                 type="button"
                 onClick={() => onDraftChange(null)}
               >
-                Inherit general
+                {t("chat.inheritGeneral")}
               </button>
               <button
                 className={`option-row px-3 py-3 text-sm font-semibold ${
@@ -970,13 +1005,14 @@ function ChatSearchPreferencesModal({
                 type="button"
                 onClick={() => onDraftChange([...effectivePriorityFields])}
               >
-                Customize
+                {t("chat.customize")}
               </button>
             </div>
 
             <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-              {usesCustomPriorities ? "Custom: " : "Inherited: "}
-              {formatPriorityFields(visiblePriorityFields)}
+              {t(usesCustomPriorities ? "chat.customPriorities" : "chat.inheritedPriorities", {
+                priorities: formatPriorityFields(visiblePriorityFields, language, t),
+              })}
             </p>
 
             {usesCustomPriorities ? (
@@ -1007,10 +1043,10 @@ function ChatSearchPreferencesModal({
                       </span>
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-[var(--text)]">
-                          {option.label}
+                          {t(option.labelKey)}
                         </span>
                         <span className="mt-1 block text-xs leading-5 text-[var(--muted)]">
-                          {option.description}
+                          {t(option.descriptionKey)}
                         </span>
                       </span>
                     </button>
@@ -1021,18 +1057,20 @@ function ChatSearchPreferencesModal({
           </section>
 
           <section className="mt-7 border-t border-[var(--line)] pt-6">
-            <p className="text-sm font-semibold text-[var(--text)]">Personalized styles</p>
+            <p className="text-sm font-semibold text-[var(--text)]">
+              {t("chat.personalizedStyles")}
+            </p>
             <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-              Choose whether this chat should use your saved style memory and add temporary style guidance for this conversation only.
+              {t("chat.personalizedStylesDescription")}
             </p>
             <div className="mt-4 grid grid-cols-3 rounded-lg border border-[var(--line)] bg-[var(--surface-low)] p-1">
               {[
-                { label: "Inherit", value: null },
-                { label: "Use", value: true },
-                { label: "Ignore", value: false },
+                { labelKey: "chat.styleModeInherit" as const, value: null },
+                { labelKey: "chat.styleModeUse" as const, value: true },
+                { labelKey: "chat.styleModeIgnore" as const, value: false },
               ].map((option) => (
                 <button
-                  key={option.label}
+                  key={option.labelKey}
                   className={`option-row px-3 py-3 text-sm font-semibold ${
                     styleDraft.use_personalized_styles === option.value
                       ? "bg-[var(--text)] text-[var(--accent-ink)]"
@@ -1046,17 +1084,17 @@ function ChatSearchPreferencesModal({
                     })
                   }
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </button>
               ))}
             </div>
             <label className="mt-4 block">
               <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                Temporary style notes
+                {t("chat.temporaryStyleNotes")}
               </span>
               <textarea
                 className="mt-2 min-h-[5rem] w-full resize-none rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
-                placeholder="Example: make this conversation more formal, avoid sneakers"
+                placeholder={t("chat.temporaryStylePlaceholder")}
                 value={styleDraft.temporary_notes}
                 onChange={(event) =>
                   onStyleDraftChange({
@@ -1070,7 +1108,7 @@ function ChatSearchPreferencesModal({
 
           {error ? (
             <p className="mt-4 rounded-lg border border-[var(--danger-line)] bg-[var(--danger-surface)] px-3 py-2 text-sm text-[var(--danger)]">
-              {error}
+              {getDisplayError(error, t)}
             </p>
           ) : null}
         </div>
@@ -1081,7 +1119,7 @@ function ChatSearchPreferencesModal({
             type="button"
             onClick={onClose}
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--accent)] px-5 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1089,7 +1127,7 @@ function ChatSearchPreferencesModal({
             disabled={saving}
             onClick={onSave}
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("chat.saving") : t("common.save")}
           </button>
         </div>
       </div>
@@ -1104,6 +1142,7 @@ function RecommendationContent({
   payload: FinalResponsePayload;
   selectedOutfitIndex: number;
 }) {
+  const { language, t } = useLocale();
   const outfits = payload.recommendations.outfits;
   const selectedOutfit = outfits[selectedOutfitIndex] ?? outfits[0];
 
@@ -1134,22 +1173,26 @@ function RecommendationContent({
                 />
               ) : (
                 <div className="flex aspect-[4/5] items-center justify-center rounded-lg bg-[var(--surface-high)] text-center text-[11px] text-[var(--muted)]">
-                  No image
+                  {t("common.noImage")}
                 </div>
               )}
 
               <div className="min-w-0">
                 <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--muted)]">
                   {item.best_match?.product_display_name ||
-                    "No precise match yet"}
+                    t("product.noPreciseMatch")}
                 </p>
                 <p className="mt-2 text-xs leading-6 text-[var(--muted)]">
-                  {getProductMeta(item.best_match)}
+                  {getProductMeta(
+                    item.best_match,
+                    t("product.noPreciseMatch"),
+                    t("product.curatedSelection"),
+                  )}
                 </p>
                 {item.best_match?.price !== null &&
                 item.best_match?.price !== undefined ? (
                   <div className="mt-3 text-xs font-semibold text-[var(--text)]">
-                    ${item.best_match.price.toFixed(2)}
+                    {formatPrice(item.best_match.price, language)}
                   </div>
                 ) : null}
               </div>

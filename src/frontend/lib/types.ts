@@ -1,3 +1,5 @@
+import type { Language } from "@/lib/i18n";
+
 export type User = {
   id: string;
   display_name: string;
@@ -222,4 +224,5 @@ export type AuthSession = {
 export type SettingsPreferences = {
   compactSidebar: boolean;
   showRecommendationPanel: boolean;
+  language: Language;
 };

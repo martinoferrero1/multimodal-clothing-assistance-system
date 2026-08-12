@@ -1,39 +1,40 @@
 import type { SearchPriorityField } from "@/lib/types";
+import type { Language, MessageKey, Translator } from "@/lib/i18n";
 
 export const SEARCH_PRIORITY_OPTIONS: Array<{
   field: SearchPriorityField;
-  label: string;
-  description: string;
+  labelKey: MessageKey;
+  descriptionKey: MessageKey;
 }> = [
   {
     field: "category",
-    label: "Category",
-    description: "Prefer the deepest garment category detected.",
+    labelKey: "priority.category",
+    descriptionKey: "priority.categoryDescription",
   },
   {
     field: "gender",
-    label: "Gender",
-    description: "Keep matches aligned with the requested gender.",
+    labelKey: "priority.gender",
+    descriptionKey: "priority.genderDescription",
   },
   {
     field: "base_colors",
-    label: "Main color",
-    description: "Treat the primary color as a hard preference.",
+    labelKey: "priority.baseColors",
+    descriptionKey: "priority.baseColorsDescription",
   },
   {
     field: "secondary_colors",
-    label: "Secondary color",
-    description: "Use accent colors as a hard preference.",
+    labelKey: "priority.secondaryColors",
+    descriptionKey: "priority.secondaryColorsDescription",
   },
   {
     field: "season",
-    label: "Season",
-    description: "Keep results inside requested seasons.",
+    labelKey: "priority.season",
+    descriptionKey: "priority.seasonDescription",
   },
   {
     field: "max_price",
-    label: "Max price",
-    description: "Exclude products above the requested budget.",
+    labelKey: "priority.maxPrice",
+    descriptionKey: "priority.maxPriceDescription",
   },
 ];
 
@@ -47,14 +48,20 @@ export function togglePriorityField(
   return [...fields, field];
 }
 
-export function formatPriorityFields(fields: SearchPriorityField[]) {
+export function formatPriorityFields(
+  fields: SearchPriorityField[],
+  language: Language,
+  t: Translator,
+) {
   if (fields.length === 0) {
-    return "No priority fields";
+    return t("priority.none");
   }
 
   const labelsByField = new Map(
-    SEARCH_PRIORITY_OPTIONS.map((option) => [option.field, option.label]),
+    SEARCH_PRIORITY_OPTIONS.map((option) => [option.field, t(option.labelKey)]),
   );
 
-  return fields.map((field) => labelsByField.get(field) ?? field).join(", ");
+  return new Intl.ListFormat(language, { style: "long", type: "conjunction" }).format(
+    fields.map((field) => labelsByField.get(field) ?? field),
+  );
 }

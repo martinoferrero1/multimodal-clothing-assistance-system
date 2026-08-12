@@ -4,16 +4,20 @@ import { useEffect, useState } from "react";
 import { Menu, PanelLeftOpen, Sparkles, X } from "lucide-react";
 
 import { SettingsView, type SettingsSection } from "@/components/settings/settings-view";
+import { useLocale } from "@/components/providers/locale-provider";
 import { Sidebar } from "@/components/workspace/sidebar";
 import { readPreferences } from "@/lib/storage";
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
+  const { t } = useLocale();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarVisible, setDesktopSidebarVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [compactSidebar, setCompactSidebar] = useState(() => readPreferences().compactSidebar);
-  const settingsSectionTitle = settingsSection === "general" ? "General" : "Account";
+  const settingsSectionTitle = settingsSection === "general"
+    ? t("workspace.general")
+    : t("workspace.account");
 
   useEffect(() => {
     function syncPreferences() {
@@ -56,7 +60,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <button
             className="surface-chrome absolute left-4 top-4 z-40 hidden h-10 w-10 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--muted)] transition hover:text-[var(--text)] lg:inline-flex"
             type="button"
-            aria-label="Show sidebar"
+            aria-label={t("workspace.showSidebar")}
             onClick={() => setDesktopSidebarVisible(true)}
           >
             <PanelLeftOpen size={18} />
@@ -69,7 +73,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               className="glass hairline inline-flex h-12 w-12 items-center justify-center rounded-full"
               onClick={() => setSidebarOpen(true)}
               type="button"
-              aria-label="Open menu"
+              aria-label={t("workspace.openMenu")}
             >
               <Menu size={20} />
             </button>
@@ -78,7 +82,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <div>
                 <p className="serif text-lg leading-none">Lookeate</p>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                  Beta
+                  {t("common.beta")}
                 </p>
               </div>
             </div>
@@ -96,7 +100,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 cursor-default"
             type="button"
             tabIndex={-1}
-            aria-label="Close settings"
+            aria-label={t("workspace.closeSettings")}
             onClick={() => setSettingsOpen(false)}
           />
           <div
@@ -111,7 +115,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                   className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
                   type="button"
                   autoFocus
-                  aria-label="Close settings"
+                  aria-label={t("workspace.closeSettings")}
                   onClick={() => setSettingsOpen(false)}
                 >
                   <X size={16} />
