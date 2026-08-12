@@ -79,6 +79,20 @@ class Database(metaclass=SingletonMeta):
                     connection.execute(text("ALTER TABLE conversations ADD COLUMN search_preferences JSON"))
                 if "style_preferences" not in conversation_column_names:
                     connection.execute(text("ALTER TABLE conversations ADD COLUMN style_preferences JSON"))
+                if "is_pinned" not in conversation_column_names:
+                    connection.execute(
+                        text(
+                            "ALTER TABLE conversations "
+                            "ADD COLUMN is_pinned BOOLEAN NOT NULL DEFAULT FALSE"
+                        )
+                    )
+                if "sidebar_position" not in conversation_column_names:
+                    connection.execute(
+                        text(
+                            "ALTER TABLE conversations "
+                            "ADD COLUMN sidebar_position INTEGER"
+                        )
+                    )
 
             if inspector.has_table("chat_messages"):
                 message_column_names = {

@@ -15,8 +15,10 @@ from api.schemas import (
     ChatMessageRead,
     ChatTurnResponse,
     ConversationRead,
+    ConversationOrderUpdate,
     ConversationSearchPreferencesUpdate,
     ConversationStylePreferencesUpdate,
+    ConversationUpdate,
     MessageImageAttachment,
     MessageCreate,
 )
@@ -34,6 +36,20 @@ router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 ALLOWED_IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 
+@router.put("/order", response_model=list[ConversationRead])
+async def reorder_conversations(
+    payload: ConversationOrderUpdate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
+) -> list[ConversationRead]:
+    return await conversation_service.reorder_conversations(
+        session,
+        current_user.id,
+        payload,
+    )
+
+
 @router.get("/{conversation_id}", response_model=ConversationRead)
 async def get_conversation(
     conversation_id: str,
@@ -42,6 +58,22 @@ async def get_conversation(
     conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> ConversationRead:
     return await conversation_service.get_conversation(session, current_user.id, conversation_id)
+
+
+@router.patch("/{conversation_id}", response_model=ConversationRead)
+async def update_conversation(
+    conversation_id: str,
+    payload: ConversationUpdate,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: ChatUser = Depends(get_current_user),
+    conversation_service: ConversationService = Depends(get_conversation_service),
+) -> ConversationRead:
+    return await conversation_service.update_conversation(
+        session,
+        current_user.id,
+        conversation_id,
+        payload,
+    )
 
 
 @router.get("/{conversation_id}/messages", response_model=list[ChatMessageRead])

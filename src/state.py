@@ -37,6 +37,7 @@ class State(TypedDict):
     search_priority_fields: List[SearchPriorityField]
     style_preference_context: Optional[dict]
     image_search_features: Optional[List[dict]]
+    outfit_request_needs_clarification: bool
 
     # Outputs from later nodes
     business_answers: Optional[List[BusinessAnswer]]
@@ -58,6 +59,7 @@ class StateKeys:
     SEARCH_PRIORITY_FIELDS = "search_priority_fields"
     STYLE_PREFERENCE_CONTEXT = "style_preference_context"
     IMAGE_SEARCH_FEATURES = "image_search_features"
+    OUTFIT_REQUEST_NEEDS_CLARIFICATION = "outfit_request_needs_clarification"
     BUSINESS_ANSWERS = "business_answers"
     CURRENT_OUTFIT_REQUEST = "current_outfit_request"
     PRODUCT_CANDIDATES = "product_candidates"

@@ -93,6 +93,7 @@ def _search_item(
                     configured_priority_fields,
                     style_preference_context,
                     image_search_features,
+                    require_category_match=True,
                 )
                 for garment in item.items
             ],
@@ -138,7 +139,11 @@ def _search_garment(
     configured_priority_fields: list[SearchPriorityField] | None,
     style_preference_context: dict[str, Any],
     image_search_features: list[dict[str, Any]] | None,
+    require_category_match: bool = False,
 ) -> dict[str, Any]:
+    if require_category_match:
+        products = _priority_filtered_products(products, garment, ["category"])
+
     semantic_query = _request_search_text(garment, style_preference_context)
     priority_fields = _effective_priority_fields(garment, configured_priority_fields)
     active_priority_fields = _active_priority_fields(garment, priority_fields)

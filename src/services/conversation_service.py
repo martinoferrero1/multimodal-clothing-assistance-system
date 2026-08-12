@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from api.route_helpers import build_message_preview
 from api.schemas import (
     ChatMessageRead,
     ChatTurnResponse,
     ConversationCreate,
+    ConversationOrderUpdate,
     ConversationRead,
+    ConversationUpdate,
     ConversationSearchPreferencesRead,
     ConversationSearchPreferencesUpdate,
     ConversationStylePreferencesUpdate,
@@ -50,7 +54,17 @@ class ConversationService(metaclass=SingletonMeta):
             select(Conversation)
             .where(Conversation.user_id == user_id)
             .options(selectinload(Conversation.messages))
-            .order_by(Conversation.updated_at.desc(), Conversation.created_at.desc())
+            .order_by(
+                Conversation.is_pinned.desc(),
+                case((Conversation.sidebar_position.is_(None), 0), else_=1).asc(),
+                case(
+                    (Conversation.sidebar_position.is_(None), Conversation.updated_at),
+                    else_=None,
+                ).desc(),
+                Conversation.sidebar_position.asc(),
+                Conversation.updated_at.desc(),
+                Conversation.created_at.desc(),
+            )
         )
         conversations = list(result.all())
         user = await self._get_user(session, user_id)
@@ -177,6 +191,7 @@ class ConversationService(metaclass=SingletonMeta):
             id=conversation.id,
             user_id=conversation.user_id,
             title=conversation.title,
+            is_pinned=conversation.is_pinned,
             summary=conversation.summary,
             search_preferences=ConversationSearchPreferencesRead(
                 priority_fields=override_priority_fields,
@@ -248,6 +263,75 @@ class ConversationService(metaclass=SingletonMeta):
         await session.refresh(conversation)
         user_priority_fields = get_search_preferences_service().user_priority_fields(user.search_preferences)
         return self._build_conversation_read(conversation, user_priority_fields, user.style_preferences)
+
+    async def update_conversation(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        conversation_id: str,
+        payload: ConversationUpdate,
+    ) -> ConversationRead:
+        conversation = await self._get_user_conversation(
+            session,
+            user_id,
+            conversation_id,
+            load_messages=True,
+        )
+        activity_updated_at: datetime = conversation.updated_at
+        if payload.title is not None:
+            conversation.title = payload.title
+        if payload.is_pinned is not None:
+            conversation.is_pinned = payload.is_pinned
+            conversation.sidebar_position = None
+
+        conversation.updated_at = activity_updated_at
+
+        await session.commit()
+        await session.refresh(conversation)
+        await session.refresh(conversation, attribute_names=["messages"])
+        user = await self._get_user(session, user_id)
+        user_priority_fields = get_search_preferences_service().user_priority_fields(
+            user.search_preferences
+        )
+        return self._build_conversation_read(
+            conversation,
+            user_priority_fields,
+            user.style_preferences,
+        )
+
+    async def reorder_conversations(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        payload: ConversationOrderUpdate,
+    ) -> list[ConversationRead]:
+        result = await session.scalars(
+            select(Conversation).where(
+                Conversation.user_id == user_id,
+                Conversation.id.in_(payload.conversation_ids),
+            )
+        )
+        conversations = list(result.all())
+        if len(conversations) != len(payload.conversation_ids):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more conversations were not found.",
+            )
+        if len({conversation.is_pinned for conversation in conversations}) != 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pinned and unpinned conversations must be reordered separately.",
+            )
+
+        conversations_by_id = {
+            conversation.id: conversation
+            for conversation in conversations
+        }
+        for position, conversation_id in enumerate(payload.conversation_ids):
+            conversations_by_id[conversation_id].sidebar_position = position
+
+        await session.commit()
+        return await self.list_user_conversations(session, user_id)
     
     async def delete_conversation(
         self,

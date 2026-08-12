@@ -87,6 +87,7 @@ If there is conflict, use this order:
 6. Extract only fashion/product information.
 7. Ignore business-related questions.
 8. When unsure whether the user is modifying or restarting, prefer a minimal update.
+9. Never produce an empty OutfitSpec placeholder.
 
 ---
 
@@ -121,6 +122,25 @@ Use `kind: "outfit"` for:
 
 OutfitSpec.items must contain only GarmentSpec objects.
 Do not nest outfits.
+
+Every searchable OutfitSpec must describe a coherent composition:
+
+- For a conventional separates-based outfit, include one upper-body slot, one lower-body slot, and one footwear slot.
+- Use the broad taxonomy paths `Apparel > Topwear`, `Apparel > Bottomwear`, and `Footwear > Shoes`
+  when the user has not requested more specific garment types.
+- For a one-piece garment such as a dress, jumpsuit, suit, or clothing set, include that garment and
+  footwear; do not also invent a separate top and bottom.
+- At most one garment may fill each core role. Never place two lower-body garments or two pairs of
+  footwear in the same outfit. A top and a compatible outer layer are allowed together.
+- Preserve accessories the user explicitly requested, but do not use accessories as substitutes for core garments.
+
+If the latest request is completely generic and `style_preferences.enabled=true`, the saved guidance is
+enough to create the conventional three-slot composition above. Keep remembered preferences soft and do
+not copy avoided values into positive request fields.
+
+If the latest request is completely generic, there is no current outfit to update, and
+`style_preferences.enabled` is not true, return `ItemSpecList(items=[])`. This empty list is an intentional
+signal that the assistant must ask a follow-up question. Never return `OutfitSpec(items=[])`.
 
 If the user asks for multiple independent items, create multiple GarmentSpec objects.
 If the user asks for multiple outfits, create multiple OutfitSpec objects.

@@ -50,8 +50,6 @@ Output:
   ]
 }
 
----
-
 ### Example 2 - Article type has priority over a broader conflicting label
 
 search_intents:
@@ -310,4 +308,86 @@ Output:
       "images": null
     }
   ]
+}
+
+---
+
+### Example 7 - Generic outfit completed from style preferences
+
+search_intents:
+[
+  "Build a complete coordinated outfit using the user's saved style preferences as soft guidance."
+]
+
+style_preferences:
+{
+  "enabled": true,
+  "guidance": ["User generally prefers green when the request is silent."]
+}
+
+current_solicitation: null
+
+recent_messages:
+- human: "Quiero un outfit."
+
+Output:
+{
+  "items": [
+    {
+      "kind": "outfit",
+      "usage": null,
+      "years": null,
+      "max_price": null,
+      "gender": null,
+      "brands": null,
+      "seasons": null,
+      "base_colors": null,
+      "secondary_colors": null,
+      "items": [
+        {
+          "kind": "garment",
+          "master_categories": ["Apparel"],
+          "sub_categories": ["Topwear"],
+          "article_types": null
+        },
+        {
+          "kind": "garment",
+          "master_categories": ["Apparel"],
+          "sub_categories": ["Bottomwear"],
+          "article_types": null
+        },
+        {
+          "kind": "garment",
+          "master_categories": ["Footwear"],
+          "sub_categories": ["Shoes"],
+          "article_types": null
+        }
+      ]
+    }
+  ]
+}
+
+---
+
+### Example 8 - Generic outfit without usable guidance
+
+search_intents:
+[
+  "Build an outfit."
+]
+
+style_preferences:
+{
+  "enabled": false,
+  "guidance": []
+}
+
+current_solicitation: null
+
+recent_messages:
+- human: "I want an outfit."
+
+Output:
+{
+  "items": []
 }

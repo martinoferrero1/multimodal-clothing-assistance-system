@@ -21,7 +21,9 @@ class OutfitRecommendationService(metaclass=SingletonMeta):
 
         for item in product_candidates:
             if item.get("kind") == "outfit":
-                outfits.append(self._build_outfit_recommendation(item))
+                outfit = self._build_outfit_recommendation(item)
+                if outfit is not None:
+                    outfits.append(outfit)
                 continue
             garments.append(self._build_garment_recommendation(item))
 
@@ -35,16 +37,26 @@ class OutfitRecommendationService(metaclass=SingletonMeta):
             product_highlights=product_highlights,
         )
 
-    def _build_outfit_recommendation(self, outfit_candidate: dict[str, Any]) -> OutfitRecommendation:
+    def _build_outfit_recommendation(
+        self,
+        outfit_candidate: dict[str, Any],
+    ) -> OutfitRecommendation | None:
+        raw_items = outfit_candidate.get("items", []) or []
+        if not raw_items:
+            return None
+
         selected_items = [
             self._build_garment_recommendation(garment_candidate)
-            for garment_candidate in outfit_candidate.get("items", [])
+            for garment_candidate in raw_items
         ]
+        if not selected_items or any(item.best_match is None for item in selected_items):
+            return None
+
         outfit_request_data = dict(outfit_candidate.get("request") or {})
         outfit_request_data["kind"] = "outfit"
         outfit_request_data["items"] = [
             garment_candidate.get("request", {})
-            for garment_candidate in outfit_candidate.get("items", [])
+            for garment_candidate in raw_items
         ]
         request = OutfitSpec(**outfit_request_data)
         return OutfitRecommendation(

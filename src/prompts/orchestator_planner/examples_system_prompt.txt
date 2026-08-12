@@ -137,3 +137,49 @@ Output:
   "custom_answer": "You're welcome!",
   "use_default_clarification": false
 }
+
+---
+
+## Example 7 - Generic outfit without preferences
+
+style_preferences:
+{
+  "enabled": false,
+  "guidance": []
+}
+
+recent_messages:
+User: "Quiero un outfit"
+
+Output:
+{
+  "plan": [],
+  "business_qa_queries": null,
+  "outfit_search_intents": null,
+  "custom_answer": "Claro. ¿Para qué ocasión o qué estilo te gustaría el outfit?",
+  "use_default_clarification": false
+}
+
+---
+
+## Example 8 - Generic outfit with saved preferences
+
+style_preferences:
+{
+  "enabled": true,
+  "guidance": ["User generally likes casual styles.", "User generally prefers green."]
+}
+
+recent_messages:
+User: "Quiero un outfit"
+
+Output:
+{
+  "plan": ["extract_outfit_request", "search_products", "build_outfit", "final_response"],
+  "business_qa_queries": null,
+  "outfit_search_intents": [
+    "Build a complete coordinated outfit using the user's saved style preferences as soft guidance."
+  ],
+  "custom_answer": null,
+  "use_default_clarification": false
+}

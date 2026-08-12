@@ -22,6 +22,10 @@ You receive:
   Messages alternate between Human and AI.
   The LAST message is ALWAYS the current user input.
 
+- style_preferences:
+  Optional saved or conversation-specific style guidance.
+  `enabled=true` means there is usable guidance for a personalized proposal.
+
 ---
 
 # AVAILABLE NODES
@@ -143,6 +147,19 @@ IMPORTANT:
   - rejections
   - modifications
 
+Before starting this flow, determine whether the request contains actionable direction.
+Actionable direction includes at least one explicit occasion, style or formality, season or weather,
+garment type, color, budget, fit, gender, or reference image.
+
+For a completely generic request such as "I want an outfit" or "recommend something":
+
+- If `style_preferences.enabled=true`, run the full outfit flow. In `outfit_search_intents`, ask
+  downstream nodes to create a complete, coordinated outfit using those preferences as soft guidance.
+- If there is no usable style guidance, return an empty plan and a short `custom_answer` asking for
+  one useful direction, preferably the occasion or desired style.
+- Write `custom_answer` in the same language as the latest user message.
+- Never run a search whose only result would be an outfit with no garment requirements.
+
 There is NO separate modification node.
 
 ---
@@ -233,6 +250,7 @@ ONLY if completely unintelligible.
 
 - Never execute logic yourself
 - Never hallucinate business or product data
+- Never claim an outfit can be built when neither the current request nor style preferences provide direction
 - Always update intent BEFORE searching
 - Plans must be minimal but complete
 - If plan exists → custom_answer = null

@@ -15,6 +15,7 @@ from schemas.outfit_maker.product_solicitation import ItemSpecList, SearchPriori
 from services.business_qa.rag_service import get_business_qa_service
 from services.final_response_service import FinalResponseService
 from services.outfit_recommendation_service import OutfitRecommendationService
+from services.outfit_request_service import OutfitRequestService
 from state import State, StateKeys, SumaryKeys
 from utils.catalog_taxonomy import taxonomy_prompt_reference
 from utils.error_handling import safe_node
@@ -30,17 +31,44 @@ class SupervisorGraph(BaseGraph):
         self._checkpointer = checkpointer
         self._business_qa_service = get_business_qa_service()
         self._outfit_recommendation_service = OutfitRecommendationService()
+        self._outfit_request_service = OutfitRequestService()
         self._final_response_service = FinalResponseService()
 
     @safe_node("orchestator_planner")
     def _orchestator_node(self, state: State) -> Command:
+        latest_message = state[StateKeys.MESSAGES][-1]
+        clarification = self._outfit_request_service.generic_request_clarification(
+            str(latest_message.content),
+            state.get(StateKeys.STYLE_PREFERENCE_CONTEXT, {}),
+        )
+        if clarification:
+            return Command(
+                goto="ask_for_feedback",
+                update={
+                    StateKeys.MESSAGES: [AIMessage(content=clarification)],
+                    StateKeys.UNCLEAR_MSG: False,
+                    StateKeys.PREVIOUS_SUMMARY: {
+                        SumaryKeys.CONTENT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
+                        SumaryKeys.POS_MSGS_COUNT: state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.POS_MSGS_COUNT] + 1,
+                    },
+                },
+            )
+
         sys_prompt = build_prompt(
             base_prompt_path="src/prompts/orchestator_planner/system_prompt.txt",
             examples_prompt_path="src/prompts/orchestator_planner/examples_system_prompt.txt",
             include_examples=settings.INCLUDE_PROMPT_EXAMPLES,
         )
         supervisor_llm = get_llm_model(is_supervisor=True).with_structured_output(OrchestatorDecision)
-        messages = [SystemMessage(content=sys_prompt)] + state[StateKeys.MESSAGES]
+        planner_context = {
+            "summary": state[StateKeys.PREVIOUS_SUMMARY][SumaryKeys.CONTENT],
+            "style_preferences": state.get(StateKeys.STYLE_PREFERENCE_CONTEXT, {}),
+        }
+        messages = [
+            SystemMessage(content=sys_prompt),
+            SystemMessage(content=f"Context for planning: {json.dumps(planner_context, indent=2)}"),
+            *state[StateKeys.MESSAGES],
+        ]
         response: OrchestatorDecision = supervisor_llm.invoke(messages)
 
         if response.plan:
@@ -62,6 +90,7 @@ class SupervisorGraph(BaseGraph):
                     StateKeys.BUSINESS_ANSWERS: None,
                     StateKeys.PRODUCT_CANDIDATES: None if uses_outfit_flow else None,
                     StateKeys.CURRENT_OUTFIT: None if uses_outfit_flow else None,
+                    StateKeys.OUTFIT_REQUEST_NEEDS_CLARIFICATION: False,
                     StateKeys.FINAL_ANSWER: None,
                     StateKeys.FINAL_RESPONSE_PAYLOAD: None,
                 },
@@ -149,6 +178,10 @@ class SupervisorGraph(BaseGraph):
             *recent_messages,
         ]
         solicitations: ItemSpecList = llm.invoke(messages)
+        solicitations, needs_clarification = self._outfit_request_service.prepare_request(
+            solicitations,
+            state.get(StateKeys.STYLE_PREFERENCE_CONTEXT, {}),
+        )
         solicitations = self._apply_configured_priority_fields(
             solicitations,
             state.get(StateKeys.SEARCH_PRIORITY_FIELDS, []),
@@ -156,7 +189,21 @@ class SupervisorGraph(BaseGraph):
         logger.debug("Search intents extracted: %s", state.get(StateKeys.OUTFIT_SEARCH_INTENTS, []))
         logger.info("Extracted outfit request with %s item(s)", len(solicitations.items))
         logger.debug("Extracted outfit request details: %s", solicitations)
-        return {StateKeys.CURRENT_OUTFIT_REQUEST: solicitations}
+        if needs_clarification:
+            logger.info("Outfit request needs clarification before product search")
+            return {
+                StateKeys.CURRENT_OUTFIT_REQUEST: solicitations,
+                StateKeys.OUTFIT_REQUEST_NEEDS_CLARIFICATION: True,
+                StateKeys.PRODUCT_CANDIDATES: [],
+                StateKeys.CURRENT_OUTFIT: None,
+                StateKeys.PLAN: [NodeName.FINAL_RESPONSE],
+                StateKeys.CURRENT_STEP_INDEX: 0,
+            }
+
+        return {
+            StateKeys.CURRENT_OUTFIT_REQUEST: solicitations,
+            StateKeys.OUTFIT_REQUEST_NEEDS_CLARIFICATION: False,
+        }
 
     @safe_node("search_products")
     def _search_products_node(self, state: State) -> dict[StateKeys, Any]:

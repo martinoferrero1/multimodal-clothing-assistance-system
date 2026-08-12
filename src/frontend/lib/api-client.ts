@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   ChatTurnResponse,
   Conversation,
+  ConversationUpdate,
   ConversationStylePreferencesUpdate,
   HealthResponse,
   SearchPreferences,
@@ -13,7 +14,7 @@ import type {
 } from "@/lib/types";
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string;
   body?: unknown;
 };
@@ -166,6 +167,36 @@ export async function createConversation(token: string, title?: string): Promise
     method: "POST",
     token,
     body: { title: title?.trim() || null },
+  });
+}
+
+export async function deleteConversation(token: string, conversationId: string): Promise<void> {
+  await apiRequest<unknown>(`api/conversations/${conversationId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export async function updateConversation(
+  token: string,
+  conversationId: string,
+  payload: ConversationUpdate,
+): Promise<Conversation> {
+  return apiRequest<Conversation>(`api/conversations/${conversationId}`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export async function reorderConversations(
+  token: string,
+  conversationIds: string[],
+): Promise<Conversation[]> {
+  return apiRequest<Conversation[]>("api/conversations/order", {
+    method: "PUT",
+    token,
+    body: { conversation_ids: conversationIds },
   });
 }
 

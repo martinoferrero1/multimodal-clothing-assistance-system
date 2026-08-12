@@ -249,6 +249,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
             StateKeys.STYLE_PREFERENCE_CONTEXT: style_preference_context,
             StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
+            StateKeys.OUTFIT_REQUEST_NEEDS_CLARIFICATION: False,
             StateKeys.BUSINESS_ANSWERS: None,
             StateKeys.CURRENT_OUTFIT_REQUEST: None,
             StateKeys.PRODUCT_CANDIDATES: None,
@@ -276,6 +277,7 @@ class ConversationRuntimeService(metaclass=SingletonMeta):
             StateKeys.SEARCH_PRIORITY_FIELDS: search_priority_fields,
             StateKeys.STYLE_PREFERENCE_CONTEXT: style_preference_context,
             StateKeys.IMAGE_SEARCH_FEATURES: image_search_features,
+            StateKeys.OUTFIT_REQUEST_NEEDS_CLARIFICATION: False,
             StateKeys.PREVIOUS_SUMMARY: {
                 SumaryKeys.CONTENT: previous_summary.get(SumaryKeys.CONTENT),
                 SumaryKeys.POS_MSGS_COUNT: pos_msgs_count + 1,

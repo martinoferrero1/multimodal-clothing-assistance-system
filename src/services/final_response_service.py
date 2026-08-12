@@ -31,6 +31,9 @@ class FinalResponseService(metaclass=SingletonMeta):
         business_answers: list[BusinessAnswer],
     ) -> FinalResponsePayload:
         business_answer_texts = [answer.answer for answer in business_answers if answer.answer.strip()]
+        request_needs_clarification = bool(
+            state.get(StateKeys.OUTFIT_REQUEST_NEEDS_CLARIFICATION, False)
+        )
         draft = self._generate_final_response_draft(
             state=state,
             recommendations=recommendations,
@@ -40,6 +43,7 @@ class FinalResponseService(metaclass=SingletonMeta):
             draft_sections=draft.sections,
             recommendations=recommendations,
             business_answer_texts=business_answer_texts,
+            request_needs_clarification=request_needs_clarification,
         )
         message = self._render_response_text(sections, recommendations)
         return FinalResponsePayload(
@@ -72,6 +76,9 @@ class FinalResponseService(metaclass=SingletonMeta):
             "available_recommendations": self._serialize_recommendations_for_writer(recommendations),
             "style_preferences": state.get(StateKeys.STYLE_PREFERENCE_CONTEXT, {}),
             "instructions": {
+                "request_needs_clarification": bool(
+                    state.get(StateKeys.OUTFIT_REQUEST_NEEDS_CLARIFICATION, False)
+                ),
                 "outfit_placeholder_required": bool(recommendations.outfits),
                 "product_highlights_required": self._has_product_highlights(recommendations),
             },
@@ -126,12 +133,24 @@ class FinalResponseService(metaclass=SingletonMeta):
         draft_sections: list[FinalResponseDraftSection],
         recommendations: RecommendationBundle,
         business_answer_texts: list[str],
+        request_needs_clarification: bool = False,
     ) -> list[FinalResponseSection]:
         text_sections = [
             (section.content or "").strip()
             for section in draft_sections
             if section.type == "text" and (section.content or "").strip()
         ]
+        if request_needs_clarification:
+            clarification = " ".join(text_sections).strip()
+            if not clarification:
+                clarification = " ".join(
+                    [
+                        *business_answer_texts,
+                        "What occasion or style would you like the outfit for?",
+                    ]
+                ).strip()
+            return [FinalResponseSection(type="text", content=clarification)]
+
         product_highlights_available = self._has_product_highlights(recommendations)
         outfits_available = bool(recommendations.outfits)
         has_recommendations = product_highlights_available or outfits_available

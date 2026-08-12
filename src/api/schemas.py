@@ -5,7 +5,7 @@ from typing import Any
 import uuid
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from schemas.image_analysis import ImageAnalysisResult
 from schemas.outfit_maker.product_solicitation import (
     SearchPriorityField,
@@ -203,10 +203,43 @@ class ConversationCreate(BaseModel):
     title: str | None = Field(default=None, max_length=160)
 
 
+class ConversationUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=160)
+    is_pinned: bool | None = None
+
+    @field_validator("title")
+    @classmethod
+    def clean_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Conversation title cannot be empty")
+        return cleaned
+
+    @model_validator(mode="after")
+    def require_change(self):
+        if self.title is None and self.is_pinned is None:
+            raise ValueError("At least one conversation field must be provided")
+        return self
+
+
+class ConversationOrderUpdate(BaseModel):
+    conversation_ids: list[str] = Field(min_length=1)
+
+    @field_validator("conversation_ids")
+    @classmethod
+    def unique_conversation_ids(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)):
+            raise ValueError("Conversation order cannot contain duplicate IDs")
+        return value
+
+
 class ConversationRead(BaseModel):
     id: str
     user_id: str
     title: str
+    is_pinned: bool = False
     summary: str | None = None
     search_preferences: ConversationSearchPreferencesRead
     style_preferences: ConversationStylePreferencesRead

@@ -24,6 +24,7 @@ export type Conversation = {
   id: string;
   user_id: string;
   title: string;
+  is_pinned: boolean;
   summary: string | null;
   search_preferences: ConversationSearchPreferences;
   style_preferences: ConversationStylePreferences;
@@ -31,6 +32,11 @@ export type Conversation = {
   last_message_preview: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type ConversationUpdate = {
+  title?: string;
+  is_pinned?: boolean;
 };
 
 export type SearchPriorityField =
