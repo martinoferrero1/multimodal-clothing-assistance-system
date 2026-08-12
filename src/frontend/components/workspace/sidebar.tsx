@@ -87,7 +87,7 @@ export function Sidebar({
         <div className="flex items-start justify-between gap-3 border-b border-[var(--line)] px-2 pb-5 pt-2">
           <div className="space-y-2">
             <div>
-              <h2 className="serif text-3xl leading-none">Stylist AI</h2>
+              <h2 className="serif text-3xl leading-none">Lookeate</h2>
               <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
                 Beta
               </p>

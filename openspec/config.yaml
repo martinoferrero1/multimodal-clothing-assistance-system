@@ -8,6 +8,11 @@ schema: spec-driven
 #     Tech stack: TypeScript, React, Node.js
 #     We use conventional commits
 #     Domain: e-commerce platform
+context: |
+  Public product name: Lookeate.
+  Use Lookeate in user-facing UI, documentation, specs, and product copy.
+  Generic terms like "assistant" may still be used for technical chat roles,
+  agent nodes, and internal architecture.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.

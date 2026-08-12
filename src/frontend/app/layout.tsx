@@ -4,8 +4,8 @@ import "@/app/globals.css";
 import { AuthProvider } from "@/components/providers/auth-provider";
 
 export const metadata: Metadata = {
-  title: "Stylist AI",
-  description: "Next.js frontend for the multimodal clothing assistant.",
+  title: "Lookeate",
+  description: "Next.js frontend for Lookeate, an AI-powered fashion assistant.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

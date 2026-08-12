@@ -1,5 +1,12 @@
 # AGENTS.md
 
+## Product naming
+
+The public application name is **Lookeate**. Use Lookeate in user-facing UI,
+documentation, specs, and new product copy; reserve generic terms like
+"assistant" for technical chat roles, agent responsibilities, or internal
+architecture descriptions.
+
 ## Running the backend locally
 
 `PYTHONPATH` must include `src` because backend imports are relative to `src/`.

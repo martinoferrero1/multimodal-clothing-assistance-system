@@ -23,7 +23,7 @@ export default function HomePage() {
   return (
     <main className="flex min-h-screen items-center justify-center">
       <div className="glass soft-shadow hairline rounded-[2rem] px-8 py-6 text-sm text-[var(--muted)]">
-        Preparing your Stylist AI...
+        Preparing your Lookeate stylist...
       </div>
     </main>
   );

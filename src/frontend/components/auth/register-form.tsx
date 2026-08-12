@@ -46,7 +46,7 @@ export function RegisterForm() {
   return (
     <AuthShell
       title="Create account"
-      description="Register to start using our fashion assistant and receive personalized outfit recommendations."
+      description="Create your Lookeate profile to receive personalized outfit recommendations."
       footerLabel="Already have an account?"
       footerHref="/login"
       footerAction="Sign in"

@@ -1,5 +1,5 @@
 {
-  "name": "digital-atelier-frontend",
+  "name": "lookeate-frontend",
   "private": true,
   "scripts": {
     "dev": "next dev",

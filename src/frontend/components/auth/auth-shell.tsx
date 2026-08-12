@@ -24,22 +24,29 @@ export function AuthShell({
         <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,14,14,0.82),rgba(14,14,14,0.3))]" />
         <div className="relative z-10 flex h-full flex-col justify-between p-12 text-[var(--text)] xl:p-16">
           <div className="space-y-4">
-            <h2 className="serif max-w-md text-5xl leading-none xl:text-6xl">
+            <h1 className="serif max-w-md text-6xl leading-none xl:text-7xl">
+              Lookeate
+            </h1>
+            <p className="text-sm font-medium uppercase tracking-[0.32em] text-white/75">
               Your AI-Fashion Assistant
-            </h2>
+            </p>
           </div>
-          <p className="max-w-lg text-sm leading-7 text-white/80 xl:text-base">
-            Discover clothing that matches your taste, build complete looks, and explore your
-            store through a live assistant connected to real conversations.
-          </p>
         </div>
       </section>
 
       <section className="relative flex w-full items-center justify-center px-6 py-10 lg:max-w-[44rem] lg:px-10">
         <div className="glass-strong soft-shadow hairline animate-rise-in w-full max-w-xl rounded-[2rem] p-7 sm:p-10">
-          <div className="mb-10 space-y-4">
+          <div className="mb-10 space-y-8">
+            <div className="space-y-2 lg:hidden">
+              <h1 className="serif text-5xl leading-none text-[var(--text)] sm:text-6xl">
+                Lookeate
+              </h1>
+              <p className="text-xs font-medium uppercase tracking-[0.28em] text-[var(--muted)]">
+                Your AI-Fashion Assistant
+              </p>
+            </div>
             <div className="space-y-3">
-              <h1 className="serif text-5xl leading-none text-[var(--text)] sm:text-6xl">{title}</h1>
+              <h2 className="serif text-4xl leading-none text-[var(--text)] sm:text-5xl">{title}</h2>
               <p className="max-w-lg text-sm leading-7 text-[var(--muted)] sm:text-base">{description}</p>
             </div>
           </div>

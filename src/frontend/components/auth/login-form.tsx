@@ -45,7 +45,7 @@ export function LoginForm() {
   return (
     <AuthShell
       title="Welcome back"
-      description="Sign in to continue exploring outfits and recommendations."
+      description="Sign in to continue exploring outfits and recommendations with Lookeate."
       footerLabel="Don't have an account yet?"
       footerHref="/register"
       footerAction="Create one"

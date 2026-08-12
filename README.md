@@ -1,9 +1,9 @@
-# Multimodal Clothing Assistance System
+# Lookeate
 
-An in-progress platform for intelligent fashion-store assistance. The project
-combines a conversational agent, product search over a clothing catalog, store
-information Q&A, and outfit/product recommendations based on natural-language
-user requests.
+Lookeate is an in-progress platform for intelligent fashion-store assistance.
+The project combines a conversational agent, product search over a clothing
+catalog, store information Q&A, and outfit/product recommendations based on
+natural-language user requests.
 
 > Status: under active development. The conversational backend,
 > authentication, conversation persistence, business-information RAG,

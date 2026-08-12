@@ -19,7 +19,7 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
         <div className="glass soft-shadow hairline rounded-[2rem] px-8 py-6 text-sm text-[var(--muted)]">
-          Connecting your session to the Stylist AI...
+          Connecting your session to the Lookeate stylist...
         </div>
       </main>
     );

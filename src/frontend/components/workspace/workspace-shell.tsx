@@ -76,7 +76,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             <div className="surface-chrome flex items-center gap-3 rounded-lg border border-[var(--line)] px-4 py-3">
               <Sparkles size={16} className="text-[var(--accent)]" />
               <div>
-                <p className="serif text-lg leading-none">Stylist AI</p>
+                <p className="serif text-lg leading-none">Lookeate</p>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
                   Beta
                 </p>
