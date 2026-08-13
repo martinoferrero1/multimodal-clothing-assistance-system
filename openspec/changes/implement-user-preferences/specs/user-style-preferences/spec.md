@@ -1,6 +1,6 @@
 ## Purpose
 
-Defines how the assistant remembers and applies user style preferences so recommendations can be personalized while keeping the user's current request authoritative.
+Defines how Lookeate Assistant remembers and applies user style preferences so recommendations can be personalized while keeping the user's current request authoritative. These preferences are conversational memory and are distinct from the future manual "Create your style" experience.
 
 ## ADDED Requirements
 

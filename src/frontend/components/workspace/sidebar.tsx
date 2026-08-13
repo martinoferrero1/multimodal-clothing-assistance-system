@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   EllipsisVertical,
   GripVertical,
+  House,
   LogOut,
   MessageSquarePlus,
   MessagesSquare,
@@ -14,7 +15,6 @@ import {
   Pin,
   PinOff,
   Settings,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -79,18 +79,18 @@ export function Sidebar({
 
   const navItems = [
     {
-      label: t("sidebar.chat"),
+      label: t("sidebar.home"),
+      icon: House,
+      active: pathname === "/",
+      disabled: false,
+      onClick: () => router.push("/"),
+    },
+    {
+      label: t("sidebar.assistant"),
       icon: MessagesSquare,
       active: pathname.startsWith("/chat"),
       disabled: false,
       onClick: () => router.push("/chat/new"),
-    },
-    {
-      label: t("sidebar.createStyle"),
-      icon: Sparkles,
-      active: false,
-      disabled: true,
-      onClick: () => undefined,
     },
   ];
 
@@ -291,7 +291,7 @@ export function Sidebar({
             <div>
               <h2 className="serif text-3xl leading-none">Lookeate</h2>
               <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                {t("common.beta")}
+                {t("sidebar.assistant")}
               </p>
             </div>
           </div>

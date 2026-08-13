@@ -1,29 +1,40 @@
 # Lookeate
 
-Lookeate is an in-progress platform for intelligent fashion-store assistance.
-The project combines a conversational agent, product search over a clothing
-catalog, store information Q&A, and outfit/product recommendations based on
-natural-language user requests.
+Lookeate is an in-progress modular platform for creating, combining, and
+discovering personal style. Its authenticated home brings several experiences
+together: a conversational styling assistant, hands-on garment creation,
+manual outfit composition, and structured exploration of client catalogs.
 
-> Status: under active development. The conversational backend,
+> Status: the complete Lookeate product is in beta. Lookeate Assistant,
 > authentication, conversation persistence, business-information RAG,
-> text/image-assisted product search, user style preferences, and the current
-> Next.js chat workspace are implemented. Persistent saved outfits as
-> first-class entities are part of the product vision and are still being
-> built.
+> text/image-assisted product search, user style preferences, and the new
+> authenticated home are implemented. The garment creator, manual style
+> creator, and structured catalog explorer are visible as upcoming experiences
+> and are not accessible yet.
 
 ## Project Vision
 
-The goal is to provide an AI-assisted shopping experience for users who do not
-want to browse traditional category filters. Instead of manually selecting
-facets, users can describe what they need:
+The goal is to give users complementary ways to shape their style instead of
+forcing every task through a single interface. The home organizes four product
+experiences:
+
+- **Lookeate Assistant** (available): natural-language and image-assisted
+  conversations for ideas, garment discovery, outfits, and store questions.
+- **Create a garment** (coming soon): hands-on editing of garment types, cuts,
+  colors, and details.
+- **Create your style** (coming soon): manual outfit composition, piece by
+  piece.
+- **Explore catalogs** (coming soon): ecommerce-style searches across specific
+  client catalogs with structured categories and filters.
+
+In Lookeate Assistant, users can describe what they need naturally:
 
 - "I need an outfit for a wedding, with a red dress and formal accessories."
 - "I am looking for grey men's sports shoes, preferably from FILA."
 - "What payment methods do you accept?"
 - "I want a tennis outfit with sneakers, a T-shirt, and shorts."
 
-The assistant interprets the user's intent, decides which capabilities are
+Lookeate Assistant interprets the user's intent, decides which capabilities are
 needed, retrieves store information when relevant, searches the catalog, and
 returns a structured answer with recommendations ready to be rendered in the
 frontend.
@@ -37,6 +48,12 @@ their available images.
 
 ## Implemented Features
 
+- Authenticated Lookeate home as the default destination.
+- Product-level Beta messaging and a four-experience module overview.
+- Lookeate Assistant as the available conversational experience, with a direct
+  path back to Home.
+- Upcoming garment creation, manual style creation, and structured catalog
+  exploration presented without navigable controls.
 - Authenticated chat with registration, login, and browser-persisted sessions.
 - Per-user conversation history.
 - Conversation creation, retrieval, and deletion.
@@ -58,11 +75,15 @@ their available images.
 - Automatic catalog seeding from CSV.
 - SQLite support for local development and PostgreSQL support for Docker
   Compose deployments.
-- Next.js frontend with chat, upload controls, collapsible sidebar,
-  conversation history, login, register, settings modal, and UI preferences.
+- Next.js frontend with Home, Lookeate Assistant, upload controls, an
+  Assistant-specific collapsible sidebar, conversation history, login,
+  register, a reusable settings modal, and UI preferences.
 
 ## In Development / Roadmap
 
+- Hands-on garment creation and editing.
+- Manual outfit and style composition.
+- Structured ecommerce-style exploration of client-specific catalogs.
 - Stronger multimodal image embeddings for visual search quality.
 - Saving personalized outfits as dedicated database entities.
 - Editing previously saved outfits.
@@ -83,11 +104,17 @@ User
   v
 Next.js Frontend
   |
-  v
-FastAPI API
+  +--> Lookeate Home
+  |      +--> Lookeate Assistant (available)
+  |      +--> Create a garment (coming soon)
+  |      +--> Create your style (coming soon)
+  |      `--> Explore catalogs (coming soon)
   |
   v
-LangGraph Supervisor Agent
+Lookeate Assistant
+  |
+  v
+FastAPI API -> LangGraph Supervisor Agent
   |
   +--> Business QA RAG
   |      +--> Markdown knowledge docs
@@ -452,17 +479,22 @@ The frontend lives in `src/frontend` and uses the Next.js App Router.
 Main screens and components:
 
 - Login and registration.
-- Redirects based on session state.
-- Authenticated workspace.
-- Collapsible sidebar with conversation history and account/settings access.
-- Main chat workspace with image attachments, centered GPT-style message flow,
-  and structured assistant recommendation rendering.
+- Session-aware routing to the authenticated Home by default.
+- Editorial dark Home with a global Beta notice and four product experiences;
+  only Lookeate Assistant is currently actionable.
+- Lookeate Assistant workspace with a collapsible, Assistant-specific sidebar,
+  conversation history, and a route back to Home. "Create your style" is no
+  longer shown as a chat-sidebar placeholder.
+- Main Assistant conversation surface with image attachments, centered
+  GPT-style message flow, and structured recommendation rendering.
 - Product recommendation groups shown directly inside assistant messages.
 - Outfit recommendation cards that open a desktop side panel when enabled, or a
   dedicated modal when panel mode is disabled or unavailable.
-- Settings modal for global interface preferences, search priorities, explicit
-  style preferences, inferred style preference review/removal, and personalized
-  style usage.
+- Settings modal, available from Home and Lookeate Assistant, for global
+  configuration. Its General section currently contains only language;
+  Assistant-specific layout, recommendation, search-priority, and style-memory
+  preferences live in a dedicated Lookeate Assistant section, while profile
+  details remain under Account.
 - Conversation settings modal for temporary style notes, conversation-level
   personalization override, and conversation-specific search priorities.
 

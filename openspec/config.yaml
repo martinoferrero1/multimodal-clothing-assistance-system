@@ -11,8 +11,12 @@ schema: spec-driven
 context: |
   Public product name: Lookeate.
   Use Lookeate in user-facing UI, documentation, specs, and product copy.
+  Lookeate Assistant is the public name of the conversational styling module.
   Generic terms like "assistant" may still be used for technical chat roles,
   agent nodes, and internal architecture.
+  The authenticated default route is the Lookeate home. It exposes Lookeate
+  Assistant and previews the garment creator, manual style creator, and catalog
+  explorer as unavailable upcoming modules. Beta refers to the whole product.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.

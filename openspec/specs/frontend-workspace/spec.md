@@ -1,20 +1,57 @@
 ## Purpose
 
-Defines the expected behavior of the authenticated frontend workspace, including
-navigation chrome, chat rendering, settings, and recommendation viewing
-surfaces.
+Defines the expected behavior of the authenticated Lookeate frontend, including
+the product Home, module availability, Lookeate Assistant, settings, and
+recommendation viewing surfaces.
 
 ## Requirements
 
-### Requirement: Workspace chrome stays visually integrated
-The system SHALL render the chat workspace, sidebar, settings modal, and
-recommendation surfaces with a cohesive dark translucent theme, subtle borders,
-and softened color contrast.
+### Requirement: Home is the authenticated default destination
+The system SHALL present the Lookeate Home after authentication instead of
+opening a new Assistant conversation automatically.
 
-#### Scenario: Chat and panels share the same visual system
-- **WHEN** the authenticated workspace is displayed
-- **THEN** the sidebar, chat, settings modal, and recommendation panel SHALL use
-  compatible surface colors, blur treatment, borders, and hover states
+#### Scenario: User signs in or registers
+- **WHEN** authentication succeeds
+- **THEN** the user SHALL arrive at the Lookeate Home
+- **AND** a conversation SHALL NOT be opened automatically
+
+#### Scenario: Authenticated user opens the root route
+- **WHEN** an authenticated user visits `/`
+- **THEN** the system SHALL render the Lookeate Home
+
+### Requirement: Home communicates the product areas and their availability
+The system SHALL present Lookeate Assistant, Create a garment, Create your
+style, and Explore catalogs as distinct product experiences on Home.
+
+#### Scenario: User opens the available experience
+- **WHEN** the user activates the Lookeate Assistant card or action
+- **THEN** the system SHALL navigate to a new Assistant conversation
+
+#### Scenario: User views an upcoming experience
+- **WHEN** Home renders Create a garment, Create your style, or Explore catalogs
+- **THEN** the experience SHALL be visibly marked as coming soon
+- **AND** it SHALL NOT expose an interactive navigation control
+
+### Requirement: Beta status applies to the complete product
+The system SHALL communicate that Lookeate as a whole is in Beta from Home and
+SHALL NOT attach the Beta label specifically to Lookeate Assistant.
+
+#### Scenario: User compares Home and Assistant branding
+- **WHEN** the user views Home and then opens Lookeate Assistant
+- **THEN** Home SHALL contain the product-level Beta status
+- **AND** the Assistant header and sidebar SHALL identify the module as
+  "Lookeate Assistant" without a local Beta label
+
+### Requirement: Workspace chrome stays visually integrated
+The system SHALL render Home, Lookeate Assistant, the Assistant sidebar, the
+settings modal, and recommendation surfaces with a cohesive dark monochromatic
+theme, subtle borders, softened color contrast, and restrained accent color.
+
+#### Scenario: Home and Assistant share the same visual system
+- **WHEN** the authenticated product is displayed
+- **THEN** Home, the Assistant sidebar and conversation, Settings, and
+  recommendation panels SHALL use compatible typography, surface colors,
+  borders, and interaction states
 
 #### Scenario: Chat remains visually loose
 - **WHEN** messages are displayed in the chat workspace
@@ -22,8 +59,8 @@ and softened color contrast.
   the message column centered with comfortable width on desktop
 
 ### Requirement: Sidebar supports desktop collapse and mobile drawer behavior
-The system SHALL let users hide and reveal the left sidebar without leaving the
-chat workspace.
+The system SHALL let users hide and reveal the Lookeate Assistant sidebar
+without leaving the active conversation.
 
 #### Scenario: Desktop sidebar can be hidden and restored
 - **WHEN** a desktop user hides the sidebar
@@ -35,6 +72,11 @@ chat workspace.
 - **THEN** the sidebar SHALL appear as an overlay drawer and SHALL close without
   changing the active conversation
 
+#### Scenario: Assistant sidebar exposes product navigation
+- **WHEN** the Lookeate Assistant sidebar is visible
+- **THEN** it SHALL provide access to Home and Lookeate Assistant
+- **AND** it SHALL NOT contain the future Create your style experience
+
 ### Requirement: Sidebar settings area is separated from conversations
 The system SHALL visually separate conversation history from the sidebar
 settings/account area using a single subtle divider.
@@ -45,13 +87,21 @@ settings/account area using a single subtle divider.
   edges and divider without its boundary cutting through a conversation row
 
 ### Requirement: Settings are shown in a modal
-The system SHALL present global workspace settings in a modal from the
-authenticated shell.
+The system SHALL present global product settings in a shared modal from Home
+and Lookeate Assistant.
 
 #### Scenario: User opens global settings
-- **WHEN** the user activates Settings from the sidebar
+- **WHEN** the user activates Settings from the Home account menu or the
+  Assistant sidebar
 - **THEN** a modal SHALL open with section navigation and a flat close control
   matching the rest of the workspace controls
+
+#### Scenario: General and Assistant preferences remain separated
+- **WHEN** the Settings modal is open
+- **THEN** General SHALL contain only the application language control
+- **AND** Lookeate Assistant SHALL contain sidebar, recommendation panel,
+  search-priority, and style-memory preferences
+- **AND** Account SHALL remain a separate section
 
 #### Scenario: Interface preferences update live surfaces
 - **WHEN** the user changes an interface preference

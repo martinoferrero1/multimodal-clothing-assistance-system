@@ -219,11 +219,19 @@ Alternatives considered:
 
 ### Decision: Frontend preference controls live in modal surfaces
 
-Global user preferences are surfaced through the workspace Settings modal rather
-than as a separate page. Conversation-specific preferences are surfaced from the
-chat composer settings control. This keeps the chat as the primary workspace
-while still separating global account/style settings from per-conversation
-temporary search and style instructions.
+Global user preferences are surfaced through the shared Settings modal rather
+than as a separate page. The modal is available from the Lookeate home and from
+Lookeate Assistant. Conversation-specific preferences are surfaced from the
+Assistant composer settings control. This keeps global account/style settings
+separate from per-conversation temporary search and style instructions without
+treating the chat as the whole product workspace. Style memory personalizes
+Lookeate Assistant and is distinct from the future manual "Create your style"
+experience.
+
+The shared modal separates General, Lookeate Assistant, and Account. General
+currently owns only the application language. Assistant-specific interface,
+recommendation, search-priority, and style-memory preferences live under the
+Lookeate Assistant section.
 
 Interface-only preferences, such as compact sidebar and recommendation panel
 mode, remain in browser `localStorage` because they do not affect backend

@@ -3,9 +3,10 @@
 ## Product naming
 
 The public application name is **Lookeate**. Use Lookeate in user-facing UI,
-documentation, specs, and new product copy; reserve generic terms like
-"assistant" for technical chat roles, agent responsibilities, or internal
-architecture descriptions.
+documentation, specs, and new product copy. **Lookeate Assistant** is the public
+name of the conversational styling module. Generic terms like "assistant" may
+still describe technical chat roles, agent responsibilities, or internal
+architecture.
 
 ## Running the backend locally
 
@@ -46,7 +47,17 @@ The frontend proxies all `/api/proxy/...` requests to the backend via
 
 Current workspace UI notes:
 
+- The authenticated default route is the Lookeate home. It presents Lookeate
+  Assistant as available and the garment creator, manual style creator, and
+  catalog explorer as visible but inaccessible upcoming modules.
+- The Beta status belongs to Lookeate as a whole and is presented on the home,
+  not beside the Lookeate Assistant identity.
+- Lookeate Assistant owns the collapsible conversation sidebar and chat history.
+  The former "Create your style" placeholder does not appear in that sidebar.
 - Global Settings is presented as a modal from the workspace shell.
+- Settings separates General, Lookeate Assistant, and Account. General contains
+  only the application language; Assistant contains chat layout,
+  recommendation, search-priority, and style-memory preferences.
 - The left sidebar is collapsible on desktop and drawer-based on smaller screens.
 - Interface preferences live in browser `localStorage` and dispatch
   `preferences:changed` when updated.

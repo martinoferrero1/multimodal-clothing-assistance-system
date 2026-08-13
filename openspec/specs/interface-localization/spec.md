@@ -5,7 +5,7 @@ Defines how Lookeate selects, persists, and applies a supported language to tran
 ## Requirements
 
 ### Requirement: Lookeate supports English and Spanish interface languages
-The system SHALL provide complete English and Spanish translations for frontend-owned, user-facing interface copy, including navigation, authentication, settings, chat controls, recommendation controls, statuses, validation messages, and errors.
+The system SHALL provide complete English and Spanish translations for frontend-owned, user-facing interface copy, including Home, module names and availability, navigation, authentication, settings, chat controls, recommendation controls, the product-level Beta message, statuses, validation messages, and errors.
 
 #### Scenario: User views the interface in English
 - **WHEN** English is the active language
@@ -41,7 +41,7 @@ The system SHALL present a language control in the General section of Settings w
 The system SHALL apply the selected language to all mounted frontend interface surfaces, store it with browser interface preferences, and restore it on subsequent visits in the same browser.
 
 #### Scenario: Other open interface surfaces react to a change
-- **WHEN** the user changes the language while workspace, chat, or recommendation surfaces are mounted
+- **WHEN** the user changes the language while Home, Lookeate Assistant, Settings, or recommendation surfaces are mounted
 - **THEN** those surfaces SHALL update their translatable copy without a page reload or loss of current application state
 
 #### Scenario: User returns after selecting Spanish
@@ -60,7 +60,7 @@ The system SHALL format frontend-presented dates, times, relative date labels, a
 - **THEN** locale-sensitive values and the document language SHALL use English conventions
 
 ### Requirement: Content that is not interface copy remains unchanged
-The system SHALL NOT translate the Lookeate product name, user-provided conversation content, previously generated assistant messages, email addresses, product or brand names, proper names, or externally supplied catalog and API content solely because the interface language changes.
+The system SHALL NOT translate the Lookeate or Lookeate Assistant product names, user-provided conversation content, previously generated assistant messages, email addresses, product or brand names, proper names, or externally supplied catalog and API content solely because the interface language changes.
 
 #### Scenario: Conversation remains intact after language change
 - **WHEN** the user changes the active language while viewing an existing conversation
@@ -73,3 +73,4 @@ The system SHALL NOT translate the Lookeate product name, user-provided conversa
 #### Scenario: Lookeate branding remains intact
 - **WHEN** either supported language is active
 - **THEN** the public application name SHALL remain "Lookeate"
+- **AND** the conversational module name SHALL remain "Lookeate Assistant"

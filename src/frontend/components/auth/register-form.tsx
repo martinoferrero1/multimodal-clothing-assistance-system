@@ -22,7 +22,7 @@ export function RegisterForm() {
 
   useEffect(() => {
     if (auth.status === "authenticated") {
-      router.replace("/chat/new");
+      router.replace("/");
     }
   }, [auth.status, router]);
 
@@ -46,7 +46,7 @@ export function RegisterForm() {
     try {
       await auth.signUp(displayName, email, password);
       startTransition(() => {
-        router.replace("/chat/new");
+        router.replace("/");
       });
     } catch (caughtError) {
       setError(

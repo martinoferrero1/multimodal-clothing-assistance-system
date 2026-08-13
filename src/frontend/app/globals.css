@@ -96,6 +96,30 @@ label[for] {
     linear-gradient(180deg, var(--bg) 0%, #151515 46%, var(--bg) 100%);
 }
 
+.home-background {
+  background:
+    radial-gradient(circle at 12% 6%, rgba(255, 255, 255, 0.045), transparent 28rem),
+    radial-gradient(circle at 88% 48%, rgba(208, 188, 255, 0.055), transparent 32rem),
+    linear-gradient(180deg, #101010 0%, var(--bg) 48%, #0f0f0f 100%);
+}
+
+.home-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, black, transparent 72%);
+}
+
+.home-module-card {
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.home-module-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 36px 90px rgba(0, 0, 0, 0.32);
+}
+
 .workspace-panel {
   background: var(--workspace-panel);
   border: 1px solid var(--line-strong);
@@ -296,4 +320,14 @@ label[for] {
 
 .animate-rise-in {
   animation: rise-in 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in {
+    animation: none;
+  }
+
+  .home-module-card {
+    transition: none;
+  }
 }

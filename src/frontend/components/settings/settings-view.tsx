@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, PanelsTopLeft, UserRound } from "lucide-react";
+import { Check, MessagesSquare, PanelsTopLeft, UserRound } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
@@ -22,7 +22,7 @@ import { readPreferences, writePreferences } from "@/lib/storage";
 import type { SearchPriorityField, SettingsPreferences, StylePreferenceDetails } from "@/lib/types";
 import type { MessageKey } from "@/lib/i18n";
 
-export type SettingsSection = "general" | "account";
+export type SettingsSection = "general" | "assistant" | "account";
 type StyleDraft = Record<keyof StylePreferenceDetails, string>;
 type LocalizedError = { message: string } | { key: MessageKey };
 
@@ -197,13 +197,16 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
     {
       id: "general" as const,
       label: t("workspace.general"),
-      description: t("settings.generalDescription"),
       icon: PanelsTopLeft,
+    },
+    {
+      id: "assistant" as const,
+      label: t("sidebar.assistant"),
+      icon: MessagesSquare,
     },
     {
       id: "account" as const,
       label: t("workspace.account"),
-      description: t("settings.accountDescription"),
       icon: UserRound,
     },
   ];
@@ -230,12 +233,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                 <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center">
                   <Icon size={16} />
                 </span>
-                <span>
-                  <span className="block text-sm font-semibold">{section.label}</span>
-                  <span className="mt-1 block text-xs leading-5 opacity-80">
-                    {section.description}
-                  </span>
-                </span>
+                <span className="block text-sm font-semibold">{section.label}</span>
               </button>
             );
           })}
@@ -246,28 +244,6 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
         {activeSection === "general" ? (
           <div className="space-y-7 pb-8">
             <div className="space-y-0">
-              <PreferenceRow
-                checked={preferences.compactSidebar}
-                description={t("settings.compactSidebarDescription")}
-                label={t("settings.compactSidebar")}
-                onToggle={() =>
-                  updatePreferences({
-                    ...preferences,
-                    compactSidebar: !preferences.compactSidebar,
-                  })
-                }
-              />
-              <PreferenceRow
-                checked={preferences.showRecommendationPanel}
-                description={t("settings.recommendationPanelDescription")}
-                label={t("settings.recommendationPanel")}
-                onToggle={() =>
-                  updatePreferences({
-                    ...preferences,
-                    showRecommendationPanel: !preferences.showRecommendationPanel,
-                  })
-                }
-              />
               <div className="border-b border-[var(--line)] px-2 py-4">
                 <label className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <span>
@@ -293,6 +269,35 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                   </select>
                 </label>
               </div>
+            </div>
+          </div>
+        ) : null}
+
+        {activeSection === "assistant" ? (
+          <div className="space-y-7 pb-8">
+            <div className="space-y-0">
+              <PreferenceRow
+                checked={preferences.compactSidebar}
+                description={t("settings.compactSidebarDescription")}
+                label={t("settings.compactSidebar")}
+                onToggle={() =>
+                  updatePreferences({
+                    ...preferences,
+                    compactSidebar: !preferences.compactSidebar,
+                  })
+                }
+              />
+              <PreferenceRow
+                checked={preferences.showRecommendationPanel}
+                description={t("settings.recommendationPanelDescription")}
+                label={t("settings.recommendationPanel")}
+                onToggle={() =>
+                  updatePreferences({
+                    ...preferences,
+                    showRecommendationPanel: !preferences.showRecommendationPanel,
+                  })
+                }
+              />
             </div>
 
             <section className="border-b border-[var(--line)] pb-7">

@@ -1,6 +1,6 @@
 ## Purpose
 
-Defines how the assistant automatically detects, records, aggregates, and applies learned user preferences from chat behavior while preserving current-request precedence and user control.
+Defines how Lookeate Assistant automatically detects, records, aggregates, and applies learned user preferences from chat behavior while preserving current-request precedence and user control. This learned memory is distinct from the future manual "Create your style" experience.
 
 ## Requirements
 

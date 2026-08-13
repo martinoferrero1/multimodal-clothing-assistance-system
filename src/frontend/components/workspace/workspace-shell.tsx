@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Menu, PanelLeftOpen, Sparkles, X } from "lucide-react";
+import { Menu, PanelLeftOpen, Sparkles } from "lucide-react";
 
-import { SettingsView, type SettingsSection } from "@/components/settings/settings-view";
 import { useLocale } from "@/components/providers/locale-provider";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { Sidebar } from "@/components/workspace/sidebar";
 import { readPreferences } from "@/lib/storage";
 
@@ -13,11 +13,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarVisible, setDesktopSidebarVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [compactSidebar, setCompactSidebar] = useState(() => readPreferences().compactSidebar);
-  const settingsSectionTitle = settingsSection === "general"
-    ? t("workspace.general")
-    : t("workspace.account");
 
   useEffect(() => {
     function syncPreferences() {
@@ -28,21 +24,6 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("preferences:changed", syncPreferences);
     return () => window.removeEventListener("preferences:changed", syncPreferences);
   }, []);
-
-  useEffect(() => {
-    if (!settingsOpen) {
-      return;
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setSettingsOpen(false);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [settingsOpen]);
 
   return (
     <div className="app-background relative min-h-screen overflow-hidden lg:h-screen">
@@ -82,7 +63,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <div>
                 <p className="serif text-lg leading-none">Lookeate</p>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                  {t("common.beta")}
+                  {t("sidebar.assistant")}
                 </p>
               </div>
             </div>
@@ -94,49 +75,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {settingsOpen ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 sm:p-6">
-          <button
-            className="absolute inset-0 cursor-default"
-            type="button"
-            tabIndex={-1}
-            aria-label={t("workspace.closeSettings")}
-            onClick={() => setSettingsOpen(false)}
-          />
-          <div
-            className="modal-shell relative z-10 flex h-[min(44rem,calc(100dvh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-xl sm:h-[min(44rem,calc(100dvh-3rem))]"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-dialog-title"
-          >
-            <div className="grid shrink-0 grid-cols-[auto_minmax(0,1fr)] border-b border-[var(--line)] lg:grid-cols-[16rem_minmax(0,1fr)]">
-              <div className="flex items-center px-4 py-3 lg:border-r lg:border-[var(--line)]">
-                <button
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--muted)] transition hover:text-[var(--text)]"
-                  type="button"
-                  autoFocus
-                  aria-label={t("workspace.closeSettings")}
-                  onClick={() => setSettingsOpen(false)}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="flex items-center px-5 py-3 sm:px-6">
-                <h2 id="settings-dialog-title" className="text-base font-semibold leading-none text-[var(--text)]">
-                  {settingsSectionTitle}
-                </h2>
-              </div>
-            </div>
-
-            <div className="modal-body scroll-modal min-h-0 flex-1 overflow-y-auto">
-              <SettingsView
-                activeSection={settingsSection}
-                onSectionChange={setSettingsSection}
-              />
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
