@@ -22,6 +22,11 @@ The system SHALL allow authenticated users to view, update, and clear explicitly
 - **WHEN** an authenticated user updates their explicit style preferences
 - **THEN** subsequent reads of the user profile SHALL include the saved explicit preferences
 
+#### Scenario: User edits list-based preferences
+- **WHEN** an authenticated user edits styles, colors, brands, fits, or occasions in Settings
+- **THEN** the interface SHALL provide expandable selectors for adding values individually
+- **AND** selected values SHALL be shown as removable tags rather than comma-separated text
+
 #### Scenario: User clears explicit style preferences
 - **WHEN** an authenticated user clears their explicit style preferences
 - **THEN** future personalized recommendations SHALL no longer use those cleared explicit preferences

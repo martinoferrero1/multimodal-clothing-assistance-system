@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, MessagesSquare, PanelsTopLeft, UserRound } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  MessagesSquare,
+  PanelsTopLeft,
+  Plus,
+  UserRound,
+  X,
+} from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
@@ -23,15 +31,33 @@ import type { SearchPriorityField, SettingsPreferences, StylePreferenceDetails }
 import type { MessageKey } from "@/lib/i18n";
 
 export type SettingsSection = "general" | "assistant" | "account";
-type StyleDraft = Record<keyof StylePreferenceDetails, string>;
 type LocalizedError = { message: string } | { key: MessageKey };
+type StyleDraft = {
+  liked_styles: string[];
+  disliked_styles: string[];
+  preferred_colors: string[];
+  avoided_colors: string[];
+  preferred_brands: string[];
+  avoided_brands: string[];
+  preferred_fits: string[];
+  occasions: string[];
+  budget_notes: string;
+  sizing_notes: string;
+  freeform_notes: string;
+};
+type ListStylePreferenceKey = {
+  [Key in keyof StyleDraft]: StyleDraft[Key] extends string[] ? Key : never;
+}[keyof StyleDraft];
+type NoteStylePreferenceKey = {
+  [Key in keyof StyleDraft]: StyleDraft[Key] extends string ? Key : never;
+}[keyof StyleDraft];
 
 type SettingsViewProps = {
   activeSection: SettingsSection;
   onSectionChange: (section: SettingsSection) => void;
 };
 
-const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; labelKey: MessageKey; multiline?: boolean }> = [
+const listStyleDraftFields: Array<{ key: ListStylePreferenceKey; labelKey: MessageKey }> = [
   { key: "liked_styles", labelKey: "settings.likedStyles" },
   { key: "disliked_styles", labelKey: "settings.dislikedStyles" },
   { key: "preferred_colors", labelKey: "settings.preferredColors" },
@@ -40,9 +66,12 @@ const styleDraftFields: Array<{ key: keyof StylePreferenceDetails; labelKey: Mes
   { key: "avoided_brands", labelKey: "settings.avoidedBrands" },
   { key: "preferred_fits", labelKey: "settings.preferredFits" },
   { key: "occasions", labelKey: "settings.occasions" },
-  { key: "budget_notes", labelKey: "settings.budgetNotes", multiline: true },
-  { key: "sizing_notes", labelKey: "settings.sizingNotes", multiline: true },
-  { key: "freeform_notes", labelKey: "settings.styleNotes", multiline: true },
+];
+
+const noteStyleDraftFields: Array<{ key: NoteStylePreferenceKey; labelKey: MessageKey }> = [
+  { key: "budget_notes", labelKey: "settings.budgetNotes" },
+  { key: "sizing_notes", labelKey: "settings.sizingNotes" },
+  { key: "freeform_notes", labelKey: "settings.styleNotes" },
 ];
 
 export function SettingsView({ activeSection, onSectionChange }: SettingsViewProps) {
@@ -357,16 +386,31 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                   </button>
                 </div>
 
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {styleDraftFields.map((field) => (
-                    <label key={field.key} className={field.multiline ? "sm:col-span-2" : ""}>
+                <div className="mt-5 grid items-start gap-3 sm:grid-cols-2">
+                  {listStyleDraftFields.map((field) => (
+                    <StylePreferencePicker
+                      key={field.key}
+                      disabled={savingStylePreferences}
+                      label={t(field.labelKey)}
+                      values={styleDraft[field.key]}
+                      onChange={(values) =>
+                        setStyleDraft((current) => ({
+                          ...current,
+                          [field.key]: values,
+                        }))
+                      }
+                    />
+                  ))}
+
+                  {noteStyleDraftFields.map((field) => (
+                    <label key={field.key} className="sm:col-span-2">
                       <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                         {t(field.labelKey)}
                       </span>
                       <textarea
                         className="mt-2 min-h-[3.2rem] w-full resize-y rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-3 text-sm leading-6 outline-none transition focus:border-[var(--accent)]"
-                        rows={field.multiline ? 3 : 1}
-                        placeholder={field.multiline ? t("settings.addNote") : t("settings.commaSeparated")}
+                        rows={3}
+                        placeholder={t("settings.addNote")}
                         value={styleDraft[field.key]}
                         onChange={(event) =>
                           setStyleDraft((current) => ({
@@ -486,14 +530,14 @@ function stylePreferencesToDraft(details: StylePreferenceDetails | undefined): S
     freeform_notes: null,
   };
   return {
-    liked_styles: safeDetails.liked_styles.join(", "),
-    disliked_styles: safeDetails.disliked_styles.join(", "),
-    preferred_colors: safeDetails.preferred_colors.join(", "),
-    avoided_colors: safeDetails.avoided_colors.join(", "),
-    preferred_brands: safeDetails.preferred_brands.join(", "),
-    avoided_brands: safeDetails.avoided_brands.join(", "),
-    preferred_fits: safeDetails.preferred_fits.join(", "),
-    occasions: safeDetails.occasions.join(", "),
+    liked_styles: [...safeDetails.liked_styles],
+    disliked_styles: [...safeDetails.disliked_styles],
+    preferred_colors: [...safeDetails.preferred_colors],
+    avoided_colors: [...safeDetails.avoided_colors],
+    preferred_brands: [...safeDetails.preferred_brands],
+    avoided_brands: [...safeDetails.avoided_brands],
+    preferred_fits: [...safeDetails.preferred_fits],
+    occasions: [...safeDetails.occasions],
     budget_notes: safeDetails.budget_notes ?? "",
     sizing_notes: safeDetails.sizing_notes ?? "",
     freeform_notes: safeDetails.freeform_notes ?? "",
@@ -521,24 +565,24 @@ function formatInferredPreferenceMetadata(
 
 function draftToStylePreferences(draft: StyleDraft): StylePreferenceDetails {
   return {
-    liked_styles: parseCsv(draft.liked_styles),
-    disliked_styles: parseCsv(draft.disliked_styles),
-    preferred_colors: parseCsv(draft.preferred_colors),
-    avoided_colors: parseCsv(draft.avoided_colors),
-    preferred_brands: parseCsv(draft.preferred_brands),
-    avoided_brands: parseCsv(draft.avoided_brands),
-    preferred_fits: parseCsv(draft.preferred_fits),
-    occasions: parseCsv(draft.occasions),
+    liked_styles: normalizePreferenceValues(draft.liked_styles),
+    disliked_styles: normalizePreferenceValues(draft.disliked_styles),
+    preferred_colors: normalizePreferenceValues(draft.preferred_colors),
+    avoided_colors: normalizePreferenceValues(draft.avoided_colors),
+    preferred_brands: normalizePreferenceValues(draft.preferred_brands),
+    avoided_brands: normalizePreferenceValues(draft.avoided_brands),
+    preferred_fits: normalizePreferenceValues(draft.preferred_fits),
+    occasions: normalizePreferenceValues(draft.occasions),
     budget_notes: cleanNote(draft.budget_notes),
     sizing_notes: cleanNote(draft.sizing_notes),
     freeform_notes: cleanNote(draft.freeform_notes),
   };
 }
 
-function parseCsv(value: string): string[] {
+function normalizePreferenceValues(items: string[]): string[] {
   const seen = new Set<string>();
   const values: string[] = [];
-  for (const item of value.split(/[;,]/)) {
+  for (const item of items) {
     const normalized = item.trim();
     const key = normalized.toLowerCase();
     if (!normalized || seen.has(key)) {
@@ -553,6 +597,119 @@ function parseCsv(value: string): string[] {
 function cleanNote(value: string): string | null {
   const normalized = value.trim();
   return normalized || null;
+}
+
+type StylePreferencePickerProps = {
+  disabled: boolean;
+  label: string;
+  onChange: (values: string[]) => void;
+  values: string[];
+};
+
+function StylePreferencePicker({
+  disabled,
+  label,
+  onChange,
+  values,
+}: StylePreferencePickerProps) {
+  const { t } = useLocale();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const controlId = `style-preference-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+  function addPreference() {
+    const normalized = draft.trim();
+    if (!normalized || values.some((value) => value.toLowerCase() === normalized.toLowerCase())) {
+      return;
+    }
+
+    onChange([...values, normalized]);
+    setDraft("");
+  }
+
+  function removePreference(valueToRemove: string) {
+    onChange(values.filter((value) => value !== valueToRemove));
+  }
+
+  return (
+    <div>
+      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+        {label}
+      </span>
+      <div className="mt-2 overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--surface)] transition focus-within:border-[var(--accent)]">
+        <button
+          className="flex min-h-12 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+          type="button"
+          aria-controls={controlId}
+          aria-expanded={open}
+          disabled={disabled}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span className={values.length ? "font-semibold" : "text-[var(--muted)]"}>
+            {values.length
+              ? t(values.length === 1 ? "settings.selectedPreference.one" : "settings.selectedPreference.other", { count: values.length })
+              : t("settings.noSelectedPreferences")}
+          </span>
+          <ChevronDown size={16} className={`shrink-0 text-[var(--muted)] transition ${open ? "rotate-180" : ""}`} />
+        </button>
+
+        {open ? (
+          <div id={controlId} className="border-t border-[var(--line)] p-3">
+            {values.length ? (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {values.map((value) => (
+                  <span
+                    key={value.toLowerCase()}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(208,188,255,0.3)] bg-[var(--accent-soft)] py-1 pl-3 pr-1.5 text-xs font-semibold text-[var(--text)]"
+                  >
+                    {value}
+                    <button
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-white/10 hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
+                      type="button"
+                      aria-label={t("settings.removePreference", { value })}
+                      disabled={disabled}
+                      onClick={() => removePreference(value)}
+                    >
+                      <X size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex gap-2">
+              <input
+                className="min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--surface-low)] px-3 py-2.5 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted-soft)] focus:border-[var(--accent)]"
+                type="text"
+                value={draft}
+                disabled={disabled}
+                placeholder={t("settings.preferencePlaceholder")}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addPreference();
+                  }
+                  if (event.key === "Escape") {
+                    setOpen(false);
+                  }
+                }}
+              />
+              <button
+                className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md bg-[var(--text)] px-3 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                type="button"
+                disabled={disabled || !draft.trim()}
+                onClick={addPreference}
+              >
+                <Plus size={15} />
+                <span className="hidden sm:inline">{t("settings.addPreference")}</span>
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 type PreferenceRowProps = {
