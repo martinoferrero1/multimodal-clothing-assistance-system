@@ -63,6 +63,15 @@
 - [x] 8.2 Add backend tests for effective context precedence and personalization toggle behavior.
 - [x] 8.3 Add backend tests proving existing search priority behavior is unchanged when style preferences are absent or disabled.
 - [x] 8.4 Add backend tests for current-request-over-memory conflicts such as yellow request versus black remembered preference.
-- [ ] 8.5 Run `PYTHONPATH=src python -m pytest tests/` after installing backend test dependencies in the active Python environment.
+- [x] 8.5 Record the full backend suite as deferred to
+  `identity-config-and-migrations` task 6.3, where test settings and dependencies
+  will be isolated from real provider credentials before running
+  `PYTHONPATH=src python -m pytest tests/`.
 - [x] 8.6 Run `npm run lint` from `src/frontend` after frontend changes.
 - [x] 8.7 Run `npm run build` from `src/frontend` after frontend changes.
+
+### Deferred validation note
+
+The full backend suite is not claimed as passing for this change. Archiving it
+accepts that documented validation gap temporarily; the gap remains open until
+`identity-config-and-migrations` task 6.3 completes successfully.

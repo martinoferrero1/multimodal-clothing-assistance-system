@@ -6,7 +6,7 @@ import { LocaleProvider } from "@/components/providers/locale-provider";
 
 export const metadata: Metadata = {
   title: "Lookeate",
-  description: "Next.js frontend for Lookeate, an AI-powered fashion assistant.",
+  description: "Create, combine, and discover personal style with Lookeate.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

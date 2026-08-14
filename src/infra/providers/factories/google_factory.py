@@ -6,9 +6,9 @@ from schemas.provider import Provider
 
 
 class _GoogleRetrievalEmbeddings:
-    def __init__(self, model: str) -> None:
+    def __init__(self, model: str, api_key: str) -> None:
         self.model = model
-        self._client = GoogleGenerativeAIEmbeddings(model=model)
+        self._client = GoogleGenerativeAIEmbeddings(model=model, google_api_key=api_key)
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self._client.embed_documents(texts, task_type="retrieval_document")
@@ -22,15 +22,19 @@ class GoogleFactory(ProviderFactory):
     _provider: ClassVar[Provider] = Provider.google
 
     @classmethod
-    def _build_llm(cls, llm_model: str, temperature: float = None) -> BaseChatModel:
+    def _build_llm(
+        cls, llm_model: str, temperature: float = None, api_key: str = ""
+    ) -> BaseChatModel:
         if temperature is not None:
-            return ChatGoogleGenerativeAI(model=llm_model, temperature=temperature)
-        return ChatGoogleGenerativeAI(model=llm_model)
+            return ChatGoogleGenerativeAI(
+                model=llm_model, temperature=temperature, google_api_key=api_key
+            )
+        return ChatGoogleGenerativeAI(model=llm_model, google_api_key=api_key)
 
     @classmethod
-    def _build_embedding(cls, embedding_model: str):
+    def _build_embedding(cls, embedding_model: str, api_key: str):
         normalized_model = cls.normalize_embedding_model_name(embedding_model)
-        return _GoogleRetrievalEmbeddings(model=normalized_model)
+        return _GoogleRetrievalEmbeddings(model=normalized_model, api_key=api_key)
 
     @staticmethod
     def normalize_embedding_model_name(embedding_model: str) -> str:

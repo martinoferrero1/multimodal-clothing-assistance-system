@@ -1,29 +1,41 @@
 # Lookeate
 
-Lookeate is an in-progress platform for intelligent fashion-store assistance.
-The project combines a conversational agent, product search over a clothing
-catalog, store information Q&A, and outfit/product recommendations based on
-natural-language user requests.
+Lookeate is an in-progress modular platform for creating, combining, and
+discovering personal style. Its authenticated home brings several experiences
+together: a conversational styling assistant, hands-on garment creation,
+manual outfit composition, and structured exploration of client catalogs.
 
-> Status: under active development. The conversational backend,
+> Status: the complete Lookeate product is in beta. Lookeate Assistant,
 > authentication, conversation persistence, business-information RAG,
-> text/image-assisted product search, user style preferences, and the current
-> Next.js chat workspace are implemented. Persistent saved outfits as
-> first-class entities are part of the product vision and are still being
-> built.
+> text/image-assisted product search, user style preferences, and the new
+> authenticated home are implemented. The garment creator, manual style
+> creator prototype, and structured catalog explorer are represented on Home.
+> The manual style creator is available as an interactive base; the garment
+> creator and catalog explorer are not accessible yet.
 
 ## Project Vision
 
-The goal is to provide an AI-assisted shopping experience for users who do not
-want to browse traditional category filters. Instead of manually selecting
-facets, users can describe what they need:
+The goal is to give users complementary ways to shape their style instead of
+forcing every task through a single interface. The home organizes four product
+experiences:
+
+- **Lookeate Assistant** (available): natural-language and image-assisted
+  conversations for ideas, garment discovery, outfits, and store questions.
+- **Create a garment** (coming soon): hands-on editing of garment types, cuts,
+  colors, and details.
+- **Create your style** (base available): manual outfit composition on a
+  lightweight rotatable mannequin, piece by piece.
+- **Explore catalogs** (coming soon): ecommerce-style searches across specific
+  client catalogs with structured categories and filters.
+
+In Lookeate Assistant, users can describe what they need naturally:
 
 - "I need an outfit for a wedding, with a red dress and formal accessories."
 - "I am looking for grey men's sports shoes, preferably from FILA."
 - "What payment methods do you accept?"
 - "I want a tennis outfit with sneakers, a T-shirt, and shorts."
 
-The assistant interprets the user's intent, decides which capabilities are
+Lookeate Assistant interprets the user's intent, decides which capabilities are
 needed, retrieves store information when relevant, searches the catalog, and
 returns a structured answer with recommendations ready to be rendered in the
 frontend.
@@ -37,6 +49,14 @@ their available images.
 
 ## Implemented Features
 
+- Authenticated Lookeate home as the default destination.
+- Product-level Beta messaging and a four-experience module overview.
+- Lookeate Assistant as the available conversational experience, with a direct
+  path back to Home.
+- Base Create your style studio with a rotatable CSS 3D mannequin, garment
+  categories, layer selection, and a current-look summary.
+- Upcoming garment creation and structured catalog exploration presented
+  without navigable controls.
 - Authenticated chat with registration, login, and browser-persisted sessions.
 - Per-user conversation history.
 - Conversation creation, retrieval, and deletion.
@@ -58,11 +78,16 @@ their available images.
 - Automatic catalog seeding from CSV.
 - SQLite support for local development and PostgreSQL support for Docker
   Compose deployments.
-- Next.js frontend with chat, upload controls, collapsible sidebar,
-  conversation history, login, register, settings modal, and UI preferences.
+- Next.js frontend with Home, Lookeate Assistant, upload controls, an
+  Assistant-specific collapsible sidebar, conversation history, login,
+  register, a reusable settings modal, and UI preferences.
 
 ## In Development / Roadmap
 
+- Hands-on garment creation and editing.
+- Persistent saved looks and a production 3D fitting model for manual style
+  composition.
+- Structured ecommerce-style exploration of client-specific catalogs.
 - Stronger multimodal image embeddings for visual search quality.
 - Saving personalized outfits as dedicated database entities.
 - Editing previously saved outfits.
@@ -71,7 +96,6 @@ their available images.
 - Dedicated endpoints for outfit management.
 - Improved stock/availability and real pricing logic.
 - Broader frontend test coverage and CI automation.
-- Versioned database migrations.
 
 ## Architecture Overview
 
@@ -83,11 +107,17 @@ User
   v
 Next.js Frontend
   |
-  v
-FastAPI API
+  +--> Lookeate Home
+  |      +--> Lookeate Assistant (available)
+  |      +--> Create a garment (coming soon)
+  |      +--> Create your style (base available)
+  |      `--> Explore catalogs (coming soon)
   |
   v
-LangGraph Supervisor Agent
+Lookeate Assistant
+  |
+  v
+FastAPI API -> LangGraph Supervisor Agent
   |
   +--> Business QA RAG
   |      +--> Markdown knowledge docs
@@ -201,11 +231,16 @@ LangGraph Supervisor Agent
 The backend exposes a FastAPI application defined in `src/api/app.py`. During
 the application lifespan it:
 
-1. Initializes the database through `Database`.
-2. Runs `seed_catalog()` to load the catalog when it is still empty.
-3. Starts the LangGraph checkpointer.
-4. Builds the `ConversationRuntimeService`.
-5. Disposes database/checkpointer resources on shutdown.
+1. Initializes database connections without creating or altering schema.
+2. Requires the database to be at the repository Alembic head.
+3. Runs the provider-readiness integration gate when configured.
+4. Runs `seed_catalog()` to load the catalog when it is still empty.
+5. Starts the already-provisioned LangGraph checkpointer and builds the runtime.
+6. Disposes database/checkpointer resources on shutdown.
+
+Schema migration and LangGraph checkpoint setup are explicit operations. See
+[`documentation/database_migrations.md`](documentation/database_migrations.md)
+for blank setup, legacy adoption, release order, and recovery procedures.
 
 ### Main Routes
 
@@ -452,17 +487,25 @@ The frontend lives in `src/frontend` and uses the Next.js App Router.
 Main screens and components:
 
 - Login and registration.
-- Redirects based on session state.
-- Authenticated workspace.
-- Collapsible sidebar with conversation history and account/settings access.
-- Main chat workspace with image attachments, centered GPT-style message flow,
-  and structured assistant recommendation rendering.
+- Session-aware routing to the authenticated Home by default.
+- Editorial dark Home with a global Beta notice and four product experiences;
+  Lookeate Assistant and Create your style are currently actionable.
+- Create your style studio with a rotatable mannequin, a side garment library,
+  selectable top/bottom/shoe layers, and an outfit progress summary. This base
+  is intentionally client-side and does not persist looks yet.
+- Lookeate Assistant workspace with a collapsible, Assistant-specific sidebar,
+  conversation history, and a route back to Home. "Create your style" is no
+  longer shown as a chat-sidebar placeholder.
+- Main Assistant conversation surface with image attachments, centered
+  GPT-style message flow, and structured recommendation rendering.
 - Product recommendation groups shown directly inside assistant messages.
 - Outfit recommendation cards that open a desktop side panel when enabled, or a
   dedicated modal when panel mode is disabled or unavailable.
-- Settings modal for global interface preferences, search priorities, explicit
-  style preferences, inferred style preference review/removal, and personalized
-  style usage.
+- Settings modal, available from Home and Lookeate Assistant, for global
+  configuration. Its General section currently contains only language;
+  Assistant-specific layout, recommendation, search-priority, and style-memory
+  preferences live in a dedicated Lookeate Assistant section, while profile
+  details remain under Account.
 - Conversation settings modal for temporary style notes, conversation-level
   personalization override, and conversation-specific search priorities.
 
@@ -488,6 +531,7 @@ The backend reads configuration from `.env` using Pydantic Settings.
 Example local configuration:
 
 ```env
+APP_ENV=local
 DATABASE_URL=sqlite:///catalog.db
 LANGGRAPH_CHECKPOINT_DATABASE_URL=sqlite:///data/langgraph_checkpoints.sqlite
 
@@ -518,6 +562,7 @@ IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES=5242880
 
 Relevant variables:
 
+- `APP_ENV`: required runtime mode: `local`, `test`, `staging`, or `production`.
 - `DATABASE_URL`: main SQLAlchemy database connection.
 - `DATABASE_ECHO`: enables SQL logs.
 - `LANGGRAPH_CHECKPOINT_DATABASE_URL`: database for LangGraph checkpoints.
@@ -551,11 +596,27 @@ Use `EMBEDDINGS_PROVIDER=google` for embeddings.
 
 ## Running with Docker Compose
 
-The easiest way to run the full stack is:
+On a first run with a blank PostgreSQL volume, initialize the schemas before
+starting the full stack. The API intentionally does not run migrations or
+create tables during startup:
+
+```bash
+docker compose up -d db
+docker compose run --rm --build api python -m alembic upgrade head
+docker compose run --rm api python -m scripts.setup_langgraph_checkpointer
+docker compose up --build
+```
+
+After that initial setup, start the full stack normally:
 
 ```bash
 docker compose up --build
 ```
+
+If the PostgreSQL volume was created by a Lookeate version from before
+Alembic, do not run the blank-database sequence directly. Back it up and use
+the Docker legacy-adoption procedure in
+`documentation/database_migrations.md` so the existing rows are preserved.
 
 Services:
 
@@ -594,10 +655,19 @@ pip install -r requirements.txt
 
 Configure `.env` in the project root.
 
+Initialize the application and LangGraph-owned schemas, then optionally seed
+the catalog:
+
+```bash
+APP_ENV=local PYTHONPATH=src alembic upgrade head
+APP_ENV=local PYTHONPATH=src python -m scripts.setup_langgraph_checkpointer
+APP_ENV=local PYTHONPATH=src python -m scripts.seed_db
+```
+
 Start the API:
 
 ```bash
-PYTHONPATH=src uvicorn api.app:app --host 0.0.0.0 --port 8000
+APP_ENV=local PYTHONPATH=src uvicorn api.app:app --host 0.0.0.0 --port 8000
 ```
 
 On Windows/PowerShell, set `PYTHONPATH` so `api.app` can resolve imports under
@@ -605,6 +675,10 @@ On Windows/PowerShell, set `PYTHONPATH` so `api.app` can resolve imports under
 
 ```powershell
 $env:PYTHONPATH="src"
+$env:APP_ENV="local"
+python -m alembic upgrade head
+python -m scripts.setup_langgraph_checkpointer
+python -m scripts.seed_db
 uvicorn api.app:app --host 0.0.0.0 --port 8000
 ```
 
@@ -677,7 +751,7 @@ system should be evaluated if the product scope grows.
 
 ## Useful Commands
 
-Run the full stack:
+Run the full stack after its initial migration and checkpointer setup:
 
 ```bash
 docker compose up --build

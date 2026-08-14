@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   EllipsisVertical,
   GripVertical,
+  House,
   LogOut,
   MessageSquarePlus,
   MessagesSquare,
@@ -14,7 +15,6 @@ import {
   Pin,
   PinOff,
   Settings,
-  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -79,18 +79,18 @@ export function Sidebar({
 
   const navItems = [
     {
-      label: t("sidebar.chat"),
+      label: t("sidebar.home"),
+      icon: House,
+      active: pathname === "/",
+      disabled: false,
+      onClick: () => router.push("/"),
+    },
+    {
+      label: t("sidebar.assistant"),
       icon: MessagesSquare,
       active: pathname.startsWith("/chat"),
       disabled: false,
       onClick: () => router.push("/chat/new"),
-    },
-    {
-      label: t("sidebar.createStyle"),
-      icon: Sparkles,
-      active: false,
-      disabled: true,
-      onClick: () => undefined,
     },
   ];
 
@@ -291,7 +291,7 @@ export function Sidebar({
             <div>
               <h2 className="serif text-3xl leading-none">Lookeate</h2>
               <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-[var(--muted)]">
-                {t("common.beta")}
+                {t("sidebar.assistant")}
               </p>
             </div>
           </div>
@@ -498,7 +498,7 @@ export function Sidebar({
           </button>
 
           {menuOpen ? (
-            <div className="absolute bottom-[calc(100%+0.75rem)] left-0 right-0 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
+            <div className="floating-shadow absolute bottom-[calc(100%+0.75rem)] left-0 right-0 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-2">
               <button
                 className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--accent-soft)]"
                 type="button"
@@ -531,7 +531,7 @@ export function Sidebar({
       {conversationMenu ? (
         <div
           ref={conversationMenuRef}
-          className="fixed z-[70] w-52 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-1.5 shadow-[0_18px_45px_rgba(0,0,0,0.48)]"
+          className="floating-shadow fixed z-[70] w-52 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-1.5"
           style={{ left: conversationMenu.left, top: conversationMenu.top }}
           role="menu"
           aria-label={t("sidebar.openConversationActions")}

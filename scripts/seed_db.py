@@ -5,6 +5,7 @@ from sqlalchemy import select, func
 
 from core.logging_config import setup_logging
 from infra.db.database import Database
+from infra.db.migration_state import require_current_revision
 from infra.db.models.catalog_models import (
     Gender, MasterCategory, SubCategory, ArticleType,
     Color, Brand, Season, Product
@@ -25,7 +26,9 @@ def get_or_create(session, model, **kwargs):
     return instance
 
 
-def seed_catalog():
+def seed_catalog(db: Database | None = None):
+    db = db or Database()
+    require_current_revision(db.engine)
     logger.info("Catalog CSV path: %s", CSV_PATH.resolve())
     logger.info("Catalog CSV exists: %s", CSV_PATH.exists())
     if not CSV_PATH.exists():
@@ -35,8 +38,6 @@ def seed_catalog():
     df = pd.read_csv(CSV_PATH)
     logger.info("Catalog CSV rows: %s", len(df))
     logger.debug("Catalog CSV columns: %s", list(df.columns))
-
-    db = Database()
 
     with db.get_session() as session:
         existing_products = session.scalar(select(func.count(Product.id))) or 0

@@ -21,7 +21,7 @@ export function LoginForm() {
 
   useEffect(() => {
     if (auth.status === "authenticated") {
-      router.replace("/chat/new");
+      router.replace("/");
     }
   }, [auth.status, router]);
 
@@ -45,7 +45,7 @@ export function LoginForm() {
     try {
       await auth.signIn(email, password);
       startTransition(() => {
-        router.replace("/chat/new");
+        router.replace("/");
       });
     } catch (caughtError) {
       setError(

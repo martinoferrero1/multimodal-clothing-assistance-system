@@ -23,10 +23,15 @@ services:
       db:
         condition: service_healthy
     environment:
+      APP_ENV: local
       DATABASE_URL: postgresql+psycopg://clothing_assistant:clothing_assistant@db:5432/clothing_assistant
       LANGGRAPH_CHECKPOINT_DATABASE_URL: postgresql://clothing_assistant:clothing_assistant@db:5432/clothing_assistant
-      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:-development-auth-secret-change-me}
+      AUTH_TOKEN_SECRET: ${AUTH_TOKEN_SECRET:?Set AUTH_TOKEN_SECRET in the local environment}
       AUTH_TOKEN_EXPIRE_MINUTES: ${AUTH_TOKEN_EXPIRE_MINUTES:-60}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      PROVIDER_READINESS_TIMEOUT_SECONDS: ${PROVIDER_READINESS_TIMEOUT_SECONDS:-5}
       GOOGLE_IMAGE_ANALYSIS_MODEL: ${GOOGLE_IMAGE_ANALYSIS_MODEL:-gemini-2.5-flash}
       GOOGLE_LLM_MODEL: ${GOOGLE_LLM_MODEL}
       GROQ_LLM_MODEL: ${GROQ_LLM_MODEL}

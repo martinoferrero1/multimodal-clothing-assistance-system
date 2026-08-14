@@ -1,6 +1,6 @@
 ## Purpose
 
-Defines how the assistant remembers and applies user style preferences so recommendations can be personalized while keeping the user's current request authoritative.
+Defines how Lookeate Assistant remembers and applies user style preferences so recommendations can be personalized while keeping the user's current request authoritative. These preferences are conversational memory and are distinct from the future manual "Create your style" experience.
 
 ## ADDED Requirements
 
@@ -21,6 +21,11 @@ The system SHALL allow authenticated users to view, update, and clear explicitly
 #### Scenario: User saves explicit style preferences
 - **WHEN** an authenticated user updates their explicit style preferences
 - **THEN** subsequent reads of the user profile SHALL include the saved explicit preferences
+
+#### Scenario: User edits list-based preferences
+- **WHEN** an authenticated user edits styles, colors, brands, fits, or occasions in Settings
+- **THEN** the interface SHALL provide expandable selectors for adding values individually
+- **AND** selected values SHALL be shown as removable tags rather than comma-separated text
 
 #### Scenario: User clears explicit style preferences
 - **WHEN** an authenticated user clears their explicit style preferences

@@ -675,7 +675,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
           className="px-5 pb-5 pt-3 sm:px-8"
           onSubmit={handleSend}
         >
-          <div className="mx-auto w-full max-w-4xl rounded-[1.4rem] border border-[var(--line)] bg-[rgba(32,31,31,0.78)] p-3 shadow-[0_18px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+          <div className="mx-auto w-full max-w-4xl rounded-[1.4rem] border border-[var(--line)] bg-[var(--surface)] p-3">
             {selectedImages.length > 0 ? (
               <div className="mb-3 flex flex-wrap gap-2 px-1">
                 {selectedImages.map((image) => (
@@ -716,7 +716,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
                 </button>
 
                 {attachmentMenuOpen ? (
-                  <div className="absolute bottom-14 left-0 z-30 w-56 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.34)] backdrop-blur">
+                  <div className="floating-shadow absolute bottom-14 left-0 z-30 w-56 rounded-lg border border-[var(--line-strong)] bg-[var(--surface-high)] p-2 backdrop-blur">
                     <button
                       className="flex w-full items-center gap-3 rounded-[0.5rem] px-3 py-3 text-left text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--accent-soft)]"
                       type="button"

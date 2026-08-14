@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lookeate: migraciones seguras"
+  short_description: "Evalúa cambios de esquema y migraciones"
+  default_prompt: "Usa $lookeate-review-migration-safety para revisar este cambio de datos y su plan de migración."
