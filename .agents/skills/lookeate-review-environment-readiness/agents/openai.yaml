@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lookeate: preparación de entornos"
+  short_description: "Revisa configuración, despliegue y CI"
+  default_prompt: "Usa $lookeate-review-environment-readiness para evaluar este cambio de configuración o despliegue."

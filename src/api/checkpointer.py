@@ -25,6 +25,10 @@ class LangGraphCheckpointer:
             raise ValueError(f"Unsupported LangGraph checkpoint backend: {backend}")
 
         self.checkpointer = self._context_manager.__enter__()
+
+    def setup_schema(self) -> None:
+        if self.checkpointer is None:
+            raise RuntimeError("Start the checkpointer connection before schema setup.")
         self.checkpointer.setup()
 
     def close(self) -> None:

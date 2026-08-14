@@ -120,6 +120,246 @@ label[for] {
   box-shadow: 0 36px 90px rgba(0, 0, 0, 0.32);
 }
 
+.style-builder-background {
+  background:
+    radial-gradient(circle at 52% 42%, rgba(208, 188, 255, 0.06), transparent 26rem),
+    linear-gradient(160deg, #111111, #171717 50%, #101010);
+}
+
+.style-mannequin-stage {
+  min-height: 34rem;
+  perspective: 900px;
+  outline: none;
+}
+
+.style-mannequin-stage:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 1.5rem;
+  pointer-events: none;
+}
+
+.style-mannequin-wrap {
+  position: relative;
+  width: 15rem;
+  height: 31rem;
+  transform-style: preserve-3d;
+  transition: transform 120ms ease-out;
+  filter: drop-shadow(1.25rem 1.5rem 1.4rem rgba(0, 0, 0, 0.25));
+}
+
+.style-mannequin-stage:active .style-mannequin-wrap {
+  transition: none;
+}
+
+.style-mannequin-shadow {
+  position: absolute;
+  bottom: 1.75rem;
+  left: 50%;
+  width: 14rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.42);
+  filter: blur(14px);
+  transform: translateX(-50%);
+}
+
+.style-mannequin-head,
+.style-mannequin-neck,
+.style-mannequin-torso,
+.style-mannequin-arm,
+.style-mannequin-leg {
+  position: absolute;
+  background: linear-gradient(90deg, #918b86 0%, #d5cfca 46%, #f0ebe7 68%, #8c8783 100%);
+  box-shadow:
+    inset -10px 0 14px rgba(51, 46, 44, 0.22),
+    inset 8px 0 12px rgba(255, 255, 255, 0.18);
+}
+
+.style-mannequin-head {
+  left: 50%;
+  top: 0;
+  width: 4.2rem;
+  height: 5rem;
+  border-radius: 46% 46% 43% 43%;
+  transform: translateX(-50%) translateZ(0.45rem);
+}
+
+.style-mannequin-neck {
+  left: 50%;
+  top: 4.45rem;
+  width: 1.8rem;
+  height: 2.15rem;
+  border-radius: 0.6rem;
+  transform: translateX(-50%);
+}
+
+.style-mannequin-torso {
+  left: 50%;
+  top: 6.2rem;
+  width: 7.6rem;
+  height: 10.8rem;
+  border-radius: 2.7rem 2.7rem 1.6rem 1.6rem;
+  clip-path: polygon(11% 0, 89% 0, 76% 100%, 24% 100%);
+  transform: translateX(-50%) translateZ(0.1rem);
+}
+
+.style-mannequin-arm {
+  top: 6.7rem;
+  width: 1.65rem;
+  height: 13.2rem;
+  border-radius: 1rem;
+  transform-origin: top center;
+}
+
+.style-mannequin-arm-left {
+  left: 3rem;
+  transform: rotate(5deg) translateZ(-0.1rem);
+}
+
+.style-mannequin-arm-right {
+  right: 3rem;
+  transform: rotate(-5deg) translateZ(-0.1rem);
+}
+
+.style-mannequin-leg {
+  top: 16.1rem;
+  width: 2.35rem;
+  height: 14.4rem;
+  border-radius: 0.9rem 0.9rem 1.1rem 1.1rem;
+}
+
+.style-mannequin-leg-left {
+  left: 4.75rem;
+  transform: rotate(1.5deg);
+}
+
+.style-mannequin-leg-right {
+  right: 4.75rem;
+  transform: rotate(-1.5deg);
+}
+
+.style-garment-top,
+.style-garment-sleeve,
+.style-garment-waist,
+.style-garment-leg,
+.style-garment-shoe {
+  position: absolute;
+  z-index: 3;
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.24), transparent 42%, rgba(255, 255, 255, 0.13) 62%, rgba(0, 0, 0, 0.2));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.style-garment-top {
+  left: 50%;
+  top: 6.25rem;
+  width: 8.15rem;
+  height: 9.45rem;
+  border-radius: 2.2rem 2.2rem 1rem 1rem;
+  clip-path: polygon(8% 0, 35% 0, 41% 7%, 59% 7%, 65% 0, 92% 0, 78% 100%, 22% 100%);
+  transform: translateX(-50%) translateZ(0.62rem);
+}
+
+.style-garment-top-jacket {
+  height: 10.55rem;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    inset 50% 0 0 rgba(0, 0, 0, 0.08);
+}
+
+.style-garment-top-sweatshirt {
+  width: 8.5rem;
+  border-radius: 2.5rem 2.5rem 1.2rem 1.2rem;
+}
+
+.style-garment-top-shirt::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.9rem;
+  bottom: 0.4rem;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.style-garment-sleeve {
+  top: 6.65rem;
+  width: 1.9rem;
+  height: 6rem;
+  border-radius: 0.9rem 0.9rem 0.55rem 0.55rem;
+}
+
+.style-garment-sleeve-left {
+  left: 2.75rem;
+  transform: rotate(5deg) translateZ(0.48rem);
+}
+
+.style-garment-sleeve-right {
+  right: 2.75rem;
+  transform: rotate(-5deg) translateZ(0.48rem);
+}
+
+.style-garment-top-tee ~ .style-garment-sleeve {
+  height: 3.6rem;
+}
+
+.style-garment-waist {
+  left: 50%;
+  top: 15.1rem;
+  width: 5.75rem;
+  height: 2.2rem;
+  border-radius: 0.8rem 0.8rem 0.3rem 0.3rem;
+  transform: translateX(-50%) translateZ(0.58rem);
+}
+
+.style-garment-leg {
+  top: 16.35rem;
+  width: 2.65rem;
+  height: 10.9rem;
+  border-radius: 0.2rem 0.2rem 0.8rem 0.8rem;
+}
+
+.style-garment-leg-left {
+  left: 4.55rem;
+  transform: rotate(1deg) translateZ(0.52rem);
+}
+
+.style-garment-leg-right {
+  right: 4.55rem;
+  transform: rotate(-1deg) translateZ(0.52rem);
+}
+
+.style-garment-leg.style-garment-bottom-shorts {
+  height: 5.15rem;
+  border-radius: 0.2rem 0.2rem 0.65rem 0.65rem;
+}
+
+.style-garment-shoe {
+  top: 29.4rem;
+  width: 3.2rem;
+  height: 1.3rem;
+  border-radius: 0.7rem 1.2rem 0.4rem 0.5rem;
+}
+
+.style-garment-shoe-left {
+  left: 4.05rem;
+  transform: translateZ(0.7rem);
+}
+
+.style-garment-shoe-right {
+  right: 4.05rem;
+  transform: scaleX(-1) translateZ(0.7rem);
+}
+
+@media (max-width: 639px) {
+  .style-mannequin-wrap {
+    transform-origin: center center;
+    scale: 0.88;
+  }
+}
+
 .workspace-panel {
   background: var(--workspace-panel);
   border: 1px solid var(--line-strong);

@@ -179,7 +179,7 @@ class AuthenticationService(metaclass=SingletonMeta):
         }
         payload_segment = self._urlsafe_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
         signature = hmac.new(
-            settings.AUTH_TOKEN_SECRET.encode("utf-8"),
+            settings.AUTH_TOKEN_SECRET.get_secret_value().encode("utf-8"),
             payload_segment.encode("utf-8"),
             hashlib.sha256,
         ).digest()
@@ -197,7 +197,7 @@ class AuthenticationService(metaclass=SingletonMeta):
             return None
 
         expected_signature = hmac.new(
-            settings.AUTH_TOKEN_SECRET.encode("utf-8"),
+            settings.AUTH_TOKEN_SECRET.get_secret_value().encode("utf-8"),
             payload_segment.encode("utf-8"),
             hashlib.sha256,
         ).digest()

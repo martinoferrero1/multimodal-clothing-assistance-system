@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lookeate: seguridad de identidad"
+  short_description: "Revisa decisiones de identidad y autenticación"
+  default_prompt: "Usa $lookeate-review-auth-security para evaluar esta decisión de identidad y proponer controles y evidencia."

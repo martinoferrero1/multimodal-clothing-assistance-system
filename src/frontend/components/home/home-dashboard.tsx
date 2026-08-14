@@ -21,7 +21,7 @@ import { useLocale } from "@/components/providers/locale-provider";
 import { SettingsDialog } from "@/components/settings/settings-dialog";
 import type { MessageKey } from "@/lib/i18n";
 
-const upcomingExperiences: Array<{
+const productExperiences: Array<{
   id: string;
   titleKey: MessageKey;
   descriptionKey: MessageKey;
@@ -248,8 +248,35 @@ export function HomeDashboard() {
               </Link>
 
               <div className="grid gap-4">
-                {upcomingExperiences.map((experience, index) => {
+                {productExperiences.map((experience, index) => {
                   const Icon = experience.icon;
+
+                  if (experience.id === "style") {
+                    return (
+                      <Link
+                        key={experience.id}
+                        className="group flex min-h-[10rem] flex-col justify-between rounded-[1.2rem] border border-[rgba(208,188,255,0.42)] bg-[var(--accent-soft)] p-5 text-[var(--text)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] sm:p-6"
+                        href="/style"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <Icon size={19} className="text-[var(--accent)]" />
+                          <span className="rounded-full border border-[rgba(208,188,255,0.4)] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
+                            {t("common.available")}
+                          </span>
+                        </div>
+                        <div className="mt-7 grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-4">
+                          <span className="pt-1 text-[10px] font-semibold tracking-[0.2em] text-[var(--muted-soft)]">
+                            0{index + 2}
+                          </span>
+                          <div>
+                            <h3 className="text-lg font-semibold">{t(experience.titleKey)}</h3>
+                            <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{t(experience.descriptionKey)}</p>
+                          </div>
+                          <ArrowUpRight size={17} className="text-[var(--accent)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                        </div>
+                      </Link>
+                    );
+                  }
 
                   return (
                     <article

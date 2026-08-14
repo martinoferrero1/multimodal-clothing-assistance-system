@@ -27,10 +27,34 @@ style, and Explore catalogs as distinct product experiences on Home.
 - **WHEN** the user activates the Lookeate Assistant card or action
 - **THEN** the system SHALL navigate to a new Assistant conversation
 
+#### Scenario: User opens the manual style creator
+- **WHEN** the user activates the Create your style card
+- **THEN** the system SHALL navigate to the manual style studio
+
 #### Scenario: User views an upcoming experience
-- **WHEN** Home renders Create a garment, Create your style, or Explore catalogs
+- **WHEN** Home renders Create a garment or Explore catalogs
 - **THEN** the experience SHALL be visibly marked as coming soon
 - **AND** it SHALL NOT expose an interactive navigation control
+
+### Requirement: Create your style provides a base interactive fitting studio
+The system SHALL let an authenticated user assemble a look manually around a
+rotatable mannequin without using Lookeate Assistant.
+
+#### Scenario: User selects a garment
+- **WHEN** the user selects an eligible top, bottom, or shoe from the side
+  garment library
+- **THEN** that garment SHALL be applied to its corresponding mannequin layer
+- **AND** the current-look summary SHALL reflect the selection
+
+#### Scenario: User rotates the mannequin
+- **WHEN** the user drags horizontally, activates the rotation controls, or uses
+  the left and right arrow keys on the fitting canvas
+- **THEN** the mannequin SHALL rotate within a bounded viewing range
+
+#### Scenario: User removes a garment
+- **WHEN** the user removes a selected garment or selects it again
+- **THEN** the corresponding mannequin layer SHALL return to its unselected
+  state
 
 ### Requirement: Beta status applies to the complete product
 The system SHALL communicate that Lookeate as a whole is in Beta from Home and
