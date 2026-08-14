@@ -134,7 +134,7 @@ export function HomeDashboard() {
 
               {accountMenuOpen ? (
                 <div
-                  className="absolute right-0 top-[calc(100%+0.65rem)] z-40 w-56 rounded-xl border border-[var(--line-strong)] bg-[var(--surface)] p-2 shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+                  className="floating-shadow absolute right-0 top-[calc(100%+0.65rem)] z-40 w-56 rounded-xl border border-[var(--line-strong)] bg-[var(--surface)] p-2"
                   role="menu"
                 >
                   <button

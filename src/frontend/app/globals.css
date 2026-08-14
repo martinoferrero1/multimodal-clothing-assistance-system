@@ -28,7 +28,8 @@
   --danger: #ffb4ab;
   --danger-surface: rgba(147, 0, 10, 0.24);
   --danger-line: rgba(255, 180, 171, 0.28);
-  --shadow: 0 30px 80px rgba(0, 0, 0, 0.36);
+  --shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+  --floating-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 * {
@@ -92,8 +93,7 @@ label[for] {
 }
 
 .app-background {
-  background:
-    linear-gradient(180deg, var(--bg) 0%, #151515 46%, var(--bg) 100%);
+  background: var(--bg);
 }
 
 .home-background {
@@ -380,9 +380,7 @@ label[for] {
   background: rgba(19, 19, 19, 0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  box-shadow:
-    inset -1px 0 0 rgba(255, 255, 255, 0.04),
-    12px 0 34px rgba(0, 0, 0, 0.16);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .surface-recommendation {
@@ -430,7 +428,6 @@ label[for] {
 .modal-shell {
   background: var(--modal-panel);
   border: 1px solid var(--line-strong);
-  box-shadow: var(--shadow);
 }
 
 .modal-body {
@@ -453,6 +450,10 @@ label[for] {
 
 .soft-shadow {
   box-shadow: var(--shadow);
+}
+
+.floating-shadow {
+  box-shadow: var(--floating-shadow);
 }
 
 .page-orb {
