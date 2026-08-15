@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import logging
 import os
 import sys
 import types
@@ -31,6 +32,16 @@ def _upgrade(database_url: str) -> None:
     config = Config(str(ROOT / "alembic.ini"))
     config.attributes["database_url"] = database_url
     command.upgrade(config, "head")
+
+
+def test_migration_logging_keeps_existing_application_loggers_enabled(tmp_path: Path) -> None:
+    application_logger = logging.getLogger("services.image_analysis_service")
+    application_logger.disabled = False
+    database_url = f"sqlite:///{(tmp_path / 'logging.sqlite').as_posix()}"
+
+    _upgrade(database_url)
+
+    assert application_logger.disabled is False
 
 
 @pytest.fixture(autouse=True)

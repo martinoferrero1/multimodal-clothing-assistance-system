@@ -132,9 +132,11 @@ file (or dropping the table) re-triggers seeding.
 - **Settings**: `src/core/settings.py` - Pydantic Settings loaded from `.env` at
   module import time (`settings` singleton). `APP_ENV` is required; provider
   credentials are validated when provider functionality initializes.
-- **Database**: `src/infra/db/database.py` - singleton `Database` class.
-  Auto-creates tables via `Base.metadata.create_all` and runs schema migrations
-  in `_ensure_chat_schema`. Supports SQLite (local) and PostgreSQL (Docker).
+- **Database**: `src/infra/db/database.py` - singleton `Database` class with
+  synchronous and asynchronous SQLAlchemy engines. Alembic is the only schema
+  owner: normal API startup emits no DDL and fails fast unless the database is
+  at the repository `head`. SQLite is limited to local/test use; Compose uses
+  PostgreSQL.
 - **Error handling**: Graph nodes wrap calls in `safe_node`
   (`src/utils/error_handling.py`); errors append to `state["errors"]` as
   `{node, message, type}` dicts.
