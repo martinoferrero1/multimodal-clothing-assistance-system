@@ -17,7 +17,9 @@ def deployed_settings(**overrides) -> Settings:
     values = {
         "APP_ENV": "production",
         "DATABASE_URL": "postgresql+psycopg://user:password@db/lookeate",
-        "AUTH_TOKEN_SECRET": "a-valid-random-auth-secret-value-1234567890",
+        "SESSION_CSRF_SECRET": "a-valid-random-session-csrf-secret-value-1234567890",
+        "SESSION_COOKIE_NAME": "__Host-lookeate_session",
+        "SESSION_COOKIE_SECURE": True,
         "PUBLIC_APP_URL": "https://app.lookeate.example",
         "ALLOWED_HOSTS": "app.lookeate.example",
         "ALLOWED_ORIGINS": "https://app.lookeate.example",
@@ -104,7 +106,7 @@ def test_local_and_test_do_not_run_deployed_readiness() -> None:
         settings = Settings(
             _env_file=None,
             APP_ENV=app_env,
-            AUTH_TOKEN_SECRET="test-auth-secret",
+            SESSION_CSRF_SECRET="test-session-csrf-secret",
             GOOGLE_API_KEY=None,
         )
         validate_deployed_provider_readiness(

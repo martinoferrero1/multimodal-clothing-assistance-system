@@ -205,7 +205,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
   useEffect(() => {
     async function loadConversation() {
-      if (!auth.token) {
+      if (auth.status !== "authenticated") {
         return;
       }
 
@@ -222,8 +222,8 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
 
       try {
         const [currentConversation, currentMessages] = await Promise.all([
-          getConversation(auth.token, conversationId),
-          listMessages(auth.token, conversationId),
+          getConversation(conversationId),
+          listMessages(conversationId),
         ]);
         setConversation(currentConversation);
         setMessages(sortMessagesChronologically(currentMessages));
@@ -239,7 +239,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     }
 
     void loadConversation();
-  }, [auth.token, conversationId]);
+  }, [auth.status, conversationId]);
 
   const selectedRecommendationMessage = messages.find(
     (message) =>
@@ -296,7 +296,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
     event.preventDefault();
     const trimmed = draft.trim();
     const imagesToSend = selectedImages;
-    if ((!trimmed && imagesToSend.length === 0) || !auth.token || sending) {
+    if ((!trimmed && imagesToSend.length === 0) || auth.status !== "authenticated" || sending) {
       return;
     }
 
@@ -355,7 +355,6 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       }
 
       const response = await sendMessage(
-        auth.token,
         activeConversation.id,
         trimmed,
         imagesToSend.map((image) => image.file),
@@ -504,7 +503,7 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
   }
 
   async function handleSaveChatPreferences() {
-    if (!auth.token || savingChatPreferences) {
+    if (auth.status !== "authenticated" || savingChatPreferences) {
       return;
     }
 
@@ -519,12 +518,10 @@ export function ChatWorkspace({ conversationId }: ChatWorkspaceProps) {
       }
 
       let updatedConversation = await updateConversationSearchPreferences(
-        auth.token,
         activeConversation.id,
         chatPriorityDraft,
       );
       updatedConversation = await updateConversationStylePreferences(
-        auth.token,
         activeConversation.id,
         {
           use_personalized_styles: chatStyleDraft.use_personalized_styles,

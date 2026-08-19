@@ -3,17 +3,15 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+from api.session_cookies import session_cookie_deletion_header
+from core.settings import settings
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from infra.db.models.chat_models import ChatUser
 from infra.db.database import Database
-from services.auth_service import AuthenticationService
-from services.conversation_service import ConversationService
+from infra.db.models.chat_models import ChatUser
+from services.auth_service import AuthenticationService, CurrentSession
 from services.conversation_runtime_service import ConversationRuntimeService
+from services.conversation_service import ConversationService
 from sqlalchemy.ext.asyncio import AsyncSession
-
-
-bearer_scheme = HTTPBearer(auto_error=False)
 
 
 @asynccontextmanager
@@ -39,23 +37,26 @@ def get_conversation_service() -> ConversationService:
     return ConversationService()
 
 
-async def get_current_user(
-    session: AsyncSession = Depends(get_db_session),
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    auth_service: AuthenticationService = Depends(get_auth_service),
-) -> ChatUser:
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication credentials were not provided.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+def _unauthenticated(clear_cookie: bool = False) -> HTTPException:
+    headers = {"set-cookie": session_cookie_deletion_header()} if clear_cookie else None
+    return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.", headers=headers)
 
-    user = await auth_service.authenticate_user(session, credentials.credentials)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired authentication token.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
+
+async def get_current_session(
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> CurrentSession:
+    token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    current = await auth_service.resolve_session(session, token)
+    if current is None:
+        raise _unauthenticated(clear_cookie=token is not None)
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and not auth_service.csrf_token_is_valid(
+        current, request.headers.get("X-CSRF-Token")
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Request validation failed.")
+    return current
+
+
+async def get_current_user(current: CurrentSession = Depends(get_current_session)) -> ChatUser:
+    return current.user

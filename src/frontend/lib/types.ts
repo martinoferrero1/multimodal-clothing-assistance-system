@@ -9,15 +9,9 @@ export type User = {
   created_at: string;
 };
 
-export type AuthToken = {
-  access_token: string;
-  token_type: string;
-  expires_at: string;
-};
-
 export type AuthResponse = {
-  token: AuthToken;
   user: User;
+  csrf_token: string;
 };
 
 export type Conversation = {
@@ -220,11 +214,6 @@ export type ChatTurnResponse = {
 
 export type HealthResponse = {
   status: string;
-};
-
-export type AuthSession = {
-  token: AuthToken;
-  user: User;
 };
 
 export type SettingsPreferences = {

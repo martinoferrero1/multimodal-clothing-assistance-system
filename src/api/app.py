@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import logging
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
 from api.checkpointer import LangGraphCheckpointer
 from core.provider_readiness import validate_deployed_provider_readiness
@@ -13,7 +14,8 @@ from api.routes.conversations import router as conversations_router
 from api.routes.health import router as health_router
 from api.routes.users import router as users_router
 from api.routes.auth import router as auth_router
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from infra.db.database import Database
 from infra.db.migration_state import require_current_revision
 from scripts.seed_db import seed_catalog
@@ -63,6 +65,23 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def protect_unsafe_browser_requests(request: Request, call_next):
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return await call_next(request)
+    origin = request.headers.get("origin")
+    if origin is None:
+        referer = request.headers.get("referer")
+        try:
+            parsed = urlsplit(referer or "")
+            origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else None
+        except ValueError:
+            origin = None
+    if origin not in settings.ALLOWED_ORIGINS or request.headers.get("sec-fetch-site", "").lower() == "cross-site":
+        return JSONResponse(status_code=403, content={"detail": "Request origin is not allowed."})
+    return await call_next(request)
 
 app.include_router(health_router)
 app.include_router(auth_router)

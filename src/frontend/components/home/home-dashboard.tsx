@@ -82,9 +82,9 @@ export function HomeDashboard() {
     };
   }, [accountMenuOpen]);
 
-  function handleSignOut() {
+  async function handleSignOut() {
     setAccountMenuOpen(false);
-    auth.signOut();
+    await auth.signOut();
     router.replace("/login");
   }
 
@@ -153,7 +153,7 @@ export function HomeDashboard() {
                     className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--surface-high)]"
                     type="button"
                     role="menuitem"
-                    onClick={handleSignOut}
+                    onClick={() => void handleSignOut()}
                   >
                     <LogOut size={16} />
                     {t("sidebar.signOut")}

@@ -1,4 +1,4 @@
-import type { AuthSession, SettingsPreferences } from "@/lib/types";
+import type { SettingsPreferences } from "@/lib/types";
 import { isLanguage } from "@/lib/i18n";
 
 const AUTH_KEY = "digital-atelier-session";
@@ -10,37 +10,10 @@ const defaultPreferences: SettingsPreferences = {
   language: "en",
 };
 
-export function readSession(): AuthSession | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const raw = window.localStorage.getItem(AUTH_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw) as AuthSession;
-  } catch {
-    window.localStorage.removeItem(AUTH_KEY);
-    return null;
-  }
-}
-
-export function writeSession(session: AuthSession): void {
+export function removeLegacySession(): void {
   if (typeof window === "undefined") {
     return;
   }
-
-  window.localStorage.setItem(AUTH_KEY, JSON.stringify(session));
-}
-
-export function clearSession(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
   window.localStorage.removeItem(AUTH_KEY);
 }
 

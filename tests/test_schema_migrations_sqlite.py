@@ -71,7 +71,7 @@ def _assert_gate_rejected_read_only(engine, **kwargs) -> None:
 def test_migration_metadata_import_does_not_load_application_settings(tmp_path: Path) -> None:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(ROOT / "src")
-    for name in ("APP_ENV", "AUTH_TOKEN_SECRET", "GOOGLE_API_KEY", "GROQ_API_KEY"):
+    for name in ("APP_ENV", "SESSION_CSRF_SECRET", "GOOGLE_API_KEY", "GROQ_API_KEY"):
         environment.pop(name, None)
     result = subprocess.run(
         [
@@ -105,7 +105,7 @@ def test_blank_upgrade_matches_metadata_and_head(tmp_path: Path) -> None:
         engine.dispose()
 
 
-def test_forward_only_downgrade_preserves_schema_data_and_revision(tmp_path: Path) -> None:
+def test_session_downgrade_preserves_non_session_data_and_reupgrades(tmp_path: Path) -> None:
     database_url = _url(tmp_path / "downgrade.sqlite")
     _upgrade(database_url)
     engine = create_engine(database_url)
@@ -116,26 +116,16 @@ def test_forward_only_downgrade_preserves_schema_data_and_revision(tmp_path: Pat
                 "VALUES ('representative-user', 'Representative')"
             )
         )
-    before_tables = set(inspect(engine).get_table_names())
-    before_revision = current_database_heads(engine)
-    destructive_statements: list[str] = []
-
-    def capture_ddl(connection, cursor, statement, parameters, context, executemany):
-        normalized = statement.strip().upper()
-        if normalized.startswith(("DROP ", "ALTER ", "TRUNCATE ")):
-            destructive_statements.append(statement)
-
-    event.listen(Engine, "before_cursor_execute", capture_ddl)
     try:
-        with pytest.raises(RuntimeError, match="forward-only"):
-            command.downgrade(_config(database_url), "base")
-        assert destructive_statements == []
-        assert set(inspect(engine).get_table_names()) == before_tables
-        assert current_database_heads(engine) == before_revision
+        command.downgrade(_config(database_url), "20260814_0001")
+        assert "auth_sessions" not in set(inspect(engine).get_table_names())
+        assert current_database_heads(engine) == ("20260814_0001",)
         with engine.connect() as connection:
             assert connection.scalar(text("SELECT count(*) FROM chat_users")) == 1
+        command.upgrade(_config(database_url), "head")
+        assert "auth_sessions" in set(inspect(engine).get_table_names())
+        assert current_database_heads(engine) == repository_heads()
     finally:
-        event.remove(Engine, "before_cursor_execute", capture_ddl)
         engine.dispose()
 
 

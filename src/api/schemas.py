@@ -188,15 +188,9 @@ class UserRead(BaseModel):
     created_at: datetime
 
 
-class AuthToken(BaseModel):
-    access_token: str
-    token_type: str
-    expires_at: datetime
-
-
 class AuthResponse(BaseModel):
-    token: AuthToken
     user: UserRead
+    csrf_token: str
 
 
 class ConversationCreate(BaseModel):

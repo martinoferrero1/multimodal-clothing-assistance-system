@@ -37,7 +37,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     async function load() {
-      if (auth.status !== "authenticated" || !auth.token) {
+      if (auth.status !== "authenticated") {
         setConversations([]);
         setLoading(false);
         return;
@@ -45,7 +45,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
 
       setLoading(true);
       try {
-        const items = await listConversations(auth.token);
+        const items = await listConversations();
         setConversations(items);
       } finally {
         setLoading(false);
@@ -53,25 +53,25 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
     }
 
     void load();
-  }, [auth.status, auth.token]);
+  }, [auth.status]);
 
   async function refreshConversations() {
-    if (!auth.token) {
+    if (auth.status !== "authenticated") {
       return;
     }
 
-    const items = await listConversations(auth.token);
+    const items = await listConversations();
     startTransition(() => {
       setConversations(items);
     });
   }
 
   async function createConversation(title?: string) {
-    if (!auth.token) {
-      throw new Error("Missing auth token");
+    if (auth.status !== "authenticated") {
+      throw new Error("Authentication required");
     }
 
-    const conversation = await createConversationRequest(auth.token, title);
+    const conversation = await createConversationRequest(title);
     startTransition(() => {
       setConversations((current) => [conversation, ...current]);
     });
@@ -79,11 +79,11 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
   }
 
   async function deleteConversation(conversationId: string) {
-    if (!auth.token) {
-      throw new Error("Missing auth token");
+    if (auth.status !== "authenticated") {
+      throw new Error("Authentication required");
     }
 
-    await deleteConversationRequest(auth.token, conversationId);
+    await deleteConversationRequest(conversationId);
     startTransition(() => {
       setConversations((current) => (
         current.filter((conversation) => conversation.id !== conversationId)
@@ -92,17 +92,13 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
   }
 
   async function updateConversation(conversationId: string, payload: ConversationUpdate) {
-    if (!auth.token) {
-      throw new Error("Missing auth token");
+    if (auth.status !== "authenticated") {
+      throw new Error("Authentication required");
     }
 
-    const updatedConversation = await updateConversationRequest(
-      auth.token,
-      conversationId,
-      payload,
-    );
+    const updatedConversation = await updateConversationRequest(conversationId, payload);
     if (payload.is_pinned !== undefined) {
-      const items = await listConversations(auth.token);
+      const items = await listConversations();
       startTransition(() => setConversations(items));
     } else {
       startTransition(() => {
@@ -115,11 +111,11 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
   }
 
   async function reorderConversations(conversationIds: string[]) {
-    if (!auth.token) {
-      throw new Error("Missing auth token");
+    if (auth.status !== "authenticated") {
+      throw new Error("Authentication required");
     }
 
-    const items = await reorderConversationsRequest(auth.token, conversationIds);
+    const items = await reorderConversationsRequest(conversationIds);
     startTransition(() => setConversations(items));
   }
 

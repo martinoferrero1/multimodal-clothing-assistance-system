@@ -114,7 +114,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
   }
 
   async function handleSearchPriorityToggle(field: SearchPriorityField) {
-    if (!auth.token || savingSearchPreferences) {
+    if (auth.status !== "authenticated" || savingSearchPreferences) {
       return;
     }
 
@@ -124,7 +124,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
     setSearchPreferencesError(null);
 
     try {
-      await updateUserSearchPreferences(auth.token, nextFields);
+      await updateUserSearchPreferences(nextFields);
       await auth.refreshUser();
       setOptimisticSearchPriorityFields(null);
       window.dispatchEvent(new Event("search-preferences:changed"));
@@ -141,13 +141,13 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
   }
 
   async function handlePersonalizedStylesToggle() {
-    if (!auth.token || savingStylePreferences || !stylePreferences) {
+    if (auth.status !== "authenticated" || savingStylePreferences || !stylePreferences) {
       return;
     }
     setSavingStylePreferences(true);
     setStylePreferencesError(null);
     try {
-      await updateUserStylePreferences(auth.token, {
+      await updateUserStylePreferences({
         use_personalized_styles: !stylePreferences.use_personalized_styles,
       });
       await auth.refreshUser();
@@ -163,13 +163,13 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
   }
 
   async function handleSaveExplicitStylePreferences() {
-    if (!auth.token || savingStylePreferences) {
+    if (auth.status !== "authenticated" || savingStylePreferences) {
       return;
     }
     setSavingStylePreferences(true);
     setStylePreferencesError(null);
     try {
-      await updateUserStylePreferences(auth.token, { explicit: draftToStylePreferences(styleDraft) });
+      await updateUserStylePreferences({ explicit: draftToStylePreferences(styleDraft) });
       await auth.refreshUser();
     } catch (caughtError) {
       setStylePreferencesError(
@@ -183,13 +183,13 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
   }
 
   async function handleClearExplicitStylePreferences() {
-    if (!auth.token || savingStylePreferences) {
+    if (auth.status !== "authenticated" || savingStylePreferences) {
       return;
     }
     setSavingStylePreferences(true);
     setStylePreferencesError(null);
     try {
-      await clearUserExplicitStylePreferences(auth.token);
+      await clearUserExplicitStylePreferences();
       await auth.refreshUser();
     } catch (caughtError) {
       setStylePreferencesError(
@@ -203,13 +203,13 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
   }
 
   async function handleRemoveInferredStylePreference(inferredId: string) {
-    if (!auth.token || savingStylePreferences) {
+    if (auth.status !== "authenticated" || savingStylePreferences) {
       return;
     }
     setSavingStylePreferences(true);
     setStylePreferencesError(null);
     try {
-      await removeUserInferredStylePreference(auth.token, inferredId);
+      await removeUserInferredStylePreference(inferredId);
       await auth.refreshUser();
     } catch (caughtError) {
       setStylePreferencesError(
@@ -349,7 +349,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                     <SearchPriorityToggle
                       key={option.field}
                       checked={searchPriorityFields.includes(option.field)}
-                      disabled={savingSearchPreferences || !auth.token}
+                      disabled={savingSearchPreferences || auth.status !== "authenticated"}
                       description={t(option.descriptionKey)}
                       label={t(option.labelKey)}
                       onToggle={() => handleSearchPriorityToggle(option.field)}
@@ -376,7 +376,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                     className={`mt-1 inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${stylePreferences?.use_personalized_styles ? "bg-[var(--accent)]" : "bg-[var(--surface-high)]"}`}
                     type="button"
                     aria-label={t("settings.personalizedStylesLabel")}
-                    disabled={!auth.token || savingStylePreferences}
+                    disabled={auth.status !== "authenticated" || savingStylePreferences}
                     aria-pressed={stylePreferences?.use_personalized_styles ?? true}
                     onClick={handlePersonalizedStylesToggle}
                   >
@@ -427,7 +427,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                   <button
                     className="rounded-lg bg-[var(--text)] px-4 py-2 text-sm font-semibold text-[var(--accent-ink)] transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                     type="button"
-                    disabled={!auth.token || savingStylePreferences}
+                    disabled={auth.status !== "authenticated" || savingStylePreferences}
                     onClick={handleSaveExplicitStylePreferences}
                   >
                     {t("settings.saveStyles")}
@@ -435,7 +435,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                   <button
                     className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
                     type="button"
-                    disabled={!auth.token || savingStylePreferences}
+                    disabled={auth.status !== "authenticated" || savingStylePreferences}
                     onClick={handleClearExplicitStylePreferences}
                   >
                     {t("settings.clearStyles")}
@@ -464,7 +464,7 @@ export function SettingsView({ activeSection, onSectionChange }: SettingsViewPro
                           <button
                             className="rounded-md border border-[var(--line)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
                             type="button"
-                            disabled={!auth.token || savingStylePreferences}
+                            disabled={auth.status !== "authenticated" || savingStylePreferences}
                             onClick={() => handleRemoveInferredStylePreference(entry.id)}
                           >
                             {t("common.remove")}

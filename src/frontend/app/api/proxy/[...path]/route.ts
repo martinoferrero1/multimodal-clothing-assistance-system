@@ -15,20 +15,14 @@ async function proxyRequest(
   const targetUrl = `${API_BASE_URL}/${nextPath}${search}`;
 
   const headers = new Headers();
-  const authorization = request.headers.get("authorization");
-  const contentType = request.headers.get("content-type");
-  const accept = request.headers.get("accept");
-
-  if (authorization) {
-    headers.set("authorization", authorization);
-  }
-
-  if (contentType) {
-    headers.set("content-type", contentType);
-  }
-
-  if (accept) {
-    headers.set("accept", accept);
+  for (const header of [
+    "cookie", "content-type", "accept", "origin", "referer", "x-csrf-token",
+    "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest",
+  ]) {
+    const value = request.headers.get(header);
+    if (value) {
+      headers.set(header, value);
+    }
   }
 
   const body =
@@ -47,6 +41,12 @@ async function proxyRequest(
   const upstreamContentType = upstream.headers.get("content-type");
   if (upstreamContentType) {
     responseHeaders.set("content-type", upstreamContentType);
+  }
+  const setCookies = typeof upstream.headers.getSetCookie === "function"
+    ? upstream.headers.getSetCookie()
+    : upstream.headers.get("set-cookie") ? [upstream.headers.get("set-cookie") as string] : [];
+  for (const cookie of setCookies) {
+    responseHeaders.append("set-cookie", cookie);
   }
 
   return new Response(upstream.body, {

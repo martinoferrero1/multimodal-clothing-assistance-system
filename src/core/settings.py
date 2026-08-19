@@ -16,6 +16,7 @@ _KNOWN_AUTH_SECRETS = {
     "development-auth-secret-change-me",
     "development-secret",
     "secret",
+    "development-session-csrf-secret-change-me",
 }
 _PLACEHOLDER_SECRET_PARTS = (
     "example",
@@ -81,8 +82,13 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///catalog.db"
     DATABASE_ECHO: bool = False
     LANGGRAPH_CHECKPOINT_DATABASE_URL: Optional[str] = None
-    AUTH_TOKEN_SECRET: SecretStr
-    AUTH_TOKEN_EXPIRE_MINUTES: int = 60
+    SESSION_CSRF_SECRET: SecretStr = SecretStr("development-session-csrf-secret-change-me")
+    SESSION_IDLE_MINUTES: int = 60
+    SESSION_ABSOLUTE_HOURS: int = 168
+    SESSION_TOUCH_INTERVAL_SECONDS: int = 300
+    SESSION_COOKIE_NAME: str = "lookeate_session"
+    SESSION_COOKIE_SECURE: bool = False
+    SESSION_COOKIE_SAMESITE: Literal["lax", "strict"] = "lax"
     PUBLIC_APP_URL: Optional[str] = None
     ALLOWED_HOSTS: str | list[str] = ""
     ALLOWED_ORIGINS: str | list[str] = ""
@@ -133,6 +139,15 @@ class Settings(BaseSettings):
         if self.PROVIDER_READINESS_TIMEOUT_SECONDS <= 0:
             raise ValueError("PROVIDER_READINESS_TIMEOUT_SECONDS must be greater than zero")
 
+        if self.SESSION_IDLE_MINUTES <= 0:
+            raise ValueError("SESSION_IDLE_MINUTES must be greater than zero")
+        if self.SESSION_ABSOLUTE_HOURS <= 0:
+            raise ValueError("SESSION_ABSOLUTE_HOURS must be greater than zero")
+        if self.SESSION_TOUCH_INTERVAL_SECONDS < 0:
+            raise ValueError("SESSION_TOUCH_INTERVAL_SECONDS must not be negative")
+        if self.SESSION_IDLE_MINUTES * 60 > self.SESSION_ABSOLUTE_HOURS * 3600:
+            raise ValueError("SESSION_IDLE_MINUTES must not exceed SESSION_ABSOLUTE_HOURS")
+
         if self.APP_ENV not in _DEPLOYED_ENVIRONMENTS:
             self.PUBLIC_APP_URL = self.PUBLIC_APP_URL or "http://localhost:3000"
             self.ALLOWED_HOSTS = self.ALLOWED_HOSTS or ["localhost", "127.0.0.1"]
@@ -142,14 +157,18 @@ class Settings(BaseSettings):
         if not self.DATABASE_URL.lower().startswith("postgresql"):
             raise ValueError("DATABASE_URL must use PostgreSQL in staging and production")
 
-        auth_secret = self.AUTH_TOKEN_SECRET.get_secret_value()
-        normalized_secret = auth_secret.strip().lower()
-        if len(auth_secret) < 32:
-            raise ValueError("AUTH_TOKEN_SECRET must be at least 32 characters in staging and production")
+        csrf_secret = self.SESSION_CSRF_SECRET.get_secret_value()
+        normalized_secret = csrf_secret.strip().lower()
+        if len(csrf_secret) < 32:
+            raise ValueError("SESSION_CSRF_SECRET must be at least 32 characters in staging and production")
         if normalized_secret in _KNOWN_AUTH_SECRETS or any(
             marker in normalized_secret for marker in _PLACEHOLDER_SECRET_PARTS
         ):
-            raise ValueError("AUTH_TOKEN_SECRET must not be a known or placeholder value")
+            raise ValueError("SESSION_CSRF_SECRET must not be a known or placeholder value")
+        if not self.SESSION_COOKIE_SECURE:
+            raise ValueError("SESSION_COOKIE_SECURE must be true in staging and production")
+        if not self.SESSION_COOKIE_NAME.startswith("__Host-"):
+            raise ValueError("SESSION_COOKIE_NAME must use a __Host- prefix in staging and production")
 
         if (
             not self.PUBLIC_APP_URL

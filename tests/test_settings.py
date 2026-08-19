@@ -13,7 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 DEPLOYED_SETTINGS = {
     "DATABASE_URL": "postgresql+psycopg://user:password@db/lookeate",
-    "AUTH_TOKEN_SECRET": "a-valid-random-auth-secret-value-1234567890",
+    "SESSION_CSRF_SECRET": "a-valid-random-session-csrf-secret-value-1234567890",
+    "SESSION_COOKIE_NAME": "__Host-lookeate_session",
+    "SESSION_COOKIE_SECURE": True,
     "PUBLIC_APP_URL": "https://app.lookeate.example",
     "ALLOWED_HOSTS": "app.lookeate.example,api.lookeate.example",
     "ALLOWED_ORIGINS": '["https://app.lookeate.example"]',
@@ -21,7 +23,7 @@ DEPLOYED_SETTINGS = {
 
 
 def build_settings(**overrides) -> Settings:
-    values = {"APP_ENV": "test", "AUTH_TOKEN_SECRET": "test-auth-secret"}
+    values = {"APP_ENV": "test", "SESSION_CSRF_SECRET": "test-session-csrf-secret"}
     values.update(overrides)
     return Settings(_env_file=None, **values)
 
@@ -32,7 +34,7 @@ def test_env_example_contains_parseable_optional_values(monkeypatch) -> None:
 
     configured = Settings(
         _env_file=ROOT / ".env.example",
-        AUTH_TOKEN_SECRET="test-auth-secret",
+        SESSION_CSRF_SECRET="test-session-csrf-secret",
     )
 
     assert configured.APP_ENV == "local"
@@ -57,13 +59,13 @@ def test_deployed_environments_accept_valid_configuration(app_env: str) -> None:
     assert configured.APP_ENV == app_env
     assert configured.ALLOWED_HOSTS == ["app.lookeate.example", "api.lookeate.example"]
     assert configured.ALLOWED_ORIGINS == ["https://app.lookeate.example"]
-    assert "valid-random" not in repr(configured.AUTH_TOKEN_SECRET)
+    assert "valid-random" not in repr(configured.SESSION_CSRF_SECRET)
 
 
 def test_app_env_is_required_and_unknown_values_are_rejected(monkeypatch) -> None:
     monkeypatch.delenv("APP_ENV")
     with pytest.raises(ValidationError, match="APP_ENV"):
-        Settings(_env_file=None, AUTH_TOKEN_SECRET="test-auth-secret")
+        Settings(_env_file=None, SESSION_CSRF_SECRET="test-session-csrf-secret")
 
     with pytest.raises(ValidationError, match="APP_ENV"):
         build_settings(APP_ENV="preview")
@@ -86,22 +88,22 @@ def test_deployed_environments_reject_sqlite(app_env: str) -> None:
 )
 def test_deployed_environments_reject_unsafe_auth_secrets(auth_secret: str) -> None:
     with pytest.raises(ValidationError) as error:
-        build_settings(APP_ENV="production", **(DEPLOYED_SETTINGS | {"AUTH_TOKEN_SECRET": auth_secret}))
+        build_settings(APP_ENV="production", **(DEPLOYED_SETTINGS | {"SESSION_CSRF_SECRET": auth_secret}))
 
     message = str(error.value)
-    assert "AUTH_TOKEN_SECRET" in message
+    assert "SESSION_CSRF_SECRET" in message
     assert auth_secret not in message
 
 
 def test_auth_secret_is_required_without_exposing_other_inputs(monkeypatch) -> None:
-    monkeypatch.delenv("AUTH_TOKEN_SECRET")
+    monkeypatch.delenv("SESSION_CSRF_SECRET")
     values = DEPLOYED_SETTINGS.copy()
-    values.pop("AUTH_TOKEN_SECRET")
+    values.pop("SESSION_CSRF_SECRET")
 
     with pytest.raises(ValidationError) as error:
         Settings(_env_file=None, APP_ENV="production", **values)
 
-    assert "AUTH_TOKEN_SECRET" in str(error.value)
+    assert "SESSION_CSRF_SECRET" in str(error.value)
     assert "password@db" not in str(error.value)
 
 
@@ -134,3 +136,24 @@ def test_host_and_origin_lists_accept_json_and_comma_delimited_values() -> None:
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "environment"),
+    [
+        ("SESSION_IDLE_MINUTES", 0, "test"),
+        ("SESSION_ABSOLUTE_HOURS", 0, "test"),
+        ("SESSION_TOUCH_INTERVAL_SECONDS", -1, "test"),
+        ("SESSION_IDLE_MINUTES", 169 * 60, "test"),
+        ("SESSION_COOKIE_SECURE", False, "production"),
+        ("SESSION_COOKIE_NAME", "lookeate_session", "production"),
+    ],
+)
+def test_session_configuration_rejects_invalid_lifetimes_and_deployed_cookie_policy(
+    field: str, value: object, environment: str
+) -> None:
+    overrides = {field: value}
+    if environment == "production":
+        overrides = DEPLOYED_SETTINGS | overrides
+    with pytest.raises(ValidationError, match=field):
+        build_settings(APP_ENV=environment, **overrides)

@@ -1,30 +1,21 @@
 import type {
-  AuthResponse,
-  ChatMessage,
-  ChatTurnResponse,
-  Conversation,
-  ConversationUpdate,
-  ConversationStylePreferencesUpdate,
-  HealthResponse,
-  SearchPreferences,
-  SearchPriorityField,
-  User,
-  UserStylePreferences,
+  AuthResponse, ChatMessage, ChatTurnResponse, Conversation, ConversationStylePreferencesUpdate,
+  ConversationUpdate, HealthResponse, SearchPreferences, SearchPriorityField, UserStylePreferences,
   UserStylePreferencesUpdate,
 } from "@/lib/types";
 
-type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  token?: string;
-  body?: unknown;
-};
+type RequestOptions = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown };
 
-export const AUTH_EXPIRED_EVENT = "digital-atelier-auth-expired";
+export const AUTH_EXPIRED_EVENT = "lookeate-auth-expired";
+let csrfToken: string | null = null;
+
+export function setCsrfToken(value: string | null): void {
+  csrfToken = value;
+}
 
 export class ApiError extends Error {
   status: number;
   hasExternalMessage: boolean;
-
   constructor(message: string, status: number, hasExternalMessage = true) {
     super(message);
     this.status = status;
@@ -32,228 +23,52 @@ export class ApiError extends Error {
   }
 }
 
-async function parseApiResponse<T>(response: Response, hasToken: boolean): Promise<T> {
+async function parseApiResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
-  const isJson = contentType.includes("application/json");
-  const payload = isJson ? await response.json() : await response.text();
-
+  const payload = contentType.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {
-    if (response.status === 401 && hasToken && typeof window !== "undefined") {
-      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
-    }
-
-    const externalMessage =
-      typeof payload === "object" && payload && "detail" in payload
-        ? String(payload.detail)
-        : typeof payload === "string" && payload
-          ? payload
-          : null;
-    throw new ApiError(externalMessage ?? "API request failed", response.status, Boolean(externalMessage));
+    if (response.status === 401 && typeof window !== "undefined") window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    const message = typeof payload === "object" && payload && "detail" in payload ? String(payload.detail) : typeof payload === "string" && payload ? payload : null;
+    throw new ApiError(message ?? "API request failed", response.status, Boolean(message));
   }
-
   return payload as T;
 }
 
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers = new Headers({
-    Accept: "application/json",
-  });
-
-  if (options.body !== undefined) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  if (options.token) {
-    headers.set("Authorization", `Bearer ${options.token}`);
-  }
-
-  const response = await fetch(`/api/proxy/${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    cache: "no-store",
-  });
-
-  return parseApiResponse<T>(response, Boolean(options.token));
+  const method = options.method ?? "GET";
+  const headers = new Headers({ Accept: "application/json" });
+  if (options.body !== undefined) headers.set("Content-Type", "application/json");
+  if (method !== "GET" && csrfToken) headers.set("X-CSRF-Token", csrfToken);
+  const response = await fetch(`/api/proxy/${path}`, { method, headers, body: options.body === undefined ? undefined : JSON.stringify(options.body), cache: "no-store", credentials: "same-origin" });
+  return parseApiResponse<T>(response);
 }
 
-async function apiFormRequest<T>(path: string, token: string, body: FormData): Promise<T> {
-  const headers = new Headers({
-    Accept: "application/json",
-    Authorization: `Bearer ${token}`,
-  });
-
-  const response = await fetch(`/api/proxy/${path}`, {
-    method: "POST",
-    headers,
-    body,
-    cache: "no-store",
-  });
-
-  return parseApiResponse<T>(response, true);
+async function apiFormRequest<T>(path: string, body: FormData): Promise<T> {
+  const headers = new Headers({ Accept: "application/json" });
+  if (csrfToken) headers.set("X-CSRF-Token", csrfToken);
+  return parseApiResponse<T>(await fetch(`/api/proxy/${path}`, { method: "POST", headers, body, cache: "no-store", credentials: "same-origin" }));
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
-  return apiRequest<AuthResponse>("api/auth/login", {
-    method: "POST",
-    body: { email, password },
-  });
-}
-
-export async function register(
-  displayName: string,
-  email: string,
-  password: string,
-): Promise<AuthResponse> {
-  return apiRequest<AuthResponse>("api/auth/register", {
-    method: "POST",
-    body: { display_name: displayName, email, password },
-  });
-}
-
-export async function getMe(token: string): Promise<User> {
-  return apiRequest<User>("api/users/me", { token });
-}
-
-export async function updateUserSearchPreferences(
-  token: string,
-  priorityFields: SearchPriorityField[],
-): Promise<SearchPreferences> {
-  return apiRequest<SearchPreferences>("api/users/me/search-preferences", {
-    method: "PUT",
-    token,
-    body: { priority_fields: priorityFields },
-  });
-}
-
-export async function updateUserStylePreferences(
-  token: string,
-  payload: UserStylePreferencesUpdate,
-): Promise<UserStylePreferences> {
-  return apiRequest<UserStylePreferences>("api/users/me/style-preferences", {
-    method: "PUT",
-    token,
-    body: payload,
-  });
-}
-
-export async function clearUserExplicitStylePreferences(token: string): Promise<UserStylePreferences> {
-  return apiRequest<UserStylePreferences>("api/users/me/style-preferences/explicit", {
-    method: "DELETE",
-    token,
-  });
-}
-
-export async function removeUserInferredStylePreference(
-  token: string,
-  inferredId: string,
-): Promise<UserStylePreferences> {
-  return apiRequest<UserStylePreferences>(`api/users/me/style-preferences/inferred/${inferredId}`, {
-    method: "DELETE",
-    token,
-  });
-}
-
-export async function getHealth(): Promise<HealthResponse> {
-  return apiRequest<HealthResponse>("health");
-}
-
-export async function listConversations(token: string): Promise<Conversation[]> {
-  return apiRequest<Conversation[]>("api/users/me/conversations", { token });
-}
-
-export async function createConversation(token: string, title?: string): Promise<Conversation> {
-  return apiRequest<Conversation>("api/users/me/conversations", {
-    method: "POST",
-    token,
-    body: { title: title?.trim() || null },
-  });
-}
-
-export async function deleteConversation(token: string, conversationId: string): Promise<void> {
-  await apiRequest<unknown>(`api/conversations/${conversationId}`, {
-    method: "DELETE",
-    token,
-  });
-}
-
-export async function updateConversation(
-  token: string,
-  conversationId: string,
-  payload: ConversationUpdate,
-): Promise<Conversation> {
-  return apiRequest<Conversation>(`api/conversations/${conversationId}`, {
-    method: "PATCH",
-    token,
-    body: payload,
-  });
-}
-
-export async function reorderConversations(
-  token: string,
-  conversationIds: string[],
-): Promise<Conversation[]> {
-  return apiRequest<Conversation[]>("api/conversations/order", {
-    method: "PUT",
-    token,
-    body: { conversation_ids: conversationIds },
-  });
-}
-
-export async function getConversation(token: string, conversationId: string): Promise<Conversation> {
-  return apiRequest<Conversation>(`api/conversations/${conversationId}`, { token });
-}
-
-export async function updateConversationSearchPreferences(
-  token: string,
-  conversationId: string,
-  priorityFields: SearchPriorityField[] | null,
-): Promise<Conversation> {
-  return apiRequest<Conversation>(`api/conversations/${conversationId}/search-preferences`, {
-    method: "PUT",
-    token,
-    body: { priority_fields: priorityFields },
-  });
-}
-
-export async function updateConversationStylePreferences(
-  token: string,
-  conversationId: string,
-  payload: ConversationStylePreferencesUpdate,
-): Promise<Conversation> {
-  return apiRequest<Conversation>(`api/conversations/${conversationId}/style-preferences`, {
-    method: "PUT",
-    token,
-    body: payload,
-  });
-}
-
-export async function listMessages(token: string, conversationId: string): Promise<ChatMessage[]> {
-  return apiRequest<ChatMessage[]>(`api/conversations/${conversationId}/messages`, { token });
-}
-
-export async function sendMessage(
-  token: string,
-  conversationId: string,
-  content: string,
-  images: File[] = [],
-): Promise<ChatTurnResponse> {
-  if (images.length > 0) {
-    const body = new FormData();
-    body.set("content", content);
-    for (const image of images) {
-      body.append("images", image);
-    }
-    return apiFormRequest<ChatTurnResponse>(
-      `api/conversations/${conversationId}/messages/with-images`,
-      token,
-      body,
-    );
-  }
-
-  return apiRequest<ChatTurnResponse>(`api/conversations/${conversationId}/messages`, {
-    method: "POST",
-    token,
-    body: { content },
-  });
+export const login = (email: string, password: string) => apiRequest<AuthResponse>("api/auth/login", { method: "POST", body: { email, password } });
+export const register = (displayName: string, email: string, password: string) => apiRequest<AuthResponse>("api/auth/register", { method: "POST", body: { display_name: displayName, email, password } });
+export const restoreSession = () => apiRequest<AuthResponse>("api/auth/session");
+export const logout = () => apiRequest<void>("api/auth/logout", { method: "POST" });
+export const logoutAll = () => apiRequest<void>("api/auth/logout-all", { method: "POST" });
+export const getHealth = () => apiRequest<HealthResponse>("health");
+export const updateUserSearchPreferences = (priorityFields: SearchPriorityField[]) => apiRequest<SearchPreferences>("api/users/me/search-preferences", { method: "PUT", body: { priority_fields: priorityFields } });
+export const updateUserStylePreferences = (payload: UserStylePreferencesUpdate) => apiRequest<UserStylePreferences>("api/users/me/style-preferences", { method: "PUT", body: payload });
+export const clearUserExplicitStylePreferences = () => apiRequest<UserStylePreferences>("api/users/me/style-preferences/explicit", { method: "DELETE" });
+export const removeUserInferredStylePreference = (inferredId: string) => apiRequest<UserStylePreferences>(`api/users/me/style-preferences/inferred/${inferredId}`, { method: "DELETE" });
+export const listConversations = () => apiRequest<Conversation[]>("api/users/me/conversations");
+export const createConversation = (title?: string) => apiRequest<Conversation>("api/users/me/conversations", { method: "POST", body: { title: title?.trim() || null } });
+export const deleteConversation = (conversationId: string) => apiRequest<void>(`api/conversations/${conversationId}`, { method: "DELETE" });
+export const updateConversation = (conversationId: string, payload: ConversationUpdate) => apiRequest<Conversation>(`api/conversations/${conversationId}`, { method: "PATCH", body: payload });
+export const reorderConversations = (conversationIds: string[]) => apiRequest<Conversation[]>("api/conversations/order", { method: "PUT", body: { conversation_ids: conversationIds } });
+export const getConversation = (conversationId: string) => apiRequest<Conversation>(`api/conversations/${conversationId}`);
+export const updateConversationSearchPreferences = (conversationId: string, priorityFields: SearchPriorityField[] | null) => apiRequest<Conversation>(`api/conversations/${conversationId}/search-preferences`, { method: "PUT", body: { priority_fields: priorityFields } });
+export const updateConversationStylePreferences = (conversationId: string, payload: ConversationStylePreferencesUpdate) => apiRequest<Conversation>(`api/conversations/${conversationId}/style-preferences`, { method: "PUT", body: payload });
+export const listMessages = (conversationId: string) => apiRequest<ChatMessage[]>(`api/conversations/${conversationId}/messages`);
+export async function sendMessage(conversationId: string, content: string, images: File[] = []): Promise<ChatTurnResponse> {
+  if (images.length) { const body = new FormData(); body.set("content", content); images.forEach((image) => body.append("images", image)); return apiFormRequest(`api/conversations/${conversationId}/messages/with-images`, body); }
+  return apiRequest<ChatTurnResponse>(`api/conversations/${conversationId}/messages`, { method: "POST", body: { content } });
 }

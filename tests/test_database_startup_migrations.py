@@ -9,7 +9,7 @@ import types
 from pathlib import Path
 
 os.environ["APP_ENV"] = "test"
-os.environ["AUTH_TOKEN_SECRET"] = "test-only-auth-secret"
+os.environ["SESSION_CSRF_SECRET"] = "test-only-session-csrf-secret"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
 import pytest

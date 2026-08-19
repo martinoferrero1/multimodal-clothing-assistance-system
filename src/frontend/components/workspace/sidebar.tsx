@@ -514,9 +514,9 @@ export function Sidebar({
               <button
                 className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--accent-soft)]"
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setMenuOpen(false);
-                  auth.signOut();
+                  await auth.signOut();
                   router.replace("/login");
                 }}
               >

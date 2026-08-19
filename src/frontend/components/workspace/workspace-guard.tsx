@@ -12,7 +12,7 @@ export function WorkspaceGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (auth.status === "guest") {
+    if (auth.status === "anonymous") {
       router.replace("/login");
     }
   }, [auth.status, router]);

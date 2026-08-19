@@ -535,8 +535,13 @@ APP_ENV=local
 DATABASE_URL=sqlite:///catalog.db
 LANGGRAPH_CHECKPOINT_DATABASE_URL=sqlite:///data/langgraph_checkpoints.sqlite
 
-AUTH_TOKEN_SECRET=change-this-secret
-AUTH_TOKEN_EXPIRE_MINUTES=60
+SESSION_CSRF_SECRET=change-this-session-csrf-secret
+SESSION_IDLE_MINUTES=60
+SESSION_ABSOLUTE_HOURS=168
+SESSION_TOUCH_INTERVAL_SECONDS=300
+SESSION_COOKIE_NAME=lookeate_session
+SESSION_COOKIE_SECURE=false
+SESSION_COOKIE_SAMESITE=lax
 GOOGLE_IMAGE_ANALYSIS_MODEL=gemini-2.5-flash
 
 LLM_SUB_AGENTS_PROVIDER=google
@@ -566,8 +571,9 @@ Relevant variables:
 - `DATABASE_URL`: main SQLAlchemy database connection.
 - `DATABASE_ECHO`: enables SQL logs.
 - `LANGGRAPH_CHECKPOINT_DATABASE_URL`: database for LangGraph checkpoints.
-- `AUTH_TOKEN_SECRET`: HMAC secret for bearer tokens.
-- `AUTH_TOKEN_EXPIRE_MINUTES`: token duration in minutes.
+- `SESSION_CSRF_SECRET`: secret used to derive session-bound CSRF values.
+- `SESSION_IDLE_MINUTES`, `SESSION_ABSOLUTE_HOURS`, and `SESSION_TOUCH_INTERVAL_SECONDS`: server-enforced session lifetime policy.
+- `SESSION_COOKIE_NAME`, `SESSION_COOKIE_SECURE`, and `SESSION_COOKIE_SAMESITE`: opaque session-cookie policy. Staging and production require `Secure=true` and a `__Host-` name.
 - `GOOGLE_IMAGE_ANALYSIS_MODEL`: Google Gemini model used to describe uploaded images for visual product search.
 - `GOOGLE_LLM_MODEL`: Google chat model.
 - `GROQ_LLM_MODEL`: Groq chat model.
@@ -742,12 +748,11 @@ makes debugging easier from the database or API response.
 Authentication is implemented without an external provider:
 
 - Password hashing with `hashlib.scrypt`.
-- Bearer token signed with HMAC SHA-256 and bounded by issued-at/expiration timestamps.
-- Configurable expiration.
-- Session persisted in the frontend's `localStorage` until the token expires.
+- A cryptographically random opaque token stored only in an `HttpOnly` cookie; the database retains only its SHA-256 hash.
+- Server-enforced idle and absolute expiration, rotation, and logout revocation.
+- A session-bound CSRF value retained only in frontend runtime memory.
 
-For production, `AUTH_TOKEN_SECRET` must be changed. A more robust token/auth
-system should be evaluated if the product scope grows.
+Staging and production require a strong `SESSION_CSRF_SECRET`, HTTPS origins, and a secure `__Host-` cookie.
 
 ## Useful Commands
 
