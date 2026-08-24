@@ -57,7 +57,7 @@ Migrations SHALL support PostgreSQL for staging and production and the SQLite us
 - **THEN** the resulting application-owned schema is usable by the same application models within documented dialect differences
 
 ### Requirement: Recoverable migration releases
-Each migration revision SHALL include a safe downgrade when practical; otherwise it SHALL document why downgrade is unsafe and define backup/restore or forward-recovery steps before release.
+Each migration revision SHALL include a safe downgrade when practical; otherwise it SHALL document why downgrade is unsafe and define backup/restore or forward-recovery steps before release. Release verification SHALL exercise the selected recovery path and record the resulting database revision.
 
 #### Scenario: Reversible revision is tested
 - **WHEN** a revision has a safe downgrade
@@ -71,8 +71,12 @@ Each migration revision SHALL include a safe downgrade when practical; otherwise
 - **WHEN** an operator attempts to downgrade the forward-only baseline toward `base`
 - **THEN** the downgrade aborts before issuing destructive DDL and leaves the application schema, existing data, and recorded revision unchanged
 
+#### Scenario: Migration recovery evidence is missing
+- **WHEN** a release has not produced the required migration recovery evidence
+- **THEN** the release SHALL NOT be eligible for staging or production promotion
+
 ### Requirement: Reproducible ephemeral PostgreSQL verification
-The repository SHALL provide a documented command backed by Docker Compose and a version-pinned PostgreSQL image that reproducibly provisions an isolated ephemeral PostgreSQL database, waits for readiness, runs the mandatory PostgreSQL migration and adoption tests, and removes the ephemeral resources after the run. If PostgreSQL cannot be provisioned or reached, the command and mandatory tests SHALL fail explicitly with an actionable error rather than skip silently or report success.
+The repository SHALL provide a documented command backed by Docker Compose and a version-pinned PostgreSQL image that reproducibly provisions an isolated ephemeral PostgreSQL database, waits for readiness, runs the mandatory PostgreSQL migration and adoption tests, and removes the ephemeral resources after the run. If PostgreSQL cannot be provisioned or reached, the command and mandatory tests SHALL fail explicitly with an actionable error rather than skip silently or report success. The same verification SHALL be callable as a blocking CI gate.
 
 #### Scenario: PostgreSQL verification runs from a clean checkout
 - **WHEN** a developer or CI runner with the documented container prerequisite invokes the PostgreSQL verification command

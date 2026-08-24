@@ -11,6 +11,14 @@ from infra.db.models.chat_models import ChatUser
 from services.auth_service import AuthenticationService, CurrentSession
 from services.conversation_runtime_service import ConversationRuntimeService
 from services.conversation_service import ConversationService
+from services.rate_limit_service import (
+    RateLimitUnavailable,
+    RateLimiter,
+    create_rate_limiter,
+    policy_for,
+    pseudonymous_key,
+    record_rate_limit_outcome,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -37,6 +45,56 @@ def get_conversation_service() -> ConversationService:
     return ConversationService()
 
 
+def get_rate_limiter(request: Request) -> RateLimiter:
+    limiter = getattr(request.app.state, "rate_limiter", None)
+    if limiter is None:
+        limiter = create_rate_limiter()
+        request.app.state.rate_limiter = limiter
+    return limiter
+
+
+def request_source_key(request: Request) -> str:
+    peer = request.client.host if request.client else "unknown"
+    private_source = request.headers.get(settings.TRUSTED_BFF_SOURCE_HEADER)
+    if private_source and peer in settings.TRUSTED_BFF_PROXY_HOSTS:
+        peer = private_source.strip()[:128] or peer
+    return pseudonymous_key(f"source:{peer}")
+
+
+async def enforce_rate_limit(
+    request: Request,
+    policy_name: str,
+    *,
+    account: str | None = None,
+    user_id: str | None = None,
+    limiter: RateLimiter | None = None,
+) -> None:
+    policy = policy_for(policy_name)
+    values: list[str] = []
+    for dimension in policy.dimensions:
+        if dimension.name == "source":
+            values.append(request_source_key(request))
+        elif dimension.name == "account":
+            values.append(pseudonymous_key(f"account:{(account or '').strip().lower()}"))
+        elif dimension.name == "user":
+            values.append(pseudonymous_key(f"user:{user_id or ''}"))
+        else:  # pragma: no cover - guards future policy additions
+            raise ValueError("Unsupported rate-limit dimension")
+    try:
+        result = await (limiter or get_rate_limiter(request)).evaluate(policy, values)
+    except RateLimitUnavailable:
+        record_rate_limit_outcome(policy_name, "unavailable")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service temporarily unavailable.")
+    if not result.allowed:
+        record_rate_limit_outcome(policy_name, "rejected")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please try again later.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
+    record_rate_limit_outcome(policy_name, "allowed")
+
+
 def _unauthenticated(clear_cookie: bool = False) -> HTTPException:
     headers = {"set-cookie": session_cookie_deletion_header()} if clear_cookie else None
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.", headers=headers)
@@ -55,6 +113,19 @@ async def get_current_session(
         current, request.headers.get("X-CSRF-Token")
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Request validation failed.")
+    return current
+
+
+async def get_rate_limited_current_session(
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> CurrentSession:
+    await enforce_rate_limit(request, "session")
+    token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    current = await auth_service.resolve_session(session, token)
+    if current is None:
+        raise _unauthenticated(clear_cookie=token is not None)
     return current
 
 

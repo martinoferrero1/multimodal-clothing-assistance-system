@@ -12,8 +12,7 @@ import {
   Palette,
   Search,
   Settings,
-  Shirt,
-  Sparkles,
+  Shirt
 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -90,9 +89,14 @@ export function HomeDashboard() {
 
   return (
     <main className="home-background relative min-h-screen overflow-hidden">
-      <div className="home-grid pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
-      <div className="page-orb -left-40 top-16 h-96 w-96 bg-[rgba(208,188,255,0.1)]" aria-hidden="true" />
-      <div className="page-orb -right-40 top-[38rem] h-[28rem] w-[28rem] bg-white/[0.05]" aria-hidden="true" />
+      <div
+        className="home-grid pointer-events-none absolute inset-0 opacity-50"
+        aria-hidden="true"
+      />
+      <div
+        className="page-orb -left-40 top-16 h-72 w-72 bg-[rgba(208,188,255,0.1)]"
+        aria-hidden="true"
+      />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[92rem] flex-col px-5 sm:px-8 lg:px-12">
         <header className="flex items-center justify-between border-b border-[var(--line)] py-5 sm:py-6">
@@ -109,9 +113,17 @@ export function HomeDashboard() {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6">
-            <nav className="hidden items-center gap-7 text-sm text-[var(--muted)] md:flex" aria-label={t("home.primaryNavigation")}>
-              <span className="font-semibold text-[var(--text)]">{t("sidebar.home")}</span>
-              <Link className="transition hover:text-[var(--text)]" href="/chat/new">
+            <nav
+              className="hidden items-center gap-7 text-sm text-[var(--muted)] md:flex"
+              aria-label={t("home.primaryNavigation")}
+            >
+              <span className="font-semibold text-[var(--text)]">
+                {t("sidebar.home")}
+              </span>
+              <Link
+                className="transition hover:text-[var(--text)]"
+                href="/chat/new"
+              >
                 {t("sidebar.assistant")}
               </Link>
             </nav>
@@ -128,8 +140,13 @@ export function HomeDashboard() {
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--text)] text-xs font-bold text-[var(--bg-strong)]">
                   {accountInitial}
                 </span>
-                <span className="hidden max-w-32 truncate sm:inline">{displayName}</span>
-                <ChevronDown size={14} className={`transition ${accountMenuOpen ? "rotate-180" : ""}`} />
+                <span className="hidden max-w-32 truncate sm:inline">
+                  {displayName}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`transition ${accountMenuOpen ? "rotate-180" : ""}`}
+                />
               </button>
 
               {accountMenuOpen ? (
@@ -165,12 +182,8 @@ export function HomeDashboard() {
         </header>
 
         <section className="grid flex-1 items-end gap-10 pb-16 pt-20 lg:grid-cols-[minmax(0,1fr)_18rem] lg:pb-20 lg:pt-28">
-          <div className="max-w-5xl animate-rise-in">
-            <div className="mb-7 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted)]">
-              <Sparkles size={15} className="text-[var(--accent)]" />
-              {t("home.eyebrow")}
-            </div>
-            <h1 className="serif text-[clamp(3.4rem,8vw,7.6rem)] leading-[0.9] tracking-[-0.055em] text-[var(--text)]">
+          <div className="max-w-5xl">
+            <h1 className="serif text-[clamp(3.4rem,8vw,7.6rem)] leading-[0.98] tracking-[-0.055em] text-[var(--text)]">
               {t("home.title")}
             </h1>
             <p className="mt-8 max-w-2xl text-base leading-8 text-[var(--muted)] sm:text-lg">
@@ -178,7 +191,7 @@ export function HomeDashboard() {
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-4">
               <Link
-                className="inline-flex items-center gap-3 rounded-full bg-[var(--text)] px-6 py-3.5 text-sm font-semibold text-[var(--bg-strong)] transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
+                className="inline-flex items-center gap-3 rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-[#111111] transition-colors hover:bg-zinc-950 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
                 href="/chat/new"
               >
                 {t("home.openAssistant")}
@@ -204,7 +217,10 @@ export function HomeDashboard() {
           </div>
         </section>
 
-        <section id="experiences" className="scroll-mt-8 border-t border-[var(--line)] py-16 sm:py-20 lg:py-24">
+        <section
+          id="experiences"
+          className="scroll-mt-8 border-t border-[var(--line)] py-16 sm:py-20 lg:py-24"
+        >
           <div className="grid gap-8 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:gap-16">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--muted-soft)]">
@@ -220,29 +236,28 @@ export function HomeDashboard() {
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(18rem,0.88fr)]">
               <Link
-                className="home-module-card group flex min-h-[32rem] flex-col justify-between overflow-hidden rounded-[1.4rem] border border-white/55 bg-[linear-gradient(145deg,#f0eded_0%,#ddd7e3_58%,#cfc0ed_100%)] p-6 text-[#171617] shadow-[0_30px_80px_rgba(0,0,0,0.24)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)] sm:p-8"
+                className="home-module-card group flex min-h-[32rem] flex-col justify-between overflow-hidden rounded-[1.4rem] border border-white/20 bg-[linear-gradient(135deg,#17131c_0%,#241a31_45%,#4a3566_100%)] p-6 text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)] sm:p-8"
                 href="/chat/new"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-black/15 bg-black/[0.04]">
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-white/10 text-white">
                     <MessageCircle size={21} />
-                  </span>
-                  <span className="rounded-full border border-black/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em]">
-                    {t("common.available")}
                   </span>
                 </div>
 
                 <div>
-                  <p className="mb-4 text-xs font-bold uppercase tracking-[0.26em] text-black/55">01</p>
                   <h3 className="serif text-5xl leading-[0.94] tracking-[-0.04em] sm:text-6xl">
                     Lookeate Assistant
                   </h3>
-                  <p className="mt-6 max-w-xl text-sm leading-7 text-black/65 sm:text-base">
+                  <p className="mt-6 max-w-[34rem] text-sm leading-7 text-[#f0ebf8] sm:text-base">
                     {t("home.assistantDescription")}
                   </p>
-                  <span className="mt-8 inline-flex items-center gap-3 text-sm font-bold">
+                  <span className="mt-8 inline-flex items-center gap-3 text-sm font-bold text-white">
                     {t("home.assistantAction")}
-                    <ArrowUpRight size={17} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                    <ArrowUpRight
+                      size={17}
+                      className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"
+                    />
                   </span>
                 </div>
               </Link>
@@ -260,19 +275,20 @@ export function HomeDashboard() {
                       >
                         <div className="flex items-start justify-between gap-4">
                           <Icon size={19} className="text-[var(--accent)]" />
-                          <span className="rounded-full border border-[rgba(208,188,255,0.4)] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
-                            {t("common.available")}
-                          </span>
                         </div>
                         <div className="mt-7 grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-4">
-                          <span className="pt-1 text-[10px] font-semibold tracking-[0.2em] text-[var(--muted-soft)]">
-                            0{index + 2}
-                          </span>
                           <div>
-                            <h3 className="text-lg font-semibold">{t(experience.titleKey)}</h3>
-                            <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{t(experience.descriptionKey)}</p>
+                            <h3 className="text-lg font-semibold">
+                              {t(experience.titleKey)}
+                            </h3>
+                            <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                              {t(experience.descriptionKey)}
+                            </p>
                           </div>
-                          <ArrowUpRight size={17} className="text-[var(--accent)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                          <ArrowUpRight
+                            size={17}
+                            className="text-[var(--accent)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"
+                          />
                         </div>
                       </Link>
                     );
@@ -291,11 +307,11 @@ export function HomeDashboard() {
                         </span>
                       </div>
                       <div className="mt-7 grid grid-cols-[auto_minmax(0,1fr)] gap-4">
-                        <span className="pt-1 text-[10px] font-semibold tracking-[0.2em] text-[var(--muted-soft)]">
-                          0{index + 2}
-                        </span>
                         <div>
-                          <h3 id={`experience-${experience.id}`} className="text-lg font-semibold">
+                          <h3
+                            id={`experience-${experience.id}`}
+                            className="text-lg font-semibold"
+                          >
                             {t(experience.titleKey)}
                           </h3>
                           <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
@@ -316,13 +332,20 @@ export function HomeDashboard() {
             {t("common.beta")}
           </span>
           <div className="max-w-3xl sm:pl-6">
-            <h2 className="text-lg font-semibold text-[var(--text)]">{t("home.betaTitle")}</h2>
-            <p className="mt-2 text-sm leading-7 text-[var(--muted)]">{t("home.betaDescription")}</p>
+            <h2 className="text-lg font-semibold text-[var(--text)]">
+              {t("home.betaTitle")}
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
+              {t("home.betaDescription")}
+            </p>
           </div>
         </section>
       </div>
 
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </main>
   );
 }

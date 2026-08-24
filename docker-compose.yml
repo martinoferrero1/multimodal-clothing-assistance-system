@@ -15,12 +15,22 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       APP_ENV: local
@@ -36,6 +46,11 @@ services:
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      RATE_LIMIT_REDIS_URL: ${RATE_LIMIT_REDIS_URL:-redis://redis:6379/0}
+      RATE_LIMIT_KEY_SECRET: ${RATE_LIMIT_KEY_SECRET:-development-rate-limit-key-secret-change-me}
+      RATE_LIMIT_OPERATION_TIMEOUT_SECONDS: ${RATE_LIMIT_OPERATION_TIMEOUT_SECONDS:-0.25}
+      TRUSTED_BFF_PROXY_HOSTS: ${TRUSTED_BFF_PROXY_HOSTS:-frontend}
+      TRUSTED_BFF_SOURCE_HEADER: ${TRUSTED_BFF_SOURCE_HEADER:-x-lookeate-client-source}
       PROVIDER_READINESS_TIMEOUT_SECONDS: ${PROVIDER_READINESS_TIMEOUT_SECONDS:-5}
       GOOGLE_IMAGE_ANALYSIS_MODEL: ${GOOGLE_IMAGE_ANALYSIS_MODEL:-gemini-2.5-flash}
       GOOGLE_LLM_MODEL: ${GOOGLE_LLM_MODEL}
@@ -67,6 +82,14 @@ services:
         condition: service_started
     environment:
       API_BASE_URL: http://api:8000
+      APP_ENV: ${APP_ENV:-local}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      CSP_MODE: ${CSP_MODE:-report-only}
+      CSP_SOURCES: ${CSP_SOURCES:-'self'}
+      CSP_REPORT_URI: ${CSP_REPORT_URI:-}
+      TRUSTED_HTTPS_TERMINATION: ${TRUSTED_HTTPS_TERMINATION:-false}
+      HSTS_MAX_AGE_SECONDS: ${HSTS_MAX_AGE_SECONDS:-300}
+      TRUSTED_INGRESS_SOURCE_HEADER: ${TRUSTED_INGRESS_SOURCE_HEADER:-}
       NODE_ENV: development
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"

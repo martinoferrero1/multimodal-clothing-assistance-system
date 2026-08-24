@@ -38,6 +38,7 @@
 
 html {
   background: var(--bg);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -45,9 +46,11 @@ body {
   font-family: var(--font-sans), sans-serif;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 button,
@@ -99,7 +102,6 @@ label[for] {
 .home-background {
   background:
     radial-gradient(circle at 12% 6%, rgba(255, 255, 255, 0.045), transparent 28rem),
-    radial-gradient(circle at 88% 48%, rgba(208, 188, 255, 0.055), transparent 32rem),
     linear-gradient(180deg, #101010 0%, var(--bg) 48%, #0f0f0f 100%);
 }
 
@@ -112,12 +114,11 @@ label[for] {
 }
 
 .home-module-card {
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transition: box-shadow 220ms ease;
 }
 
 .home-module-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 36px 90px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.46);
 }
 
 .style-builder-background {
@@ -550,12 +551,10 @@ label[for] {
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(18px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -564,6 +563,10 @@ label[for] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   .animate-rise-in {
     animation: none;
   }

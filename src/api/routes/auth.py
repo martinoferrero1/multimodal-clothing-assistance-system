@@ -4,6 +4,8 @@ from api.dependencies import (
     get_auth_service,
     get_current_session,
     get_db_session,
+    get_rate_limited_current_session,
+    enforce_rate_limit,
 )
 from api.session_cookies import clear_session_cookie, issue_session_cookie
 from api.schemas import AuthResponse, UserLogin, UserRegister
@@ -24,6 +26,7 @@ async def register_user(
     session: AsyncSession = Depends(get_db_session),
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> AuthResponse:
+    await enforce_rate_limit(request, "registration", account=str(payload.email))
     issued = await auth_service.register_user(
         session, payload, request.cookies.get(settings.SESSION_COOKIE_NAME)
     )
@@ -39,6 +42,7 @@ async def login_user(
     session: AsyncSession = Depends(get_db_session),
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> AuthResponse:
+    await enforce_rate_limit(request, "login", account=str(payload.email))
     issued = await auth_service.login_user(
         session, payload, request.cookies.get(settings.SESSION_COOKIE_NAME)
     )
@@ -48,7 +52,7 @@ async def login_user(
 
 @router.get("/session", response_model=AuthResponse)
 async def restore_session(
-    current: CurrentSession = Depends(get_current_session),
+    current: CurrentSession = Depends(get_rate_limited_current_session),
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> AuthResponse:
     return AuthResponse(user=auth_service.build_user_read(current.user), csrf_token=auth_service.csrf_token(current.session))

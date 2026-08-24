@@ -16,7 +16,7 @@ The system SHALL require `APP_ENV` to resolve to exactly one of `local`, `test`,
 - **THEN** configuration loading fails with a non-sensitive validation error before the API serves requests
 
 ### Requirement: Fail-closed staging and production configuration
-The system SHALL reject staging and production configuration that uses SQLite; omits a required public application URL, allowed host, or allowed origin; uses a CSRF binding secret that is missing, shorter than 32 characters, a placeholder or example value, or a known development secret; or permits a session cookie without the required deployed security attributes. Staging and production SHALL use PostgreSQL database URLs.
+The system SHALL reject staging and production configuration that uses SQLite; omits a required public application URL, allowed host, or allowed origin; uses a CSRF binding secret that is missing, shorter than 32 characters, a placeholder or example value, or a known development secret; permits a session cookie without the required deployed security attributes; or omits the explicit delivery and observability settings required by the deployment contract. Staging and production SHALL use PostgreSQL database URLs and SHALL not inherit local or development configuration implicitly.
 
 #### Scenario: Production rejects development database
 - **WHEN** `APP_ENV` is `production` and the application database URL uses SQLite
@@ -34,8 +34,20 @@ The system SHALL reject staging and production configuration that uses SQLite; o
 - **WHEN** `APP_ENV` is `production` and the public application URL, allowed hosts, or allowed origins are missing or invalid
 - **THEN** configuration loading fails and identifies the invalid setting without exposing secret values
 
+#### Scenario: Production rejects an insecure session cookie
+- **WHEN** `APP_ENV` is `production` and the session cookie does not satisfy the deployed security policy
+- **THEN** configuration loading fails before requests are served
+
+#### Scenario: Staging rejects missing operational configuration
+- **WHEN** staging lacks the required artifact identity, health-check, or telemetry configuration
+- **THEN** deployment validation fails before the service serves traffic
+
+#### Scenario: Deployed configuration omits operational identity
+- **WHEN** staging or production lacks the required artifact identity, health-check, or telemetry configuration
+- **THEN** deployment validation fails before the service serves traffic
+
 #### Scenario: Valid production configuration is accepted
-- **WHEN** `APP_ENV` is `production`, PostgreSQL is configured, required URL/host/origin values are valid, session-cookie settings are secure, and the CSRF binding secret is non-default
+- **WHEN** `APP_ENV` is `production`, PostgreSQL is configured, required URL/host/origin values are valid, session-cookie settings are secure, the CSRF binding secret is non-default, and delivery and observability settings are complete
 - **THEN** configuration loading succeeds
 
 ### Requirement: Required provider readiness during deployed startup

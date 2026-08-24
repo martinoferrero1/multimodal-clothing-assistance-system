@@ -44,6 +44,26 @@ class ProductSearchVisualRankingTest(unittest.TestCase):
         self.assertEqual([product.id for product in scored_products], [1, 2, 3])
         self.assertEqual([product.id for _, product in selected], [3, 1])
 
+    def test_all_visual_fetches_fail_preserves_fallback_ranking(self) -> None:
+        visual_first = _Product(id=1, price=10.0)
+        fallback_first = _Product(id=2, price=20.0)
+        ranked = [(9.0, visual_first), (8.0, fallback_first)]
+        fallback_ranked = [(7.0, fallback_first), (6.0, visual_first)]
+
+        with patch.object(product_search.settings, "IMAGE_SEARCH_MODE", "visual_similarity"), patch(
+            "infra.db.product_search.score_products_by_image_similarity",
+            return_value={},
+        ):
+            selected = _select_ranked_products(
+                session=object(),
+                ranked=ranked,
+                fallback_ranked=fallback_ranked,
+                image_search_features=[{"feature": [1.0]}],
+                limit=2,
+            )
+
+        self.assertEqual([product.id for _, product in selected], [2, 1])
+
 
 if __name__ == "__main__":
     unittest.main()

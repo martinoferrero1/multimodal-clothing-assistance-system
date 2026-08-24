@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import base64
-from pathlib import Path
 
 from api.dependencies import (
     get_chat_runtime,
     get_conversation_service,
     get_current_user,
     get_db_session,
+    enforce_rate_limit,
     session_scope,
 )
 from api.route_helpers import chunk_text, sse_event
@@ -19,22 +18,18 @@ from api.schemas import (
     ConversationSearchPreferencesUpdate,
     ConversationStylePreferencesUpdate,
     ConversationUpdate,
-    MessageImageAttachment,
     MessageCreate,
 )
-from core.settings import settings
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from infra.db.models.chat_models import ChatUser
 from services.conversation_service import ConversationService
+from services.chat_image_upload_service import read_image_attachments
 from services.conversation_runtime_service import ConversationRuntimeService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
-
-ALLOWED_IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-
 
 @router.put("/order", response_model=list[ConversationRead])
 async def reorder_conversations(
@@ -122,11 +117,13 @@ async def update_conversation_style_preferences(
 async def create_message(
     conversation_id: str,
     payload: MessageCreate,
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
     current_user: ChatUser = Depends(get_current_user),
     chat_runtime: ConversationRuntimeService = Depends(get_chat_runtime),
     conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> ChatTurnResponse:
+    await enforce_rate_limit(request, "message", user_id=current_user.id)
     return await conversation_service.create_message_turn(
         session=session,
         user_id=current_user.id,
@@ -139,14 +136,20 @@ async def create_message(
 @router.post("/{conversation_id}/messages/with-images", response_model=ChatTurnResponse)
 async def create_message_with_images(
     conversation_id: str,
-    content: str = Form(default=""),
-    images: list[UploadFile] | None = File(default=None),
+    request: Request,
     session: AsyncSession = Depends(get_db_session),
     current_user: ChatUser = Depends(get_current_user),
     chat_runtime: ConversationRuntimeService = Depends(get_chat_runtime),
     conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> ChatTurnResponse:
-    image_attachments = await _read_image_attachments(images or [])
+    await enforce_rate_limit(request, "message", user_id=current_user.id)
+    await enforce_rate_limit(request, "image", user_id=current_user.id)
+    form = await request.form()
+    content = form.get("content", "")
+    if not isinstance(content, str):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Message content is invalid.")
+    images = [item for item in form.getlist("images") if isinstance(item, UploadFile)]
+    image_attachments = await read_image_attachments(images)
     return await conversation_service.create_message_turn(
         session=session,
         user_id=current_user.id,
@@ -165,6 +168,7 @@ async def stream_message(
     current_user: ChatUser = Depends(get_current_user),
     conversation_service: ConversationService = Depends(get_conversation_service),
 ) -> StreamingResponse:
+    await enforce_rate_limit(request, "message", user_id=current_user.id)
     chat_runtime: ConversationRuntimeService = request.app.state.chat_runtime
 
     async def event_stream():
@@ -203,46 +207,6 @@ async def stream_message(
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
-
-async def _read_image_attachments(images: list[UploadFile]) -> list[MessageImageAttachment]:
-    if len(images) > settings.MAX_CHAT_IMAGE_ATTACHMENTS:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"You can upload up to {settings.MAX_CHAT_IMAGE_ATTACHMENTS} images per message.",
-        )
-
-    attachments: list[MessageImageAttachment] = []
-    for image in images:
-        content_type = (image.content_type or "").split(";", maxsplit=1)[0].lower()
-        if content_type not in ALLOWED_IMAGE_CONTENT_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail="Only JPEG, PNG, WEBP, or GIF images are supported.",
-            )
-
-        data = await image.read(settings.MAX_CHAT_IMAGE_UPLOAD_BYTES + 1)
-        if len(data) > settings.MAX_CHAT_IMAGE_UPLOAD_BYTES:
-            max_mb = settings.MAX_CHAT_IMAGE_UPLOAD_BYTES / (1024 * 1024)
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"Each image must be {max_mb:.0f} MB or smaller.",
-            )
-
-        encoded = base64.b64encode(data).decode("ascii")
-        attachments.append(
-            MessageImageAttachment(
-                filename=_clean_filename(image.filename),
-                content_type=content_type,
-                data_url=f"data:{content_type};base64,{encoded}",
-            )
-        )
-
-    return attachments
-
-
-def _clean_filename(filename: str | None) -> str:
-    clean_name = Path(filename or "uploaded-image").name.strip()
-    return clean_name[:160] or "uploaded-image"
 
 @router.delete("/{conversation_id}")
 async def delete_conversation(

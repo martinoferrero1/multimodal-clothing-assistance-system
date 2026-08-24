@@ -1,0 +1,55 @@
+name: lookeate-deployed
+
+services:
+  db:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?required}
+      POSTGRES_USER: ${POSTGRES_USER:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    stop_grace_period: 30s
+
+  api:
+    image: ${BACKEND_IMAGE:?required}
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    depends_on:
+      db: { condition: service_healthy }
+    env_file: [.env.deployed]
+    environment:
+      APP_ENV: ${APP_ENV:?staging or production required}
+      DATABASE_URL: ${DATABASE_URL:?required}
+      ARTIFACT_COMMIT: ${ARTIFACT_COMMIT:?required}
+      ARTIFACT_BACKEND_DIGEST: ${ARTIFACT_BACKEND_DIGEST:?required}
+      ARTIFACT_FRONTEND_DIGEST: ${ARTIFACT_FRONTEND_DIGEST:?required}
+      TELEMETRY_ENVIRONMENT: ${TELEMETRY_ENVIRONMENT:?required}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/live', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?required}
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      api: { condition: service_healthy }
+    env_file: [.env.deployed]
+    environment:
+      API_BASE_URL: http://api:8000
+      ARTIFACT_COMMIT: ${ARTIFACT_COMMIT:?required}
+      ARTIFACT_FRONTEND_DIGEST: ${ARTIFACT_FRONTEND_DIGEST:?required}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => { if (!r.ok) process.exit(1) })"]
+      interval: 10s
+      timeout: 5s
+      retries: 6

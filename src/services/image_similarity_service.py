@@ -6,7 +6,6 @@ import io
 import json
 import logging
 import math
-import urllib.request
 from typing import Any
 
 from sqlalchemy import select
@@ -16,6 +15,7 @@ from sqlalchemy.orm import Session
 from core.metaclasses.singleton_meta import SingletonMeta
 from core.settings import settings
 from infra.db.models.catalog_models import Product, ProductEmbedding
+from services.catalog_image_fetcher import CatalogImageFetchError, fetch_catalog_image
 
 
 logger = logging.getLogger(__name__)
@@ -133,7 +133,10 @@ def _get_product_image_features(
     for product_id in missing_product_ids:
         image_url = product_urls[product_id]
         try:
-            feature = _image_feature_from_bytes(_download_image(image_url))
+            feature = _image_feature_from_bytes(fetch_catalog_image(image_url))
+        except CatalogImageFetchError as exc:
+            logger.debug("Catalog image fetch skipped for product %s: %s", product_id, exc.category)
+            continue
         except Exception:
             logger.debug("Could not extract image feature for product %s", product_id, exc_info=True)
             continue
@@ -202,18 +205,6 @@ def _decode_data_url(data_url: str) -> bytes:
     if ";base64" not in header.lower():
         raise ValueError("Image data URL must be base64 encoded")
     return base64.b64decode(payload, validate=True)
-
-
-def _download_image(url: str) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(
-        request,
-        timeout=settings.IMAGE_VISUAL_SEARCH_FETCH_TIMEOUT_SECONDS,
-    ) as response:
-        data = response.read(settings.IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES + 1)
-    if len(data) > settings.IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES:
-        raise ValueError("Product image is too large")
-    return data
 
 
 def _image_feature_from_bytes(image_bytes: bytes) -> list[float]:

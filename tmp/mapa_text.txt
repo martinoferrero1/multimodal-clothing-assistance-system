@@ -1,0 +1,1414 @@
+                                  PRODUCTO · OPERACIONES · TECNOLOGIA
+
+              Lookeate
+
+Mapa exhaustivo para convertir el prototipo en una aplicación web real
+
+    Actores, comercios, catálogos, administración, seguridad, IA, despliegue y operación
+
+                                 Diagnóstico y blueprint de madurez
+
+                                          Versión 1.0 | 14 de agosto de 2026
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+Resumen ejecutivo
+
+  RECOMENDACIÓN CENTRAL Evolucionar Lookeate como una plataforma B2B2C de descubrimiento y
+  creación de estilo: una experiencia para consumidores, conectada a catálogos administrados por
+  organizaciones comerciales. Empezar con comercios invitados, catálogo curado y salida hacia la tienda;
+  postergar marketplace, checkout propio y autoservicio abierto hasta contar con operación, seguridad y
+  cumplimiento maduros.
+
+El producto ya tiene una base coherente: Home autenticado, Lookeate Assistant, un estudio manual de
+estilo en etapa inicial, preferencias, conversaciones persistentes, búsqueda sobre catálogo, backend
+FastAPI, frontend Next.js y ejecución local mediante Docker Compose. La brecha principal no está en
+sumar pantallas, sino en incorporar los sistemas invisibles que hacen sostenible una aplicación real:
+identidad robusta, organizaciones y permisos, administración, calidad de catálogo, observabilidad,
+soporte, privacidad, despliegue repetible y procesos de operación.
+
+Sí conviene que negocios de ropa participen, pero como organizaciones o tenants, no como usuarios
+comunes. También conviene separar marca, comercio, producto, variante y oferta. Un producto puede
+pertenecer a una marca, venderse en varios comercios y tener distintas variantes, precios, stocks y URLs
+por canal. Mezclar estos conceptos en una sola tabla de prendas limita el crecimiento y vuelve frágiles la
+búsqueda, la atribución y la administración.
+
+Un panel administrativo es necesario antes de abrir el alta externa de comercios. En la primera beta
+puede ser pequeño y manual: aprobar organizaciones, importar catálogos, ver errores, suspender
+contenido, gestionar usuarios y consultar auditoría. La meta no es automatizar todo de inmediato, sino
+evitar que cada incidente requiera editar la base de datos a mano.
+
+Las doce decisiones que más cambian el proyecto
+
+   1. Definir si Lookeate será descubrimiento con enlaces externos, afiliación, SaaS para comercios o
+       marketplace transaccional. Cada opción cambia pagos, impuestos, soporte y responsabilidad.
+
+   2. Adoptar organizaciones comerciales multiusuario y separar los roles de usuario final, operador de
+       comercio y administrador de Lookeate.
+
+   3. Separar Brand, Merchant, Product, Variant, Offer e Inventory en el modelo de datos.
+   4. Crear un backoffice mínimo antes de habilitar autoservicio de comercios.
+   5. Mover la sesión fuera de localStorage y completar verificación de email, recuperación, revocación
+
+       y MFA para cuentas privilegiadas.
+   6. Introducir migraciones de base de datos reales, ambientes dev/staging/prod y un pipeline de
+
+       CI/CD con rollback.
+   7. Diseñar ingestión de catálogos como un pipeline auditable con validación, staging, diffs,
+
+       idempotencia y cuarentena.
+
+                                                                                                                                                     LOOKEATE · 2
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   8. Persistir looks y guardar una representación versionada independiente del render 3D.
+   9. Crear un programa de evaluación de IA: exactitud de catálogo, seguridad, sesgos, latencia, costo y
+
+       regresión por versión.
+   10. Instrumentar logs, métricas y trazas correlacionadas, más SLOs y alertas que midan la
+
+       experiencia real.
+   11. Adoptar privacidad por diseño para imágenes corporales, medidas, conversaciones y
+
+       preferencias, con retención y borrado explícitos.
+   12. Mantener una arquitectura de monolito modular y workers asíncronos antes de considerar
+
+       microservicios.
+
+Cómo leer este documento
+
+Las prioridades se interpretan según el riesgo de operar con usuarios y comercios reales, no según
+cuánto entusiasma una funcionalidad.
+
+Prioridad  Momento            Interpretación
+P0
+P1         Antes de una beta con terceros Seguridad, datos, operación o decisiones que condicionan todo lo demás.
+P2
+P3         Beta privada       Capacidades necesarias para aprender con usuarios y comercios
+                              seleccionados.
+
+           Escala controlada  Autoservicio, optimización y expansión cuando el flujo base ya funciona.
+
+           Más adelante       Opciones de diferenciación, expansión o complejidad transaccional no
+                              urgente.
+
+  ALCANCE Este informe es una guía de producto y arquitectura, no asesoramiento legal, contable ni de
+  seguridad certificada. Las obligaciones concretas dependen de los países, el modelo comercial, los datos
+  tratados y quién celebra la venta.
+
+1. Estado actual observado
+
+1.1 Capacidades ya presentes
+
+   · Producto modular: Home autenticado como entrada, Lookeate Assistant como módulo
+       conversacional, creador manual de estilo base y módulos futuros visibles.
+
+   · Experiencia conversacional: texto e imágenes, historial, persistencia de conversaciones,
+       recomendaciones y preferencias explícitas, inferidas y temporales.
+
+                                              LOOKEATE · 3
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Catálogo inicial: entidades de taxonomía, marca y producto, búsqueda estructurada/semántica y
+       dataset de aproximadamente 44 mil productos para desarrollo.
+
+   · Tecnología: FastAPI, SQLAlchemy, LangGraph, Next.js, React, PostgreSQL en Compose y
+       compatibilidad local con SQLite.
+
+   · Autenticación propia: contraseñas con scrypt y bearer tokens HMAC con expiración.
+   · Pruebas de backend: análisis de imágenes, ranking visual, preferencias, armado de outfits y
+
+       manejo de conversaciones.
+   · Base visual consistente: interfaz oscura, internacionalización inglés/español y Settings separado
+
+       entre General, Lookeate Assistant y Account.
+
+1.2 Brechas verificables del repositorio
+
+   · No se observa un modelo de organizaciones, membresías, roles de comercio, aislamiento por
+       tenant ni administración global.
+
+   · El catálogo no representa todavía variantes/SKU, ofertas por comercio, stock, moneda, historial de
+       precio, canales ni procedencia del dato.
+
+   · No hay un portal de comercios ni pipeline de importación con staging, validación, reintentos, diffs
+       y reportes.
+
+   · El estudio Create your style es client-side, usa prendas de ejemplo y no persiste looks ni activos 3D
+       productivos.
+
+   · No se observa CI, despliegue de producción, infraestructura como código, observabilidad, alertas,
+       SLOs, backups comprobados o recuperación ante desastres.
+
+   · No se observa un framework formal de migraciones; las adecuaciones de esquema se realizan
+       desde la aplicación.
+
+   · La sesión del frontend se guarda en localStorage, un punto a reemplazar antes de producción por
+       el riesgo de exfiltración ante XSS [S4].
+
+   · No se observan verificación de email, recuperación de contraseña, revocación de sesiones, MFA,
+       rate limits integrales, bloqueo de abuso o protección específica de uploads.
+
+   · No se observan términos, privacidad, consentimiento, exportación/borrado de cuenta, retención
+       de datos o gestión de cookies.
+
+   · No se observa una consola operativa para moderación, soporte, feature flags, gestión de
+       incidentes o auditoría.
+
+  LECTURA CORRECTA Que algo no se observe en el repositorio no significa que deba construirse todo ya.
+  Significa que debe decidirse conscientemente si se implementa, se terceriza, se difiere o se declara fuera
+  de alcance.
+
+                                                                                                                                                     LOOKEATE · 4
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+2. Modelo de negocio y alcance del producto
+
+2.1 Opciones posibles
+
+Modelo         Quién aporta valor                           Ventaja                        Costo oculto
+                                                            Menor operación comercial
+Asistente B2C  Usuarios pagan o usan gratis la              Ingresos previsibles           Difícil sostener costos de IA sin
+               personalización                                                             suscripción o afiliación
+
+SaaS B2B       Comercios pagan por catálogo,                                               Ventas enterprise, onboarding y
+               recomendación o widget                                                      soporte por cliente
+
+                           Lookeate deriva tráfico y cobra  Evita checkout y logística     Dependencia de tracking y acuerdos
+Afiliación / referral
+
+                           comisión
+
+Marketplace    Lookeate facilita o procesa la               Mayor control del funnel       Pagos, impuestos, fraude,
+               compra                                                                      devoluciones y regulación
+                                                            Alinea el producto actual con
+Híbrido B2B2C  Usuario crea estilo; comercios               catálogos cliente              Requiere gobernar relevancia,
+               aportan oferta                                                              patrocinio y multi-tenancy
+
+  CAMINO RECOMENDADO Fase 1: B2B2C de descubrimiento con catálogos invitados y enlace a la tienda.
+  Fase 2: afiliación o SaaS. Fase 3: evaluar marketplace solo si la conversión, el volumen y la capacidad
+  operativa justifican asumir la transacción.
+
+2.2 Decisiones de alcance que deben escribirse
+
+   · Cliente primario: consumidor, marca, retailer multimarca, boutique, stylist o una combinación
+       ordenada.
+
+   · Propuesta de valor medible: inspiración, combinación manual, búsqueda de productos,
+       conversión, reducción de devoluciones o captura de preferencias.
+
+   · Fuente de verdad: si Lookeate muestra precio/stock, definir cuán fresco debe ser y quién responde
+       por la discrepancia.
+
+   · Papel en la venta: simple enlace, afiliado, generador de lead, merchant of record o marketplace
+       intermediario.
+
+   · Cobertura geográfica: países, monedas, idiomas, unidades, disponibilidad y obligaciones locales.
+   · Público permitido: adultos, adolescentes o menores; esto cambia consentimiento, publicidad,
+
+       perfilado y age assurance.
+   · Nivel de promesa del fitting: inspiración visual, aproximación de talle o recomendación de ajuste.
+
+       No deben confundirse.
+
+                                                                                           LOOKEATE · 5
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Neutralidad comercial: cómo se ordenan resultados orgánicos, patrocinados y de comercios con
+       contrato.
+
+   · Propiedad del look: derechos sobre composiciones, imágenes generadas, assets 3D y contenido
+       compartido.
+
+   · Non-goals: checkout, logística, devoluciones, red social, closet digital o virtual try-on fotorealista
+       pueden declararse fuera de alcance por fase.
+
+3. Actores, organizaciones y permisos
+
+3.1 Actores recomendados
+
+Actor                   Responsabilidad                              Límite de acceso
+Visitante               Landing pública, ayuda, términos             Sin datos privados
+Usuario final           Assistant, estilo, favoritos, looks, cuenta  Solo sus propios datos
+Owner de comercio       Organización, miembros, plan, integraciones  Todo su tenant, con acciones sensibles reforzadas
+Catalog manager         Productos, variantes, assets, importaciones  Catálogo del tenant
+Merchandiser / editor   Colecciones, orden, contenido editorial      Publicación limitada
+Analyst del comercio    Dashboards y exportaciones                   Solo lectura, datos agregados
+Support del comercio    Incidencias y consultas del tenant           Sin secretos ni pagos
+Lookeate operator       Onboarding, jobs, moderación y soporte       Acceso operativo explícito y auditado
+Lookeate super admin    Configuración global y emergencias           Break-glass, MFA y máxima auditoría
+Servicio / integración  Feeds, webhooks y API                        Scopes mínimos, rotación y expiración
+
+3.2 Modelo de organizaciones
+
+   · Organization o Merchant: cuenta comercial, estado, plan, región, contactos, políticas y
+       configuración.
+
+   · Membership: relación usuario-organización con rol, estado, invitación, fechas y autenticación
+       reforzada.
+
+   · Brand: identidad comercial independiente; puede pertenecer a una organización o estar
+       licenciada/representada.
+
+   · Store o Channel: ecommerce, local físico, marketplace externo o país, con moneda y
+       disponibilidad propias.
+
+                                                                                                                                                     LOOKEATE · 6
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · MerchantBrand: relación explícita entre comercio y marcas vendidas, con permisos y vigencia.
+   · ServiceAccount / Integration: credenciales separadas de usuarios humanos, con scopes, IP
+
+       opcional y último uso.
+   · TenantStatus: pending, active, suspended, offboarding y deleted; la suspensión debe cortar
+
+       publicación e integraciones sin destruir evidencia.
+  PRINCIPIO DE SEGURIDAD El tenant no debe confiarse a un header o ID enviado por el cliente. Debe
+  derivarse de la identidad y membresía autenticadas, propagarse a consultas, caché, storage, búsqueda y
+  logs, y validarse también en la capa de datos [S8].
+
+3.3 Alta de comercios: sí, pero gradual
+
+   · P0 - Alta por invitación y revisión manual. Formulario interno, contrato, responsable, dominio,
+       contacto y fuentes del catálogo.
+
+   · P0 - Verificación básica: existencia comercial, dominio/email, derecho a usar marcas e imágenes,
+       política de devoluciones y soporte.
+
+   · P0 - Acuerdo de datos: propiedad, licencia, frecuencia, SLA de actualización, uso para
+       IA/embeddings, retención y baja.
+
+   · P1 - Wizard de organización: perfil, miembros, catálogo, moneda, país, URLs, webhooks y prueba
+       de feed.
+
+   · P1 - Sandbox: importaciones no publicadas, validación y preview antes de activar.
+   · P2 - Autoservicio condicionado: verificación automática, aceptación contractual, plan y límites.
+   · P2 - KYB ampliado solo si Lookeate facilita pagos o si la jurisdicción lo exige.
+   · P3 - Registro público abierto cuando exista capacidad de moderación, fraude, soporte y
+
+       cumplimiento.
+
+4. Modelo de catálogo preparado para clientes reales
+
+  MODELO MÍNIMO Organization > Brand > ProductGroup/Product > Variant/SKU > Offer > Inventory. Los
+  assets, categorías, atributos y la procedencia se relacionan con el nivel correcto; no todo pertenece a
+  Product.
+
+4.1 Entidades y responsabilidades
+
+   · ProductGroup o Product: concepto común del artículo, nombre, descripción, categoría, marca,
+       género/target, materiales, cuidado y contenido editorial.
+
+   · Variant/SKU: combinación vendible de talle, color, corte, material o pack; ID externo, GTIN/MPN,
+       medidas y assets específicos.
+
+                                                                                                                                                     LOOKEATE · 7
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Offer: precio, precio anterior, moneda, URL, condición, canal, vendedor, vigencia y estado de
+       publicación.
+
+   · Inventory: stock o disponibilidad por variante/canal/local, timestamp de frescura y política de
+       reserva.
+
+   · Asset: imágenes por vista, video, modelo 3D, licencia, checksum, dimensiones, moderación y
+       versionado.
+
+   · Taxonomy: categorías internas estables más mapeos a taxonomías externas; sin depender de texto
+       libre.
+
+   · AttributeDefinition / AttributeValue: vocabulario controlado para fit, ocasión, patrón, material,
+       silueta, largo y otros filtros.
+
+   · Collection: agrupación editorial o comercial, con orden, vigencia, mercado y patrocinio.
+   · SourceRecord: payload original, proveedor, versión, timestamp, checksum y resultado de
+
+       validación para trazabilidad.
+   · CatalogPublication: estado draft/approved/published/rejected/expired, actor y motivo.
+Los identificadores GS1 permiten identificar productos y ubicaciones de forma interoperable; GTIN
+identifica artículos comerciales y GLN partes o ubicaciones [S11]. Cuando un comercio no tenga GTIN,
+Lookeate necesita IDs internos estables y reglas de deduplicación.
+
+4.2 Campos que suelen faltar
+
+   · IDs: internal_id, external_id, SKU, GTIN/EAN/UPC, MPN, item_group_id y versión.
+   · Comercial: seller, channel, market, currency ISO 4217, price, sale_price, vigencia, impuestos
+
+       incluidos y URL canónica.
+   · Disponibilidad: in_stock/out_of_stock/preorder/discontinued, cantidad opcional, lead time y
+
+       updated_at.
+   · Moda: talle del comercio, talle normalizado, tabla de medidas, fit, género/target, edad,
+
+       temporada, colección y ocasión.
+   · Composición: material, porcentajes, cuidado, origen, certificaciones y claims sostenibles con
+
+       evidencia.
+   · Visual: vista, orden, fondo, color representado, rights holder, alt text, dimensiones, hash
+
+       perceptual y moderación.
+   · Búsqueda: títulos y descripciones localizados, sinónimos, taxonomía, embeddings versionados y
+
+       atributos filtrables.
+   · Gobernanza: source, owner, created_at, updated_at, published_at, deleted_at, reason,
+
+       quality_score y revisión.
+
+                                                                                                                                                     LOOKEATE · 8
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+La especificación de datos de Merchant Center es una referencia útil para diseñar feeds: distingue
+producto, item y variante, y exige coherencia entre precio, disponibilidad y landing page [S12]. No es
+necesario copiarla completa, pero sí aprender de sus validaciones y diagnósticos.
+
+4.3 Pipeline de ingestión
+
+   13. Recibir el archivo/API/webhook y registrar un job idempotente.
+   14. Guardar el payload original en storage inmutable con checksum y procedencia.
+   15. Validar formato, tamaño, codificación, campos obligatorios, URLs, monedas y tipos.
+   16. Normalizar taxonomía, colores, talles, marcas y unidades sin perder el valor original.
+   17. Resolver identidad y deduplicación: nuevo, update, merge, conflicto o tombstone.
+   18. Descargar y procesar assets en workers aislados; validar MIME real, límites, malware,
+
+       dimensiones y derechos.
+   19. Calcular derivados: thumbnails, hashes, atributos visuales y embeddings con versión del
+
+       modelo.
+   20. Ejecutar reglas de calidad y poner en cuarentena registros dudosos.
+   21. Mostrar diff y errores al comercio; permitir corrección y reintento parcial.
+   22. Publicar de forma atómica una versión del catálogo y conservar rollback.
+   23. Emitir eventos de cambio para búsqueda, cache, analytics y notificaciones.
+   24. Medir frescura y alertar feeds atrasados, precios inconsistentes o caídas de volumen.
+
+4.4 Formas de integración
+
+   · CSV/XLSX manual: útil para piloto; requiere plantilla versionada, preview, errores por fila y límites.
+   · Feed programado por URL o SFTP: simple para comercios medianos; requiere credenciales,
+
+       firma/checksum y scheduling.
+   · API pull: Lookeate consulta al comercio; controlar paginación, rate limits, cursores y backoff.
+   · API push/webhooks: mejor frescura; validar firma, timestamp, replay, idempotencia y orden de
+
+       eventos.
+   · Conectores ecommerce: Shopify, WooCommerce u otros; tratar tokens, scopes, revocación y
+
+       cambios de versión.
+   · Carga desde PIM/ERP: priorizar estabilidad de IDs y reglas de reconciliación.
+   · Scraping: último recurso; tiene fragilidad, términos de uso, derechos de imagen y problemas de
+
+       frescura.
+
+                                                                                                                                                     LOOKEATE · 9
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+5. Búsqueda, recomendación y transparencia comercial
+
+   · Separar recuperación de candidatos, filtros duros, ranking, reglas comerciales y presentación.
+   · Aplicar primero restricciones verificables: tenant/catálogo permitido, disponibilidad, mercado,
+
+       precio, talle y contenido publicado.
+   · Combinar búsqueda léxica, taxonomía, filtros y embeddings; medir cada estrategia con un set de
+
+       consultas reales.
+   · Versionar embeddings, prompts, features y pesos para reproducir por qué se mostró un resultado.
+   · Evitar que el LLM invente precio, stock, talla o características; esas propiedades deben venir de
+
+       datos estructurados vigentes.
+   · Explicar motivos útiles: coincide con ocasión, colores preferidos, presupuesto o prendas del look;
+
+       no revelar lógica sensible ni afirmar certeza de talle.
+   · Diferenciar resultado orgánico, patrocinado y priorización contractual. Etiquetar publicidad y no
+
+       ocultar alternativas relevantes.
+   · Resolver cold start con onboarding ligero, señales contextuales y controles manuales; no perfilar
+
+       más de lo necesario.
+   · Permitir feedback específico: no relevante, no me gusta el estilo, talle incorrecto, agotado, precio
+
+       incorrecto o contenido ofensivo.
+   · Evitar burbujas: controles de diversidad, novedad, marcas emergentes y opción de desactivar
+
+       personalización.
+   · Medir cobertura de catálogo, zero-results, CTR, guardados, salidas a tienda, diversidad, latencia y
+
+       tasa de resultados agotados.
+
+6. Experiencia completa del usuario final
+
+Cuenta y onboarding
+
+   · Modo invitado opcional y migración segura de sesión anónima al crear cuenta.
+   · Verificación de email, recuperación, cambio de email, sesiones activas y cierre de cuenta.
+   · Onboarding progresivo: objetivos, talles opcionales, marcas, presupuesto, restricciones, unidades
+
+       e idioma.
+   · Consentimiento granular para memoria, imágenes, analytics, marketing y entrenamiento/mejora
+
+       de modelos.
+
+                                                                                                                                                   LOOKEATE · 10
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+Biblioteca personal
+
+   · Looks guardados, nombre, ocasión, notas, miniatura, prendas y versión.
+   · Favoritos, listas, historial reciente y elementos ocultados o bloqueados.
+   · Closet propio opcional: prendas del usuario, privacidad, fotos, metadatos y estado.
+   · Exportación, duplicado, compartir, enlace revocable y borrado.
+
+Flujos de producto
+
+   · Ficha de producto/variante con imágenes, talles, precio, disponibilidad, comercio, actualización y
+       enlace confiable.
+
+   · Selector de variante antes de guardar o salir a tienda.
+   · Aviso cuando precio o stock pueden haber cambiado.
+   · Reportar producto, imagen, vendedor, información incorrecta o enlace roto.
+
+Calidad de experiencia
+
+   · Estados vacíos, carga, error, reintento, offline parcial y degradación cuando la IA o búsqueda no
+       responden.
+
+   · Autosave, undo/redo, confirmación de acciones destructivas y recuperación de borradores.
+   · Responsive real, touch, teclado, reduced motion, lectores de pantalla y dispositivos de baja
+
+       potencia.
+   · Centro de privacidad, preferencias de notificación y ayuda contextual.
+
+7. Create your style: de demo a producto
+
+7.1 Modelo funcional
+
+   · Look como entidad persistente: owner, privacidad, título, ocasión, slots, capas, transformaciones,
+       fondo, versión y timestamps.
+
+   · LookItem: referencia inmutable o versionada a producto/variante, posición, capa, orden, color y
+       ajustes manuales.
+
+   · Slots compatibles: top, bottom, one-piece, footwear, outerwear, accessory, etc.; reglas
+       configurables, no hardcodeadas en UI.
+
+   · Undo/redo basado en comandos y autosave debounced; no guardar solo una captura final.
+   · Estados draft, saved, shared, archived y deleted; duplicado y control de concurrencia.
+   · Thumbnail server-side o en worker para listas y sharing, separado de la escena editable.
+
+                                                                                                                                                   LOOKEATE · 11
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Deep links a variantes vigentes; si una oferta desaparece, conservar la composición y mostrar
+       alternativa.
+
+   · Colaboración futura: compartir lectura, remix y atribución; edición simultánea solo si hay demanda
+       real.
+
+7.2 Maniquí y pipeline 3D
+
+   · Definir el objetivo: visualización estilizada, drape aproximado o virtual try-on. La precisión física
+       cambia radicalmente costo, datos y responsabilidad.
+
+   · Usar assets glTF/GLB para entrega web; glTF está diseñado para transmisión y carga eficiente de
+       escenas 3D [S14].
+
+   · Crear un esqueleto y convenciones comunes: escala, orientación, puntos de anclaje, materiales,
+       nombres y LODs.
+
+   · Pipeline de prendas: modelado, retopología, UV, texturas PBR, rigging/skinning, colisiones, clipping
+       QA y exportación validada.
+
+   · Compatibilidad: cada prenda declara body presets, slots, capas, talles y exclusiones; no asumir que
+       todo asset cabe en todo cuerpo.
+
+   · Optimización: LOD, mesh compression, KTX2/Basis para texturas, lazy loading, límites de triángulos
+       y memoria por dispositivo.
+
+   · Fallback: imagen 2D o maniquí simplificado cuando WebGL falla, el dispositivo es lento o el usuario
+       prefiere reduced motion.
+
+   · Accesibilidad: botones de rotación, vistas predefinidas y lista de prendas como alternativa
+       completa a drag/gestos. WCAG 2.2 exige alternativa a movimientos de arrastre [S3].
+
+   · Privacidad: si se incorporan medidas o escaneos corporales, tratarlos como datos de alto impacto,
+       minimizar precisión y separar identidad de assets.
+
+   · QA visual: golden scenes por body preset y outfit, capturas automáticas por navegador/GPU y
+       revisión de clipping.
+
+   · No prometer talle: el render visual no demuestra ajuste; mostrar disclaimers y fuente de la tabla
+       de medidas.
+
+8. Portal para comercios
+
+   · Dashboard de salud: productos publicados, rechazados, agotados, feed atrasado, errores recientes
+       y frescura.
+
+   · Organización: perfil, contactos, dominios, mercados, monedas, políticas y estado contractual.
+   · Equipo: invitaciones, roles, MFA, sesiones y acceso de servicios.
+
+                                                                                                                                                   LOOKEATE · 12
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Catálogo: lista, edición controlada, variantes, assets, preview, validaciones y publicación.
+   · Importaciones: historial de jobs, archivo fuente, filas válidas/rechazadas, diff, reintento y rollback.
+   · Integraciones: API keys, OAuth/conectores, webhooks, rotación, último uso, scopes y logs de
+
+       entrega.
+   · Merchandising: colecciones, campañas, boosts limitados, vigencias y etiquetado patrocinado.
+   · Analytics: impresiones, clicks, guardados, salidas, consultas sin resultado y cobertura, con
+
+       umbrales de privacidad.
+   · Soporte: tickets, incidentes, changelog, documentación de feeds y status page.
+   · Facturación futura: plan, uso, límites, invoices, método de pago y cancelación, separado de la
+
+       venta de prendas.
+   · Offboarding: exportar datos, revocar credenciales, despublicar, retener lo legalmente necesario y
+
+       eliminar el resto.
+
+9. Administración y backoffice de Lookeate
+
+  SÍ, HACE FALTA UN ADMIN No necesita ser elegante al comienzo, pero debe existir antes de operar con
+  terceros. Debe reemplazar intervenciones manuales sobre la base de datos y dejar evidencia de quién
+  hizo qué.
+
+Organizaciones y acceso
+
+   · Aprobar, activar, suspender y cerrar comercios; revisar verificación y contrato.
+   · Gestionar miembros, roles, invitaciones y recuperación de acceso con controles de soporte.
+   · Impersonation solo si es imprescindible: banner persistente, motivo, duración corta, MFA y
+
+       auditoría; preferir vistas de diagnóstico sin asumir identidad.
+
+Catálogo y moderación
+
+   · Ver jobs, errores, payload original, diffs, calidad, assets, duplicados y estado de publicación.
+   · Cuarentena, rechazo, suspensión, apelación, bulk actions seguras y rollback.
+   · Moderación de imágenes, marcas, claims, contenido prohibido, copyright y reportes de usuarios.
+
+Operación del producto
+
+   · Feature flags por ambiente, tenant, cohorte o usuario; kill switches para IA, uploads, compartir y
+       conectores.
+
+   · Configuración versionada de taxonomía, límites, modelos, prompts y reglas comerciales.
+
+                                                                                                                                                   LOOKEATE · 13
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Panel de salud de proveedores LLM, embeddings, colas, búsquedas, email, storage y webhooks.
+
+Privacidad, soporte y evidencia
+
+   · Búsqueda de usuario con acceso mínimo, exportación/borrado, legal hold y registro de solicitudes.
+   · Audit log append-only con actor, acción, recurso, tenant, antes/después, IP/contexto y motivo.
+   · Historial de incidentes, comunicaciones, reportes y acciones de mitigación.
+
+10. Identidad, autenticación y autorización
+
+P0 Sesiones seguras
+
+La implementación actual debe endurecerse antes de producción.
+   · Reemplazar tokens en localStorage por cookies HttpOnly, Secure y SameSite, idealmente con
+       patrón BFF; OWASP advierte que localStorage queda expuesto a cualquier JavaScript del origen
+       [S4].
+   · Usar sesiones revocables o access tokens cortos con refresh rotation; registrar dispositivo,
+       expiración, último uso y cierre remoto.
+   · Rotar AUTH_TOKEN_SECRET, administrar claves en un secret manager y soportar key IDs para
+       rotación sin cortar todas las sesiones.
+   · Evitar respuestas que permitan enumerar emails; aplicar rate limits, backoff y detección de
+       credential stuffing.
+
+P0 Ciclo de cuenta
+
+   · Verificación de email y cambio de email con confirmación en ambos lados cuando sea posible.
+   · Recuperación de contraseña con tokens de un solo uso, corta duración, invalidación y notificación
+
+       posterior.
+   · Revocación al cambiar contraseña o detectar compromiso; historial de eventos de seguridad visible
+
+       al usuario.
+   · MFA obligatorio para administradores y owners de comercio; passkeys/WebAuthn como evolución.
+
+       NIST SP 800-63-4 cubre autenticación, federación y recuperación con enfoque actualizado [S5].
+   · Política de contraseñas basada en longitud, bloqueo de contraseñas comprometidas y hashing
+
+       ajustable; conservar scrypt si está parametrizado y medido o evaluar Argon2id [S6].
+
+P0 Autorización
+
+   · Deny by default y controles en cada objeto/operación, no solo ocultar botones.
+
+                                                                                                                                                   LOOKEATE · 14
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · RBAC para roles simples y atributos para contexto: tenant, recurso, ownership, estado, mercado y
+       acción.
+
+   · Filtrar siempre por tenant_id + resource_id; probar IDOR/BOLA en conversaciones, looks,
+       productos, feeds, assets y exports.
+
+   · Separar super admin de operator; acciones de alto riesgo con step-up auth, dual control o
+       break-glass.
+
+   · API keys hasheadas, scopes, expiración, rotación, último uso y restricciones por integración.
+
+11. Seguridad de aplicación y abuso
+
+P0 - Diseño y controles base
+
+   · Threat model por flujo y trust boundary: navegador, proxy Next.js, API, LLM providers, catálogo,
+       storage, DB, workers y terceros.
+
+   · Adoptar OWASP ASVS 5.0 como checklist verificable y OWASP API Security Top 10 para endpoints
+       [S1][S2].
+
+   · HTTPS, HSTS, CSP, headers, CORS restrictivo, CSRF si se usan cookies, validación y encoding de
+       outputs.
+
+   · Rate limits por IP, cuenta, tenant y operación; cuotas de IA, uploads, búsquedas, auth y
+       exportaciones.
+
+   · Secret scanning, rotación, separación por ambiente y prohibición de secretos en logs, imágenes o
+       frontend.
+
+P0 - Uploads e imágenes
+
+   · Allowlist de extensiones y MIME detectado por contenido, nombres generados, límites de
+       bytes/píxeles, decodificación segura y antivirus cuando corresponda [S7].
+
+   · Eliminar EXIF/GPS salvo necesidad explícita; separar bucket de cuarentena y bucket publicado.
+   · Servir activos desde dominio/CDN sin cookies, con Content-Disposition/CSP apropiados.
+   · Evitar SSRF al descargar URLs: allowlist/proxy de egress, resolución DNS segura, bloqueo de redes
+
+       privadas, timeouts, tamaño máximo y redirect limits.
+
+P1 - Supply chain y verificación
+
+   · Lockfiles completos para Python y Node, actualización controlada y análisis de
+       dependencias/licencias.
+
+                                                                                                                                                   LOOKEATE · 15
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · SBOM por release, imágenes mínimas, usuario no root, filesystem read-only cuando sea posible y
+       escaneo de containers.
+
+   · Builds reproducibles/provenance; SLSA ofrece niveles incrementales para trazabilidad e integridad
+       de artefactos [S17].
+
+   · SAST, secret scan, dependency scan y DAST en CI; pentest antes de apertura amplia y después de
+       cambios de alto riesgo.
+
+P1 - Fraude y abuso de producto
+
+   · Bots, creación masiva de cuentas, scraping de catálogo, generación abusiva, spam en links
+       compartidos y fraude de clicks afiliados.
+
+   · Reportes, bloqueo, límites adaptativos, reputación, captcha solo en riesgo y revisión humana.
+   · Proteger flows sensibles definidos por negocio; OWASP API Top 10 incluye acceso irrestricto a
+
+       flujos sensibles y SSRF [S2].
+
+12. IA y Lookeate Assistant como sistema operable
+
+   · Inventario de modelos y proveedores: función, datos enviados, región, retención, training policy,
+       costo, límites y fallback.
+
+   · Model routing: modelo por tarea y riesgo; no usar el más costoso para clasificación simple ni el
+       menos confiable para decisiones críticas.
+
+   · Versionado: prompts, ejemplos, tools, modelos, schemas, embeddings y parámetros con release
+       notes.
+
+   · Evaluaciones offline: intents, extracción, grounding de catálogo, outfits, preferencias, seguridad,
+       multilingüe y regresiones.
+
+   · Evaluaciones online: feedback, task success, groundedness, abandonos, latencia, costo y errores
+       por proveedor.
+
+   · Golden dataset con consultas reales anonimizadas y casos adversariales; revisión humana con
+       rúbrica consistente.
+
+   · Grounding: cada precio, stock, marca, variante y link debe rastrearse a un registro estructurado y
+       timestamp.
+
+   · Prompt injection: tratar texto de catálogo, documentos RAG, imágenes OCR y URLs como
+       contenido no confiable; RAG no elimina el riesgo [S15].
+
+   · Aislamiento RAG: namespaces o filtros por tenant antes de similarity search; tests que intenten
+       cruces entre comercios [S9].
+
+                                                                                                                                                   LOOKEATE · 16
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Tool permissions: esquema estricto, allowlists, límites, timeouts y confirmación para acciones; el
+       modelo no decide autorización.
+
+   · Output handling: validar y sanear cualquier salida antes de renderizarla o enviarla a una API;
+       OWASP destaca el riesgo de output handling impropio [S16].
+
+   · Privacidad: redacción de PII, no loggear prompts completos por defecto, retención diferenciada y
+       opt-out de mejora.
+
+   · Safety: políticas para sexualización, menores, odio, body shaming, trastornos alimentarios,
+       autolesión, contenido ilegal y productos restringidos.
+
+   · Sesgo: evaluar representación de cuerpos, talles, géneros, tonos de piel, presupuestos y culturas;
+       documentar cobertura y límites.
+
+   · Human override: feedback, reportes, revisión de incidentes y kill switch por modelo/capacidad.
+   · Costo: presupuestos por usuario/tenant, caching seguro, límites de contexto, compresión de
+
+       historial y alertas de gasto.
+   · Transparencia: identificar claramente la interacción con IA y explicar límites. La guía europea de
+
+       2026 detalla obligaciones de transparencia para sistemas interactivos bajo el AI Act [S20].
+   · Gobernanza: aplicar un ciclo Govern-Map-Measure-Manage adaptado del NIST AI RMF y su perfil
+
+       de IA generativa [S13].
+
+13. Privacidad, datos personales y marco legal
+
+  RIESGO ESPECÍFICO DE LOOKEATE Imágenes de personas, medidas corporales, talles, preferencias,
+  conversaciones y señales inferidas pueden revelar información íntima. Aunque un dato no sea biométrico
+  por definición, merece controles reforzados por su impacto y sensibilidad contextual.
+
+   · Mapa de datos: qué se recolecta, por qué, base legal, origen, destinos, retención, región, acceso y
+       eliminación.
+
+   · Roles de tratamiento: definir cuándo Lookeate es responsable, encargado de un comercio o
+       ambos según el flujo.
+
+   · Aviso de privacidad por capas, términos de uso, política de cookies, acceptable use y acuerdos con
+       comercios/proveedores.
+
+   · Consentimiento separado para memoria personal, imágenes, marketing, analytics no esenciales y
+       mejora/entrenamiento.
+
+   · Minimización: no pedir medidas, edad exacta, género o fotos si el caso de uso funciona sin ellos.
+   · Retención: plazos por cuenta, conversación, imagen original, derivado, embedding, look, logs,
+
+       backups y datos de comercio.
+
+                                                                                                                                                   LOOKEATE · 17
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Derechos: acceso, rectificación, supresión, oposición/opt-out y portabilidad cuando aplique;
+       workflow verificable con SLA.
+
+   · Borrado: eliminar índices, objetos, derivados y cachés; documentar el ciclo de backups y legal
+       holds.
+
+   · Proveedores: DPA, subprocesadores, transferencias internacionales, seguridad, incidentes y uso de
+       datos para entrenamiento.
+
+   · Privacy by default: looks privados, links revocables, perfiles no públicos y analytics agregados.
+   · Menores: decidir edad mínima, controles parentales y prohibiciones de publicidad/perfilado según
+
+       mercado antes de abrir acceso.
+   · Incidentes: clasificación, preservación de evidencia, comunicación, evaluación legal y notificación a
+
+       autoridades/afectados.
+   · Argentina: la AAIP exige información clara, seguridad/confidencialidad, derechos de titulares y
+
+       contempla registro de determinadas bases bajo Ley 25.326 [S18][S19].
+   · Expansión: si se apunta a UE, revisar GDPR, AI Act, DSA y GPSR según si hay usuarios, marketplace
+
+       o venta [S10][S20][S21]. Brasil activa LGPD y obligaciones adicionales, especialmente si hay
+       menores [S22].
+
+13.1 Propiedad intelectual y contenido comercial
+
+   · Licencia expresa para importar, transformar, recortar, cachear y mostrar imágenes, logos,
+       descripciones y modelos 3D.
+
+   · Reglas para contenido generado por IA: derechos, marcas, similitud con diseños, atribución y
+       etiquetado.
+
+   · Proceso notice-and-takedown, contacto legal, contranotificación y evidencia de procedencia.
+   · Claims de sostenibilidad, composición y origen requieren fuente y responsabilidad del comercio;
+
+       no inferirlos visualmente.
+   · Términos de sharing/remix para looks y assets del usuario; controles de privacidad y revocación.
+
+14. Accesibilidad e inclusión
+
+   · Objetivo explícito WCAG 2.2 AA y auditoría manual además de herramientas automáticas [S3].
+   · Teclado completo, orden de foco, foco visible/no oculto, skip links y modales con focus trap y
+
+       retorno.
+   · Contraste, estados que no dependan solo de color, zoom/reflow, target sizes y soporte dark/light si
+
+       se incorpora.
+
+                                                                                                                                                   LOOKEATE · 18
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Texto alternativo útil para productos; evitar que descripciones generadas por IA inventen detalles.
+   · Mensajes de chat anunciados sin interrumpir, control de streaming, copy claro y posibilidad de
+
+       pausar.
+   · Uploads accesibles, errores asociados a campos, progreso y alternativas a gestos.
+   · Maniquí 3D con vistas por botón, descripción textual del look, selección por lista y alternativa no
+
+       animada; el drag no puede ser la única operación [S3].
+   · Reduced motion, límites a flashes, controles de rotación y no mover la cámara sin acción del
+
+       usuario.
+   · Autenticación accesible: password managers, paste permitido, show/hide y sin pruebas cognitivas
+
+       innecesarias.
+   · Testing con NVDA/JAWS/VoiceOver, teclado, touch, zoom 200/400%, contraste y usuarios reales.
+   · Idioma correcto en HTML, traducciones completas, pluralización, formatos locales, moneda,
+
+       unidades y talles regionales.
+   · Incluir cuerpos, identidades, edades, talles extendidos, discapacidades y presupuestos diversos en
+
+       datasets y pruebas.
+
+15. Arquitectura y plataforma de datos
+
+  ARQUITECTURA RECOMENDADA Monolito modular para API y dominio, frontend desplegable de
+  producción, PostgreSQL administrado, object storage/CDN, workers y cola para tareas pesadas, y
+  búsqueda híbrida. Separar servicios solo cuando el escalado, aislamiento o ownership lo justifiquen.
+
+   · Bounded modules: Identity, Organizations, Catalog, Search, Assistant, Style Studio, Admin,
+       Notifications, Billing y Analytics.
+
+   · Contratos internos claros y ownership de tablas; evitar imports circulares entre módulos.
+   · PostgreSQL como fuente de verdad en producción; SQLite solo para desarrollo/test acotado.
+   · Migraciones versionadas con Alembic u otro framework, expansión/contracción compatible y
+
+       rollback plan.
+   · Object storage para uploads, assets derivados, feeds y modelos 3D; metadata y permisos en DB.
+   · Cola/worker para imports, imágenes, embeddings, thumbnails, emails, exports y webhooks; retries
+
+       con backoff y dead-letter queue.
+   · PostgreSQL FTS + pgvector como inicio razonable; evaluar OpenSearch/Elastic solo al superar
+
+       necesidades de relevancia, facetas o escala.
+   · Cache explícita con claves por tenant, TTL, invalidación y protección contra stampede; no cachear
+
+       secretos ni respuestas cruzadas.
+
+                                                                                                                                                   LOOKEATE · 19
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · APIs documentadas y versionadas; OpenAPI es el contrato estándar para describir interfaces HTTP
+       [S23].
+
+   · Idempotencia para writes reintentables: importaciones, webhooks, creación de jobs y pagos
+       futuros.
+
+   · Outbox/eventos para coordinar DB con colas e índices sin dual writes inconsistentes.
+   · Consistencia: definir qué debe ser fuerte (permisos/publicación) y qué puede ser eventual
+
+       (analytics/embeddings).
+   · Soft delete solo donde tenga valor; mantener estados y tombstones explícitos, más purge real por
+
+       privacidad.
+   · Feature flags con propietario, expiración y eliminación; no convertirlas en configuración
+
+       permanente opaca.
+   · Configuración por ambiente validada al inicio; no depender de defaults inseguros en producción.
+
+15.1 Estrategia multi-tenant
+
+   · Inicio recomendado: tablas compartidas con tenant_id obligatorio, repositorios tenant-aware y
+       PostgreSQL Row Level Security como defensa adicional.
+
+   · Enterprise/regulado: ofrecer schema o DB separada solo si un contrato o riesgo lo exige; aumenta
+       migraciones, backups y observabilidad.
+
+   · Aislar también índices vectoriales, cachés, objetos, colas, rate limits, exports y analytics; la DB no
+       es la única frontera.
+
+   · Tests automáticos de cruce: cada endpoint y búsqueda debe intentar acceder a recursos de otro
+       tenant.
+
+   · Noisy neighbor: cuotas por tenant para IA, imports, tamaño de catálogo, storage y concurrencia.
+
+16. Despliegue, ambientes y entrega continua
+
+P0 - Ambientes
+
+   · Dev local, preview opcional, staging y producción con cuentas, DB, storage, secretos y dominios
+       separados.
+
+   · Datos sintéticos o anonimizados en no-producción; nunca copiar producción completa por
+       comodidad.
+
+   · Paridad de configuración y checklist de promotion; staging no debe ser un ambiente olvidado.
+
+                                                                                                                                                   LOOKEATE · 20
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+P0 - Artefactos productivos
+
+   · Frontend: build `next build` y runtime `next start` o output standalone; el Dockerfile.dev actual no
+       es una imagen de producción. Next.js documenta Node, Docker y standalone como opciones [S24].
+
+   · API: imagen mínima, dependencias pinneadas, usuario no root, health/readiness endpoints y
+       graceful shutdown.
+
+   · No montar el código fuente ni node_modules como volúmenes en producción.
+   · Registry privado, tags inmutables por commit y firma/provenance.
+
+P0 - CI/CD
+
+   · Pull request: lint, typecheck, unit/integration, build, migrations dry-run, security scans y preview
+       opcional.
+
+   · Main: artefactos una vez, promoción entre ambientes, aprobación para producción y changelog.
+   · Deploy: migración como paso único, smoke tests, canary/blue-green cuando sea necesario y
+
+       rollback probado.
+   · Protección de ramas, reviews, CODEOWNERS y secretos solo en el job/ambiente requerido.
+
+P1 - Infraestructura
+
+   · TLS automático, dominio, DNS, CDN/WAF, rate limiting perimetral y headers.
+   · Managed PostgreSQL con conexión privada, pool, réplicas si hace falta y PITR. PostgreSQL
+
+       documenta recuperación a un punto mediante WAL archivado [S26].
+   · Object storage con versioning/lifecycle, CDN y egress controlado.
+   · Autoscaling guiado por latencia, cola y costo; recordar que múltiples workers de IA replican
+
+       memoria [S25].
+   · Infraestructura como código y policy checks; no configurar producción solo desde consolas.
+
+16.1 Backups y recuperación
+
+   · Definir RPO y RTO por componente: DB, assets, feeds, índices, secretos, configuración y código.
+   · Backups automáticos cifrados, retención y separación de credenciales; no depender solo del
+
+       volumen de Docker.
+   · PITR para DB y versioning para objetos; los índices y embeddings deben poder reconstruirse desde
+
+       fuentes/versiones.
+   · Restore drills periódicos en ambiente aislado, con tiempo medido y evidencia. Un backup no
+
+       probado es una hipótesis.
+
+                                                                                                                                                   LOOKEATE · 21
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Runbook de pérdida de región, corrupción lógica, borrado accidental, proveedor LLM caído y
+       credencial comprometida.
+
+17. Observabilidad, confiabilidad y costos
+
+   · Logs estructurados con request_id, trace_id, tenant_id, actor, route, status y latencia; redacción de
+       prompts, tokens, emails y PII.
+
+   · Métricas técnicas: tráfico, errores, p50/p95/p99, saturación, conexiones DB, cache, colas, retries,
+       DLQ y disponibilidad de proveedores.
+
+   · Métricas de dominio: imports, publicación, zero-results, stock stale, looks guardados, Assistant
+       success y clicks de salida.
+
+   · Trazas distribuidas desde Next proxy a FastAPI, agentes, DB, búsqueda y proveedores.
+       OpenTelemetry correlaciona logs, métricas y trazas de forma vendor-neutral [S27].
+
+   · SLOs: login, carga Home, búsqueda, respuesta Assistant, guardado de look, ingestión y frescura de
+       catálogo.
+
+   · Error budgets para decidir cuándo frenar features y priorizar confiabilidad.
+   · Alertas accionables con owner, severidad, runbook, deduplicación y escalamiento; evitar alert
+
+       fatigue.
+   · Status page pública y comunicación por incidente cuando existan clientes reales.
+   · Cost allocation por tenant/capacidad: LLM tokens, embeddings, imágenes, egress, storage y
+
+       compute.
+   · Budgets y anomalías: alertar loops de agentes, importaciones explosivas, embeddings repetidos y
+
+       abuso.
+   · Core Web Vitals medidos en campo; objetivos de referencia: LCP <= 2,5 s, INP <= 200 ms y CLS <=
+
+       0,1 al percentil 75 [S28].
+
+18. Estrategia de pruebas y calidad
+
+   · Unit tests de dominio: permisos, compatibilidad de outfits, precios, taxonomía, retención y
+       estados.
+
+   · Integration tests con PostgreSQL real, storage/cola emulados y proveedores externos stubbeados.
+   · Contract tests para OpenAPI, feeds, webhooks y payloads de modelos/agents.
+   · E2E: registro/login, Home, Assistant, settings, crear/guardar look, catálogo, merchant import y
+
+       admin.
+   · Authorization matrix y tests negativos de cross-tenant/IDOR en cada recurso.
+
+                                                                                                                                                   LOOKEATE · 22
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Security tests: auth abuse, CSRF/XSS, SSRF, uploads, prompt injection, output sanitization y rate
+       limits.
+
+   · Accessibility: axe/lint como base más teclado, lector, zoom, touch y revisión humana.
+   · Visual regression para Home, chat, Settings, style studio, catálogos y backoffice.
+   · Performance/load: búsqueda, streaming, imports grandes, thumbnails, embeddings, colas y DB
+
+       pool.
+   · Resilience: timeouts, retries, circuit breakers, proveedor caído, DB failover, cola atrasada y partial
+
+       outage.
+   · Migration tests sobre copia anonimizada/esquemas previos y downgrade cuando sea viable.
+   · AI evals en CI o release gate: regresiones por idioma, intención, catálogo, seguridad, costo y
+
+       latencia.
+   · Test data factories sin PII real; seed pequeño determinista distinto del dataset productivo.
+   · Browser/device matrix y presupuestos para 3D en móviles de gama media/baja.
+   · Release checklist, smoke test posdeploy y criterios de rollback.
+
+19. Analytics de producto y experimentación
+
+   · Taxonomía de eventos versionada antes de instrumentar: actor, tenant, session, surface, object,
+       experiment y consent state.
+
+   · Funnel consumidor: Home -> módulo -> acción útil -> look/favorito -> producto ->
+       salida/conversión reportada.
+
+   · Funnel comercio: invitación -> organización -> feed válido -> publicación -> cobertura ->
+       interacción.
+
+   · North Star candidate: looks útiles/guardados con al menos una interacción de producto, no solo
+       mensajes enviados.
+
+   · Guardrails: error rate, latencia, costo por éxito, diversidad, reportes, agotados y privacidad.
+   · Atribución: distinguir impresión, click, outbound y compra confirmada; no atribuir ventas sin una
+
+       señal confiable.
+   · Experimentos con hipótesis, primary metric, guardrails, asignación persistente, tamaño y duración;
+
+       evitar probar todo a la vez.
+   · Merchant analytics con mínimo de agregación para no exponer comportamiento individual.
+   · Warehouse/lake solo cuando el volumen lo justifique; al inicio puede bastar un esquema analítico
+
+       separado y jobs confiables.
+
+                                                                                                                                                   LOOKEATE · 23
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Data quality: freshness, completeness, uniqueness, referential integrity y alertas de cambios
+       bruscos.
+
+   · Consent mode y eliminación propagada a analytics; no convertir observabilidad en tracking
+       encubierto.
+
+20. Operaciones, soporte y contenido
+
+   · Canal de soporte y ticketing con categorías: cuenta, catálogo, recomendación, privacidad,
+       seguridad, facturación y legal.
+
+   · Help center y documentación in-product para usuarios; portal técnico y ejemplos de feed/API para
+       comercios.
+
+   · SLAs internos de triage y externos según plan; severidades y horarios claros.
+   · Runbooks: feed roto, catálogo stale, proveedor IA caído, respuestas dañinas, fuga de datos, link
+
+       malicioso y producto retirado.
+   · Incident commander, canales, timeline, decisiones, comunicación, postmortem sin culpa y
+
+       acciones con owner.
+   · Moderación y appeals: reglas públicas, razón de rechazo, evidencia y posibilidad de corregir.
+   · Content operations: categorías, traducciones, colecciones, landing copy, FAQs y caducidad.
+   · Notificaciones transaccionales: verificación, recuperación, invitación, import fallido, suspensión,
+
+       export listo e incidente.
+   · Centro de preferencias, unsubscribe y separación entre transaccional y marketing.
+   · Email deliverability: dominio, SPF/DKIM/DMARC, bounce/complaint handling y plantillas
+
+       localizadas.
+   · Business continuity: contactos de proveedores, contratos, límites, exportabilidad y plan de
+
+       sustitución.
+
+21. Monetización, pagos y responsabilidades
+
+   · Suscripción B2C: plan, trial, límites, cancelación, restore purchases futuro y soporte.
+   · SaaS B2B: seats, catálogo, uso de IA, módulos, overages, invoices, impuestos y dunning.
+   · Afiliación: contratos, tracking, ventanas, devoluciones, deduplicación, fraude y disclosure.
+   · Sponsored placement: reglas de elegibilidad, etiqueta, separación del ranking orgánico y
+
+       reporting.
+
+                                                                                                                                                   LOOKEATE · 24
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Checkout propio: payment provider, PCI scope, fraude, 3DS, refunds, disputes, impuestos,
+       órdenes, fulfillment, devoluciones y soporte.
+
+   · Marketplace: seller verification, trazabilidad, productos ilegales/retirados, reclamos, recall y
+       responsabilidades por región. La DSA exige trazabilidad de traders para marketplaces que permiten
+       contratos a distancia en la UE [S21].
+
+   · PCI: preferir redirect/checkout alojado para reducir el alcance; incluso formularios embebidos
+       agregan controles sobre scripts bajo PCI DSS 4.0.1 [S29].
+
+   · Contabilidad: reconciliación, revenue recognition, comisiones, notas de crédito, moneda y
+       auditoría.
+
+  RECOMENDACIÓN No construir checkout en la primera etapa. Usar enlaces profundos a la variante
+  correcta y medir outbound/conversión por acuerdos. Esto preserva foco mientras se valida si Lookeate
+  realmente influye en la compra.
+
+22. SEO, adquisición, sharing y superficie pública
+
+   · Definir qué es público: landing, módulos, ejemplos de looks, perfiles de marca, categorías o
+       productos.
+
+   · Metadata, sitemap, canonical, robots, Open Graph y previews de links compartidos.
+   · Structured data Product/ProductGroup/Offer cuando la página pública tenga información vigente y
+
+       cumpla políticas.
+   · URLs estables y localizadas; redirecciones y manejo de productos discontinuados.
+   · Landing pages no deben exponer contenido privado ni conversaciones en caché.
+   · Referral codes y campañas con protección anti-abuso y consentimiento.
+   · Share links revocables, expirables y con preview seguro; no incluir tokens de sesión ni IDs
+
+       sensibles.
+   · Deep links app/web y continuidad de contexto al iniciar sesión.
+   · Programa de partnerships con onboarding, assets, medición y reglas de marca.
+   · Research con usuarios y comercios: entrevistas, pruebas moderadas, beta council y canal de
+
+       feedback.
+
+23. Gobierno del producto y del equipo
+
+   · Owner por dominio, servicio, tabla, evento, métrica, proveedor, runbook y alerta.
+   · ADR para decisiones arquitectónicas y decision log de producto con fecha, hipótesis y
+
+       reversibilidad.
+
+                                                                                                                                                   LOOKEATE · 25
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · Roadmap por outcomes y riesgos, no solo features; cada iniciativa con métrica y criterio de salida.
+   · Definition of Done: código, tests, accesibilidad, analytics, docs, seguridad, migración,
+
+       observabilidad y rollback.
+   · Data governance: glosario, clasificación, calidad, lineage, acceso, retención y steward.
+   · AI governance: model cards internas, eval reports, cambios, incidentes y aprobaciones.
+   · Vendor management: due diligence, DPA, SLA, límites, subprocesadores, exit plan y costo.
+   · Release calendar, changelog, deprecaciones y compatibilidad de APIs/feeds.
+   · Capacitación: seguridad, privacidad, accesibilidad, incidentes y uso responsable de IA.
+   · Documentación viva: arquitectura, dominio, API, operaciones, onboarding de comercios y soporte.
+
+24. Registro de riesgos prioritarios
+
+Riesgo                    Impacto            Control principal                               Prioridad
+Fuga entre comercios      Muy alto           Tenant context, RLS, tests cross-tenant, logs   P0
+Robo de sesión por XSS    Muy alto           Cookie HttpOnly/BFF, CSP, sanitización          P0
+Precio/stock incorrecto   Alto               Freshness, timestamp, feed SLA, warning         P0
+Prompt injection / RAG    Alto               Contenido no confiable, tools limitadas, evals  P0
+Upload malicioso / SSRF   Alto               Quarantine, MIME real, egress proxy, limits     P0
+Sin restore verificable   Alto               PITR, versioning, drills y RPO/RTO              P0
+Admin excesivo            Alto               Roles, MFA, audit, break-glass                  P0
+Catálogo de baja calidad  Alto               Staging, validation, quality score, rollback    P1
+Costo de IA impredecible  Medio/alto         Budgets, routing, quotas, caching               P1
+Maniquí promete fitting   Alto reputacional  Scope, disclaimers, presets, QA                 P1
+Marketplace prematuro     Alto operativo     Link-out primero, gate de decisión              P2/P3
+Sesgo o body shaming      Alto               Policy, datasets diversos, evals, reportes      P1
+
+25. Roadmap recomendado
+
+                                                                                             LOOKEATE · 26
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+Fase    Objetivo                        Salida esperada
+Fase 0  Fundaciones
+Fase 1  Beta privada                    Decidir modelo; org/tenant; auth P0; migraciones; staging; CI; backups; logs/traces;
+Fase 2  Multi-comercio                  legal baseline; admin mínimo
+Fase 3  Comercialización
+Fase 4  Opcional                        2-5 comercios invitados; import manual; Product/Variant/Offer; looks guardados;
+                                        ficha de producto; evals IA; soporte
+
+                                        Portal; feeds programados/API; RBAC completo; structured catalog search; analytics;
+                                        quotas; SLA de frescura
+
+                                        SaaS/afiliación; billing; partners; mejores assets 3D; autoservicio controlado; DR y
+                                        compliance maduros
+
+                                        Marketplace/checkout, virtual try-on avanzado, closet, colaboración o
+                                        internacionalización amplia si las métricas lo justifican
+
+25.1 Primeras 30 acciones ordenadas
+
+   25. Escribir un one-page: cliente primario, modelo de ingresos, papel en la venta y non-goals de
+       12 meses.
+
+   26. Elegir B2B2C discovery/link-out como hipótesis inicial o documentar otra decisión.
+   27. Diseñar Organization, Membership, Role, Brand, MerchantBrand, Store/Channel.
+   28. Rediseñar Product, Variant, Offer, Inventory, Asset y SourceRecord.
+   29. Elegir estrategia de tenancy y aplicar tenant_id/RLS a recursos nuevos.
+   30. Crear admin mínimo con aprobación/suspensión de comercios y auditoría.
+   31. Mover sesión a cookie HttpOnly/BFF y agregar revocación.
+   32. Agregar verificación de email y recuperación de contraseña.
+   33. Exigir MFA a admin/owner y diseñar break-glass.
+   34. Incorporar rate limiting, CSP, CSRF según sesión y hardening de headers.
+   35. Asegurar uploads y descargas remotas contra malware, decompression bombs y SSRF.
+   36. Adoptar Alembic y probar migraciones sobre PostgreSQL.
+   37. Separar dev/staging/prod y usar secretos distintos.
+   38. Crear Dockerfile de producción del frontend y endurecer el de API.
+   39. Configurar CI con lint, build, tests, scans y migración dry-run.
+   40. Instrumentar request/trace IDs, logs estructurados y errores.
+   41. Definir SLIs/SLOs iniciales y alertas para login, búsqueda, Assistant e imports.
+   42. Configurar backups/PITR y ejecutar un restore drill.
+   43. Crear pipeline de importación con staging, validación, diff y rollback.
+
+                                                                                                                                                   LOOKEATE · 27
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   44. Invitar un comercio piloto y mapear un feed real, sin autoservicio público.
+   45. Crear ficha de producto/variante con fuente, timestamp, precio y stock.
+   46. Persistir looks con versionado, thumbnail y privacidad privada por defecto.
+   47. Definir formato y pipeline glTF/GLB antes de producir assets 3D masivos.
+   48. Agregar alternativas accesibles completas al drag y a la rotación 3D.
+   49. Escribir taxonomía de eventos y medir funnel sin PII innecesaria.
+   50. Construir golden dataset y evals del Assistant por idioma y riesgo.
+   51. Aislar RAG/embeddings por tenant y testear cruces.
+   52. Publicar términos, privacidad, retención y proceso de derechos acorde al alcance.
+   53. Crear help center mínimo, canal de soporte y runbooks de incidentes.
+   54. Revisar métricas del piloto y solo entonces decidir portal autoservicio, afiliación o checkout.
+
+26. Definition of Production Ready
+
+Lookeate no debería considerarse listo para producción abierta hasta que cada bloque P0 tenga
+evidencia, owner y fecha de revisión.
+
+Producto
+
+   · [ ] Modelo comercial, usuario primario, alcance geográfico y papel en la compra aprobados.
+   · [ ] Flujos críticos tienen estados de error, soporte y medición.
+   · [ ] Promesas de IA y fitting son claras y comprobables.
+
+Identidad y permisos
+
+   · [ ] Sesiones no usan localStorage; verificación, recuperación y revocación funcionan.
+   · [ ] MFA en cuentas privilegiadas; matriz de roles testeada.
+   · [ ] Aislamiento multi-tenant probado en DB, búsqueda, cache, storage y exports.
+
+Datos y catálogo
+
+   · [ ] Product/Variant/Offer/Inventory y procedencia definidos.
+   · [ ] Importaciones son idempotentes, auditables, validables y reversibles.
+   · [ ] Precio/stock muestran frescura y degradan de forma segura.
+
+                                                                                                                                                   LOOKEATE · 28
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+Operación
+
+   · [ ] Admin, audit logs, soporte, moderación y feature kill switches disponibles.
+   · [ ] Dashboards, alertas, SLOs, on-call/runbooks e incident process listos.
+   · [ ] Backups restaurados en una prueba reciente dentro del RTO.
+
+Entrega
+
+   · [ ] Ambientes separados; CI/CD produce artefactos inmutables y rollback.
+   · [ ] Migraciones versionadas y compatibles; secretos fuera del repo.
+   · [ ] Cargas, performance y Core Web Vitals verificados en producción-like.
+
+Confianza
+
+   · [ ] Threat model, ASVS/API review, pentest proporcional y remediación.
+   · [ ] Privacidad, términos, consentimiento, retención y derechos implementados.
+   · [ ] WCAG 2.2 AA evaluado; evals de IA y safety pasan umbrales definidos.
+
+27. Preguntas abiertas que conviene resolver antes de más lógica
+
+   55. ¿Quién es el primer cliente que pagaría: usuario final o comercio?
+   56. ¿Lookeate muestra varios comercios a la vez o cada cliente tiene una experiencia
+
+       aislada/white-label?
+   57. ¿Una organización puede operar múltiples marcas y tiendas? ¿Una marca puede estar en
+
+       múltiples organizaciones?
+   58. ¿La venta sucede fuera de Lookeate? Si no, ¿quién es merchant of record?
+   59. ¿Qué frescura mínima se promete para precio y stock?
+   60. ¿Qué países, monedas, idiomas, sistemas de talle y edades se admiten primero?
+   61. ¿Qué datos corporales se recolectarán y cuál es el beneficio verificable de cada uno?
+   62. ¿El maniquí es inspiración o fitting? ¿Qué error es aceptable y cómo se comunica?
+   63. ¿Quién produce y financia assets 3D: Lookeate, el comercio o un proveedor?
+   64. ¿Qué contenido de conversaciones puede ver soporte y bajo qué autorización?
+   65. ¿Los comercios pueden influir en ranking? ¿Cómo se etiqueta patrocinio?
+   66. ¿Qué señales alimentan la memoria y cuánto duran?
+   67. ¿Se permite sharing público, perfiles y remix, o todo permanece privado?
+
+                                                                                                                                                   LOOKEATE · 29
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   68. ¿Qué acciones del Assistant podrían mutar datos o sistemas en el futuro?
+   69. ¿Cuáles son el RPO, RTO y uptime objetivo de la beta?
+   70. ¿Qué límite de costo por usuario/tenant hace sostenible la IA?
+   71. ¿Cuál es el criterio cuantitativo para pasar de link-out a afiliación o marketplace?
+   72. ¿Qué evidencia se necesita para decir que una recomendación mejoró conversión o redujo
+
+       devoluciones?
+
+28. Conclusión
+
+La expansión de Lookeate tiene sentido si se construye alrededor de dos superficies coordinadas: una
+experiencia personal de estilo y una infraestructura comercial confiable. El diferencial visible será el
+Assistant, el estudio manual y eventualmente el 3D; la viabilidad real dependerá de organizaciones,
+catálogo, permisos, administración, seguridad, calidad de datos y operación.
+La decisión más sana es validar valor antes de asumir complejidad transaccional. Con comercios
+invitados, catálogos versionados, looks persistentes, enlaces a tienda y medición rigurosa, Lookeate
+puede aprender si genera descubrimiento y conversión. Si lo demuestra, el mismo modelo de datos y
+controles P0 permiten sumar autoservicio, afiliación, SaaS o marketplace sin rehacer los cimientos.
+
+29. Fuentes y estándares de referencia
+
+Fuentes oficiales o primarias consultadas. Acceso: 14 de agosto de 2026.
+   · [S1] OWASP Application Security Verification Standard 5.0
+   · [S2] OWASP API Security Top 10 2023
+   · [S3] W3C Web Content Accessibility Guidelines 2.2
+   · [S4] OWASP Session Management Cheat Sheet
+   · [S5] NIST SP 800-63-4 Digital Identity Guidelines
+   · [S6] OWASP Password Storage Cheat Sheet
+   · [S7] OWASP File Upload Cheat Sheet
+   · [S8] OWASP Multi-Tenant Security Cheat Sheet
+   · [S9] OWASP RAG Security Cheat Sheet
+   · [S10] EU General Data Protection Regulation
+   · [S11] GS1 Identification Keys and GTIN
+   · [S12] Google Merchant Center Product Data Specification
+   · [S13] NIST AI Risk Management Framework and Generative AI Profile
+
+                                                                                                                                                   LOOKEATE · 30
+LOOKEATE / PRODUCT READINESS BLUEPRINT
+
+   · [S14] Khronos glTF - Runtime 3D Asset Delivery
+   · [S15] OWASP Top 10 for LLM Applications 2025
+   · [S16] OWASP Improper Output Handling for LLM Applications
+   · [S17] SLSA Specification 1.2
+   · [S18] AAIP - Obligaciones de responsables de bases de datos personales
+   · [S19] AAIP - Derechos sobre datos personales
+   · [S20] Comisión Europea - Transparencia del AI Act
+   · [S21] EUR-Lex - Digital Services Act, trazabilidad de traders
+   · [S22] Autoridade Nacional de Proteção de Dados - LGPD
+   · [S23] OpenAPI Specification 3.2
+   · [S24] Next.js - Deploying
+   · [S25] FastAPI - Deployment Concepts
+   · [S26] PostgreSQL - Continuous Archiving and Point-in-Time Recovery
+   · [S27] OpenTelemetry - Observability Primer
+   · [S28] web.dev - Core Web Vitals
+   · [S29] PCI SSC - SAQ A and ecommerce scripts under PCI DSS 4.0.1
+
+Anexo A. Evidencia usada del repositorio
+
+   · README.md y AGENTS.md para alcance actual, módulos, ejecución y notas de arquitectura.
+   · src/infra/db/models/catalog_models.py para entidades de catálogo actuales.
+   · src/infra/db/models/chat_models.py y src/services/auth_service.py para usuario, conversaciones,
+
+       preferencias y auth.
+   · src/frontend/components/providers/auth-provider.tsx para persistencia actual de sesión.
+   · src/frontend/components/style/style-builder.tsx para alcance del estudio manual base.
+   · docker-compose.yml, Dockerfile y src/frontend/Dockerfile.dev para topología de desarrollo.
+   · tests/ para cobertura automatizada visible.
+   · La ausencia se formuló como 'no se observa' tras revisar nombres/archivos relacionados con CI,
+
+       migraciones, admin, billing, observabilidad y despliegue.
+
+                                                                                                                                                   LOOKEATE · 31
+

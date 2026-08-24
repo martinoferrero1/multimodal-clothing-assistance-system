@@ -277,3 +277,4 @@ class ChatTurnResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    checks: dict[str, str] = Field(default_factory=dict)

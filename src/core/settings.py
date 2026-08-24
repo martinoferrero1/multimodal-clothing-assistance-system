@@ -24,6 +24,12 @@ _PLACEHOLDER_SECRET_PARTS = (
     "replace-me",
     "your-secret",
 )
+_SUPPORTED_IMAGE_MIME_TYPES = {
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+}
 
 
 def _parse_list(value: str | list[str] | tuple[str, ...] | None) -> list[str]:
@@ -95,6 +101,33 @@ class Settings(BaseSettings):
     PROVIDER_READINESS_TIMEOUT_SECONDS: float = 5.0
     MAX_CHAT_IMAGE_ATTACHMENTS: int = 3
     MAX_CHAT_IMAGE_UPLOAD_BYTES: int = 4 * 1024 * 1024
+    MAX_CHAT_IMAGE_TOTAL_UPLOAD_BYTES: int = 8 * 1024 * 1024
+    MAX_CHAT_IMAGE_WIDTH: int = 4096
+    MAX_CHAT_IMAGE_HEIGHT: int = 4096
+    MAX_CHAT_IMAGE_PIXELS_PER_FRAME: int = 16_000_000
+    MAX_CHAT_IMAGE_TOTAL_PIXELS: int = 16_000_000
+    MAX_CHAT_IMAGE_FRAMES: int = 1
+    CHAT_IMAGE_ALLOWED_MIME_TYPES: str | list[str] = "image/jpeg,image/png,image/webp,image/gif"
+
+    RATE_LIMIT_REDIS_URL: Optional[str] = None
+    RATE_LIMIT_KEY_SECRET: SecretStr = SecretStr("development-rate-limit-key-secret-change-me")
+    RATE_LIMIT_OPERATION_TIMEOUT_SECONDS: float = 0.25
+    RATE_LIMIT_LOGIN_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_LOGIN_SOURCE_LIMIT: int = 10
+    RATE_LIMIT_LOGIN_ACCOUNT_LIMIT: int = 5
+    RATE_LIMIT_REGISTRATION_WINDOW_SECONDS: int = 3600
+    RATE_LIMIT_REGISTRATION_SOURCE_LIMIT: int = 5
+    RATE_LIMIT_REGISTRATION_ACCOUNT_LIMIT: int = 3
+    RATE_LIMIT_SESSION_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_SESSION_SOURCE_LIMIT: int = 60
+    RATE_LIMIT_MESSAGE_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_MESSAGE_SOURCE_LIMIT: int = 30
+    RATE_LIMIT_MESSAGE_USER_LIMIT: int = 30
+    RATE_LIMIT_IMAGE_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_IMAGE_SOURCE_LIMIT: int = 10
+    RATE_LIMIT_IMAGE_USER_LIMIT: int = 10
+    TRUSTED_BFF_PROXY_HOSTS: str | list[str] = "localhost,127.0.0.1"
+    TRUSTED_BFF_SOURCE_HEADER: str = "x-lookeate-client-source"
 
     GOOGLE_LLM_MODEL: Optional[str] = None
     GROQ_LLM_MODEL: Optional[str] = None
@@ -122,6 +155,12 @@ class Settings(BaseSettings):
     IMAGE_VISUAL_SEARCH_WEIGHT: float = 10.0
     IMAGE_VISUAL_SEARCH_FETCH_TIMEOUT_SECONDS: float = 3.0
     IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES: int = 5 * 1024 * 1024
+    IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES: str | list[str] = "http,https"
+    IMAGE_VISUAL_SEARCH_ALLOWED_MIME_TYPES: str | list[str] = "image/jpeg,image/png,image/webp,image/gif"
+    IMAGE_VISUAL_SEARCH_MAX_REDIRECTS: int = 3
+    IMAGE_VISUAL_SEARCH_CONNECT_TIMEOUT_SECONDS: float = 1.0
+    IMAGE_VISUAL_SEARCH_READ_TIMEOUT_SECONDS: float = 2.0
+    IMAGE_VISUAL_SEARCH_TOTAL_TIMEOUT_SECONDS: float = 5.0
 
     BUSINESS_KNOWLEDGE_DIR: str = "data/business_knowledge"
     BUSINESS_KNOWLEDGE_GLOB: str = "*.knowledge.md"
@@ -135,6 +174,14 @@ class Settings(BaseSettings):
     def validate_environment_policy(self):
         self.ALLOWED_HOSTS = _parse_list(self.ALLOWED_HOSTS)
         self.ALLOWED_ORIGINS = _parse_list(self.ALLOWED_ORIGINS)
+        self.CHAT_IMAGE_ALLOWED_MIME_TYPES = _parse_list(self.CHAT_IMAGE_ALLOWED_MIME_TYPES)
+        self.TRUSTED_BFF_PROXY_HOSTS = _parse_list(self.TRUSTED_BFF_PROXY_HOSTS)
+        self.IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES = [
+            scheme.lower() for scheme in _parse_list(self.IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES)
+        ]
+        self.IMAGE_VISUAL_SEARCH_ALLOWED_MIME_TYPES = _parse_list(
+            self.IMAGE_VISUAL_SEARCH_ALLOWED_MIME_TYPES
+        )
 
         if self.PROVIDER_READINESS_TIMEOUT_SECONDS <= 0:
             raise ValueError("PROVIDER_READINESS_TIMEOUT_SECONDS must be greater than zero")
@@ -148,6 +195,69 @@ class Settings(BaseSettings):
         if self.SESSION_IDLE_MINUTES * 60 > self.SESSION_ABSOLUTE_HOURS * 3600:
             raise ValueError("SESSION_IDLE_MINUTES must not exceed SESSION_ABSOLUTE_HOURS")
 
+        positive_values = {
+            "MAX_CHAT_IMAGE_ATTACHMENTS": self.MAX_CHAT_IMAGE_ATTACHMENTS,
+            "MAX_CHAT_IMAGE_UPLOAD_BYTES": self.MAX_CHAT_IMAGE_UPLOAD_BYTES,
+            "MAX_CHAT_IMAGE_TOTAL_UPLOAD_BYTES": self.MAX_CHAT_IMAGE_TOTAL_UPLOAD_BYTES,
+            "MAX_CHAT_IMAGE_WIDTH": self.MAX_CHAT_IMAGE_WIDTH,
+            "MAX_CHAT_IMAGE_HEIGHT": self.MAX_CHAT_IMAGE_HEIGHT,
+            "MAX_CHAT_IMAGE_PIXELS_PER_FRAME": self.MAX_CHAT_IMAGE_PIXELS_PER_FRAME,
+            "MAX_CHAT_IMAGE_TOTAL_PIXELS": self.MAX_CHAT_IMAGE_TOTAL_PIXELS,
+            "MAX_CHAT_IMAGE_FRAMES": self.MAX_CHAT_IMAGE_FRAMES,
+            "RATE_LIMIT_LOGIN_WINDOW_SECONDS": self.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
+            "RATE_LIMIT_LOGIN_SOURCE_LIMIT": self.RATE_LIMIT_LOGIN_SOURCE_LIMIT,
+            "RATE_LIMIT_LOGIN_ACCOUNT_LIMIT": self.RATE_LIMIT_LOGIN_ACCOUNT_LIMIT,
+            "RATE_LIMIT_REGISTRATION_WINDOW_SECONDS": self.RATE_LIMIT_REGISTRATION_WINDOW_SECONDS,
+            "RATE_LIMIT_REGISTRATION_SOURCE_LIMIT": self.RATE_LIMIT_REGISTRATION_SOURCE_LIMIT,
+            "RATE_LIMIT_REGISTRATION_ACCOUNT_LIMIT": self.RATE_LIMIT_REGISTRATION_ACCOUNT_LIMIT,
+            "RATE_LIMIT_SESSION_WINDOW_SECONDS": self.RATE_LIMIT_SESSION_WINDOW_SECONDS,
+            "RATE_LIMIT_SESSION_SOURCE_LIMIT": self.RATE_LIMIT_SESSION_SOURCE_LIMIT,
+            "RATE_LIMIT_MESSAGE_WINDOW_SECONDS": self.RATE_LIMIT_MESSAGE_WINDOW_SECONDS,
+            "RATE_LIMIT_MESSAGE_SOURCE_LIMIT": self.RATE_LIMIT_MESSAGE_SOURCE_LIMIT,
+            "RATE_LIMIT_MESSAGE_USER_LIMIT": self.RATE_LIMIT_MESSAGE_USER_LIMIT,
+            "RATE_LIMIT_IMAGE_WINDOW_SECONDS": self.RATE_LIMIT_IMAGE_WINDOW_SECONDS,
+            "RATE_LIMIT_IMAGE_SOURCE_LIMIT": self.RATE_LIMIT_IMAGE_SOURCE_LIMIT,
+            "RATE_LIMIT_IMAGE_USER_LIMIT": self.RATE_LIMIT_IMAGE_USER_LIMIT,
+            "IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES": self.IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES,
+            "IMAGE_VISUAL_SEARCH_MAX_REDIRECTS": self.IMAGE_VISUAL_SEARCH_MAX_REDIRECTS,
+        }
+        if any(value <= 0 for value in positive_values.values()):
+            invalid_name = next(name for name, value in positive_values.items() if value <= 0)
+            raise ValueError(f"{invalid_name} must be greater than zero")
+        if self.MAX_CHAT_IMAGE_TOTAL_UPLOAD_BYTES < self.MAX_CHAT_IMAGE_UPLOAD_BYTES:
+            raise ValueError("MAX_CHAT_IMAGE_TOTAL_UPLOAD_BYTES must not be smaller than MAX_CHAT_IMAGE_UPLOAD_BYTES")
+        if self.MAX_CHAT_IMAGE_TOTAL_PIXELS < self.MAX_CHAT_IMAGE_PIXELS_PER_FRAME:
+            raise ValueError("MAX_CHAT_IMAGE_TOTAL_PIXELS must not be smaller than MAX_CHAT_IMAGE_PIXELS_PER_FRAME")
+        if self.RATE_LIMIT_OPERATION_TIMEOUT_SECONDS <= 0:
+            raise ValueError("RATE_LIMIT_OPERATION_TIMEOUT_SECONDS must be greater than zero")
+        if min(
+            self.IMAGE_VISUAL_SEARCH_CONNECT_TIMEOUT_SECONDS,
+            self.IMAGE_VISUAL_SEARCH_READ_TIMEOUT_SECONDS,
+            self.IMAGE_VISUAL_SEARCH_TOTAL_TIMEOUT_SECONDS,
+        ) <= 0:
+            raise ValueError("IMAGE_VISUAL_SEARCH timeouts must be greater than zero")
+        if self.IMAGE_VISUAL_SEARCH_TOTAL_TIMEOUT_SECONDS < max(
+            self.IMAGE_VISUAL_SEARCH_CONNECT_TIMEOUT_SECONDS,
+            self.IMAGE_VISUAL_SEARCH_READ_TIMEOUT_SECONDS,
+        ):
+            raise ValueError("IMAGE_VISUAL_SEARCH_TOTAL_TIMEOUT_SECONDS must cover connect and read timeouts")
+        if not self.CHAT_IMAGE_ALLOWED_MIME_TYPES or not set(self.CHAT_IMAGE_ALLOWED_MIME_TYPES).issubset(_SUPPORTED_IMAGE_MIME_TYPES):
+            raise ValueError("CHAT_IMAGE_ALLOWED_MIME_TYPES must contain supported image MIME types")
+        if not self.IMAGE_VISUAL_SEARCH_ALLOWED_MIME_TYPES or not set(
+            self.IMAGE_VISUAL_SEARCH_ALLOWED_MIME_TYPES
+        ).issubset(_SUPPORTED_IMAGE_MIME_TYPES):
+            raise ValueError("IMAGE_VISUAL_SEARCH_ALLOWED_MIME_TYPES must contain supported image MIME types")
+        if not self.IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES or any(
+            scheme not in {"http", "https"} for scheme in self.IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES
+        ):
+            raise ValueError("IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES must contain only http and https")
+        if not self.TRUSTED_BFF_PROXY_HOSTS or any(
+            not _is_explicit_host(host) for host in self.TRUSTED_BFF_PROXY_HOSTS
+        ):
+            raise ValueError("TRUSTED_BFF_PROXY_HOSTS must contain explicit hosts")
+        if not self.TRUSTED_BFF_SOURCE_HEADER.startswith("x-"):
+            raise ValueError("TRUSTED_BFF_SOURCE_HEADER must be a private x- header")
+
         if self.APP_ENV not in _DEPLOYED_ENVIRONMENTS:
             self.PUBLIC_APP_URL = self.PUBLIC_APP_URL or "http://localhost:3000"
             self.ALLOWED_HOSTS = self.ALLOWED_HOSTS or ["localhost", "127.0.0.1"]
@@ -156,6 +266,17 @@ class Settings(BaseSettings):
 
         if not self.DATABASE_URL.lower().startswith("postgresql"):
             raise ValueError("DATABASE_URL must use PostgreSQL in staging and production")
+
+        if not self.RATE_LIMIT_REDIS_URL or not self.RATE_LIMIT_REDIS_URL.lower().startswith(("redis://", "rediss://")):
+            raise ValueError("RATE_LIMIT_REDIS_URL must use Redis in staging and production")
+        rate_key_secret = self.RATE_LIMIT_KEY_SECRET.get_secret_value()
+        normalized_rate_key_secret = rate_key_secret.strip().lower()
+        if len(rate_key_secret) < 32:
+            raise ValueError("RATE_LIMIT_KEY_SECRET must be at least 32 characters in staging and production")
+        if normalized_rate_key_secret in _KNOWN_AUTH_SECRETS or any(
+            marker in normalized_rate_key_secret for marker in _PLACEHOLDER_SECRET_PARTS
+        ):
+            raise ValueError("RATE_LIMIT_KEY_SECRET must not be a known or placeholder value")
 
         csrf_secret = self.SESSION_CSRF_SECRET.get_secret_value()
         normalized_secret = csrf_secret.strip().lower()

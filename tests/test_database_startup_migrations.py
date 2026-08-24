@@ -23,6 +23,7 @@ from core.metaclasses.singleton_meta import SingletonMeta
 from infra.db.database import Database
 from infra.db.migration_state import MigrationRevisionError, require_current_revision
 from scripts.seed_db import seed_catalog
+from services.rate_limit_service import RateLimitUnavailable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -216,6 +217,42 @@ def test_provider_readiness_failure_stops_before_database_initialization(
         asyncio.run(exercise_lifespan())
 
     assert calls == ["provider-readiness"]
+
+
+def test_deployed_limiter_readiness_failure_stops_before_database_initialization(
+    monkeypatch, app_module
+) -> None:
+    calls: list[str] = []
+
+    class FailingLimiter:
+        async def ready(self):
+            calls.append("limiter-readiness")
+            raise RateLimitUnavailable
+
+    async def provider_readiness(app):
+        calls.append("provider-readiness")
+
+    def create_limiter():
+        calls.append("limiter-create")
+        return FailingLimiter()
+
+    monkeypatch.setattr(app_module.settings, "APP_ENV", "production")
+    monkeypatch.setattr(app_module, "run_provider_readiness_gate", provider_readiness)
+    monkeypatch.setattr(app_module, "create_rate_limiter", create_limiter)
+    monkeypatch.setattr(
+        app_module,
+        "Database",
+        lambda: pytest.fail("database must not initialize before limiter readiness"),
+    )
+
+    async def exercise_lifespan():
+        async with app_module.lifespan(app_module.app):
+            pass
+
+    with pytest.raises(RateLimitUnavailable):
+        asyncio.run(exercise_lifespan())
+
+    assert calls == ["provider-readiness", "limiter-create", "limiter-readiness"]
 
 
 def test_api_health_starts_at_head_without_emitting_ddl(

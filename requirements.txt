@@ -13,6 +13,7 @@ python-dotenv
 email-validator
 python-multipart
 Pillow
+redis>=5,<7
 langchain-core
 langchain-groq
 langchain-google-genai

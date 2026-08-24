@@ -23,6 +23,8 @@ def deployed_settings(**overrides) -> Settings:
         "PUBLIC_APP_URL": "https://app.lookeate.example",
         "ALLOWED_HOSTS": "app.lookeate.example",
         "ALLOWED_ORIGINS": "https://app.lookeate.example",
+        "RATE_LIMIT_REDIS_URL": "rediss://rate-limiter.lookeate.example:6380/0",
+        "RATE_LIMIT_KEY_SECRET": "a-valid-random-rate-limit-key-secret-value-1234567890",
         "GOOGLE_LLM_MODEL": "llm-model",
         "GOOGLE_EMBEDDING_MODEL": "embedding-model",
         "GOOGLE_IMAGE_ANALYSIS_MODEL": "image-model",

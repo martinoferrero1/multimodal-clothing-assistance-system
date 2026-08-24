@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import os
 import sys
 from logging.handlers import RotatingFileHandler
@@ -23,6 +24,36 @@ class MultilineFormatter(logging.Formatter):
         return "\n".join([first_line, *(f"    {line}" for line in remaining_lines)])
 
 
+_SENSITIVE_FIELDS = {"password", "token", "secret", "cookie", "authorization", "api_key"}
+
+
+class JsonFormatter(logging.Formatter):
+    """Emit allowlisted log metadata without credentials or cookie values."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": self._redact(record.getMessage()),
+        }
+        request_id = getattr(record, "request_id", None)
+        if request_id:
+            payload["request_id"] = str(request_id)
+        if record.exc_info:
+            payload["exception"] = record.exc_info[0].__name__
+        return json.dumps(payload, separators=(",", ":"))
+
+    def _redact(self, value: object) -> str:
+        text = str(value)
+        lowered = text.lower()
+        for field in _SENSITIVE_FIELDS:
+            marker = f"{field}="
+            if marker in lowered:
+                return f"[REDACTED {field}]"
+        return text
+
+
 def setup_logging(
     *,
     log_file: str | os.PathLike[str] | None = None,
@@ -41,14 +72,8 @@ def setup_logging(
         root_logger.setLevel(level)
         return log_path
 
-    console_formatter = MultilineFormatter(
-        fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-        datefmt="%H:%M:%S",
-    )
-    file_formatter = MultilineFormatter(
-        fmt="%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    console_formatter = JsonFormatter()
+    file_formatter = JsonFormatter()
 
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(console_formatter)

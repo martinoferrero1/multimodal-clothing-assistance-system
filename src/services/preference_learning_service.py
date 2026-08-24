@@ -126,7 +126,7 @@ THIRD_PARTY_MARKERS = (
     "para mi novia",
 )
 POSITIVE_PATTERNS = (
-    re.compile(r"\b(?:i\s+(?:like|love|prefer)|me\s+(?:gusta|gustan|encanta|encantan)|prefiero)\b(?P<tail>[^.?!;]{1,90})", re.IGNORECASE),
+    re.compile(r"\b(?:i\s+(?:like|love|prefer)|(?<!no\s)me\s+(?:gusta|gustan|encanta|encantan)|prefiero)\b(?P<tail>[^.?!;]{1,90})", re.IGNORECASE),
     re.compile(r"\b(?:suelo\s+(?:usar|buscar|comprar)|usually\s+(?:wear|search|buy))\b(?P<tail>[^.?!;]{1,90})", re.IGNORECASE),
 )
 NEGATIVE_PATTERNS = (

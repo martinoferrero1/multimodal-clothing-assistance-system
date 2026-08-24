@@ -19,6 +19,8 @@ DEPLOYED_SETTINGS = {
     "PUBLIC_APP_URL": "https://app.lookeate.example",
     "ALLOWED_HOSTS": "app.lookeate.example,api.lookeate.example",
     "ALLOWED_ORIGINS": '["https://app.lookeate.example"]',
+    "RATE_LIMIT_REDIS_URL": "rediss://rate-limiter.lookeate.example:6380/0",
+    "RATE_LIMIT_KEY_SECRET": "a-valid-random-rate-limit-key-secret-value-1234567890",
 }
 
 
@@ -60,6 +62,7 @@ def test_deployed_environments_accept_valid_configuration(app_env: str) -> None:
     assert configured.ALLOWED_HOSTS == ["app.lookeate.example", "api.lookeate.example"]
     assert configured.ALLOWED_ORIGINS == ["https://app.lookeate.example"]
     assert "valid-random" not in repr(configured.SESSION_CSRF_SECRET)
+    assert "valid-random" not in repr(configured.RATE_LIMIT_KEY_SECRET)
 
 
 def test_app_env_is_required_and_unknown_values_are_rejected(monkeypatch) -> None:
@@ -157,3 +160,34 @@ def test_session_configuration_rejects_invalid_lifetimes_and_deployed_cookie_pol
         overrides = DEPLOYED_SETTINGS | overrides
     with pytest.raises(ValidationError, match=field):
         build_settings(APP_ENV=environment, **overrides)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("RATE_LIMIT_REDIS_URL", None),
+        ("RATE_LIMIT_REDIS_URL", "http://not-redis.example"),
+        ("RATE_LIMIT_KEY_SECRET", "short"),
+        ("RATE_LIMIT_KEY_SECRET", "replace-me-with-a-rate-limit-secret"),
+    ],
+)
+def test_deployed_environments_reject_missing_shared_rate_limit_enforcement(
+    field: str, value: object
+) -> None:
+    with pytest.raises(ValidationError, match=field):
+        build_settings(APP_ENV="production", **(DEPLOYED_SETTINGS | {field: value}))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("MAX_CHAT_IMAGE_TOTAL_UPLOAD_BYTES", 1),
+        ("MAX_CHAT_IMAGE_TOTAL_PIXELS", 1),
+        ("CHAT_IMAGE_ALLOWED_MIME_TYPES", "image/jpeg,image/svg+xml"),
+        ("IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES", "file,http"),
+        ("IMAGE_VISUAL_SEARCH_TOTAL_TIMEOUT_SECONDS", 0.5),
+    ],
+)
+def test_security_budget_configuration_rejects_unsafe_values(field: str, value: object) -> None:
+    with pytest.raises(ValidationError, match=field):
+        build_settings(**{field: value})
