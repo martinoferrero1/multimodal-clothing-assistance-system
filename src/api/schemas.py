@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 import uuid
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
 from pydantic import field_validator, model_validator
 from schemas.image_analysis import ImageAnalysisResult
 from schemas.outfit_maker.product_solicitation import (
@@ -191,6 +191,151 @@ class UserRead(BaseModel):
 class AuthResponse(BaseModel):
     user: UserRead
     csrf_token: str
+    selected_store: "SelectedStoreRead | None" = None
+
+
+class SelectedStoreRead(BaseModel):
+    id: str
+    display_name: str
+    handle: str
+    status: str
+    email_verified: bool
+    mfa_enrolled: bool
+    mfa_confirmed: bool
+
+
+class StoreRegistration(BaseModel):
+    owner_display_name: str = Field(min_length=1, max_length=120)
+    owner_email: EmailStr
+    owner_password: str = Field(min_length=8, max_length=128)
+    legal_name: str = Field(min_length=1, max_length=255)
+    display_name: str = Field(min_length=1, max_length=255)
+    handle: str = Field(min_length=3, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    jurisdiction: str = Field(min_length=2, max_length=64)
+    business_identifier: str = Field(min_length=1, max_length=128)
+    address: str = Field(min_length=1, max_length=2000)
+    contact_email: EmailStr
+    contact_phone: str = Field(min_length=3, max_length=64)
+
+
+class StoreRegistrationAcknowledgement(BaseModel):
+    accepted: bool = True
+
+
+class StoreEmailVerification(BaseModel):
+    verification_value: str = Field(min_length=16, max_length=512)
+
+
+class StoreMfaConfirmation(BaseModel):
+    code: str = Field(min_length=6, max_length=8, pattern=r"^\d+$")
+
+
+class StoreMfaEnrollmentRead(BaseModel):
+    provisioning_uri: str
+
+
+class StoreStatusRead(BaseModel):
+    selected_store: SelectedStoreRead | None
+
+
+class StoreSelection(BaseModel):
+    handle: str = Field(min_length=3, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+class StoreDecision(BaseModel):
+    handle: str = Field(min_length=3, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+class StoreOwnershipTransfer(BaseModel):
+    handle: str = Field(min_length=3, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    recipient_email: EmailStr
+    totp_code: str = Field(min_length=6, max_length=8, pattern=r"^\d+$")
+
+
+class StoreInventoryItemWrite(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    external_id: str = Field(
+        min_length=1,
+        max_length=128,
+        validation_alias=AliasChoices("external_id", "externalId", "sku", "id"),
+    )
+    product_display_name: str = Field(
+        min_length=1,
+        max_length=255,
+        validation_alias=AliasChoices("product_display_name", "productDisplayName", "name"),
+    )
+    price: float | None = Field(default=None, ge=0, le=10_000_000)
+    gender: str | None = Field(default=None, max_length=80)
+    master_category: str | None = Field(
+        default=None, max_length=120, validation_alias=AliasChoices("master_category", "masterCategory")
+    )
+    sub_category: str | None = Field(
+        default=None, max_length=120, validation_alias=AliasChoices("sub_category", "subCategory")
+    )
+    article_type: str | None = Field(
+        default=None, max_length=120, validation_alias=AliasChoices("article_type", "articleType")
+    )
+    base_colour: str | None = Field(
+        default=None, max_length=120, validation_alias=AliasChoices("base_colour", "baseColour")
+    )
+    colour1: str | None = Field(default=None, max_length=120)
+    colour2: str | None = Field(default=None, max_length=120)
+    season: str | None = Field(default=None, max_length=80)
+    year: int | None = Field(default=None, ge=1900, le=2100)
+    usage: str | None = Field(default=None, max_length=120)
+    brand: str | None = Field(default=None, max_length=120)
+    description: str | None = Field(default=None, max_length=10_000)
+    details: dict[str, Any] = Field(default_factory=dict, validation_alias=AliasChoices("details", "metadata"))
+    image_top: str | None = Field(default=None, max_length=4096)
+    image_back: str | None = Field(default=None, max_length=4096)
+    image_search: str | None = Field(default=None, max_length=4096)
+    image_default: str | None = Field(default=None, max_length=4096)
+    image_left: str | None = Field(default=None, max_length=4096)
+    image_front: str | None = Field(default=None, max_length=4096)
+    image_right: str | None = Field(default=None, max_length=4096)
+
+    @field_validator(
+        "external_id", "product_display_name", "gender", "master_category", "sub_category", "article_type",
+        "base_colour", "colour1", "colour2", "season", "usage", "brand", "description",
+        "image_top", "image_back", "image_search", "image_default", "image_left", "image_front", "image_right",
+        mode="before",
+    )
+    @classmethod
+    def clean_text(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+
+class StoreInventoryImport(BaseModel):
+    items: list[StoreInventoryItemWrite] = Field(min_length=1, max_length=2000)
+
+    @model_validator(mode="after")
+    def require_unique_external_ids(self):
+        seen: set[str] = set()
+        for item in self.items:
+            key = item.external_id.casefold()
+            if key in seen:
+                raise ValueError("Inventory items must use distinct external IDs")
+            seen.add(key)
+        return self
+
+
+class StoreInventoryItemRead(StoreInventoryItemWrite):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    details: dict[str, Any] | None = None
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class StoreInventoryImportRead(BaseModel):
+    created_count: int
+    updated_count: int
+    total_count: int
 
 
 class ConversationCreate(BaseModel):

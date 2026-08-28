@@ -16,6 +16,8 @@ from api.routes.conversations import router as conversations_router
 from api.routes.health import router as health_router
 from api.routes.users import router as users_router
 from api.routes.auth import router as auth_router
+from api.routes.stores import router as stores_router
+from api.routes.store_inventory import router as store_inventory_router
 from api.metrics import RuntimeMetrics
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -126,5 +128,7 @@ async def protect_unsafe_browser_requests(request: Request, call_next):
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(stores_router)
+app.include_router(store_inventory_router)
 app.include_router(users_router)
 app.include_router(conversations_router)

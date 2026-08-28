@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException, Request, status
 from infra.db.database import Database
 from infra.db.models.chat_models import ChatUser
 from services.auth_service import AuthenticationService, CurrentSession
+from services.store_service import CommercialContext, StoreService
 from services.conversation_runtime_service import ConversationRuntimeService
 from services.conversation_service import ConversationService
 from services.rate_limit_service import (
@@ -66,6 +67,7 @@ async def enforce_rate_limit(
     policy_name: str,
     *,
     account: str | None = None,
+    store: str | None = None,
     user_id: str | None = None,
     limiter: RateLimiter | None = None,
 ) -> None:
@@ -78,6 +80,8 @@ async def enforce_rate_limit(
             values.append(pseudonymous_key(f"account:{(account or '').strip().lower()}"))
         elif dimension.name == "user":
             values.append(pseudonymous_key(f"user:{user_id or ''}"))
+        elif dimension.name == "store":
+            values.append(pseudonymous_key(f"store:{(store or '').strip().lower()}"))
         else:  # pragma: no cover - guards future policy additions
             raise ValueError("Unsupported rate-limit dimension")
     try:
@@ -131,3 +135,10 @@ async def get_rate_limited_current_session(
 
 async def get_current_user(current: CurrentSession = Depends(get_current_session)) -> ChatUser:
     return current.user
+
+
+async def get_commercial_context(
+    current: CurrentSession = Depends(get_current_session),
+    session: AsyncSession = Depends(get_db_session),
+) -> CommercialContext:
+    return await StoreService().commercial_context(session, current)

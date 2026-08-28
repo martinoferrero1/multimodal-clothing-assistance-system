@@ -12,6 +12,7 @@ from api.schemas import AuthResponse, UserLogin, UserRegister
 from core.settings import settings
 from fastapi import APIRouter, Depends, Request, Response, status
 from services.auth_service import AuthenticationService, CurrentSession
+from services.store_service import StoreService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -47,15 +48,24 @@ async def login_user(
         session, payload, request.cookies.get(settings.SESSION_COOKIE_NAME)
     )
     issue_session_cookie(response, issued.token, issued.session.absolute_expires_at)
-    return auth_service.build_auth_response(issued)
+    selected = await StoreService().selected_status(
+        session, CurrentSession(user=issued.user, session=issued.session)
+    )
+    return auth_service.build_auth_response(issued, selected.selected_store)
 
 
 @router.get("/session", response_model=AuthResponse)
 async def restore_session(
     current: CurrentSession = Depends(get_rate_limited_current_session),
+    session: AsyncSession = Depends(get_db_session),
     auth_service: AuthenticationService = Depends(get_auth_service),
 ) -> AuthResponse:
-    return AuthResponse(user=auth_service.build_user_read(current.user), csrf_token=auth_service.csrf_token(current.session))
+    selected = await StoreService().selected_status(session, current)
+    return AuthResponse(
+        user=auth_service.build_user_read(current.user),
+        csrf_token=auth_service.csrf_token(current.session),
+        selected_store=selected.selected_store,
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

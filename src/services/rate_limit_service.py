@@ -89,6 +89,40 @@ def policy_for(name: str, configured: Settings = settings) -> RateLimitPolicy:
             "image", configured.RATE_LIMIT_IMAGE_WINDOW_SECONDS,
             (RateLimitDimension("source", configured.RATE_LIMIT_IMAGE_SOURCE_LIMIT), RateLimitDimension("user", configured.RATE_LIMIT_IMAGE_USER_LIMIT)),
         ),
+        "store_registration": RateLimitPolicy(
+            "store_registration", configured.RATE_LIMIT_STORE_REGISTRATION_WINDOW_SECONDS,
+            (
+                RateLimitDimension("source", configured.RATE_LIMIT_STORE_REGISTRATION_SOURCE_LIMIT),
+                RateLimitDimension("account", configured.RATE_LIMIT_STORE_REGISTRATION_ACCOUNT_LIMIT),
+                RateLimitDimension("store", configured.RATE_LIMIT_STORE_REGISTRATION_STORE_LIMIT),
+            ),
+        ),
+        "store_verification": RateLimitPolicy(
+            "store_verification", configured.RATE_LIMIT_STORE_VERIFICATION_WINDOW_SECONDS,
+            (RateLimitDimension("source", configured.RATE_LIMIT_STORE_VERIFICATION_SOURCE_LIMIT),),
+        ),
+        "store_mfa": RateLimitPolicy(
+            "store_mfa", configured.RATE_LIMIT_STORE_MFA_WINDOW_SECONDS,
+            (
+                RateLimitDimension("source", configured.RATE_LIMIT_STORE_MFA_SOURCE_LIMIT),
+                RateLimitDimension("user", configured.RATE_LIMIT_STORE_MFA_USER_LIMIT),
+            ),
+        ),
+        "store_approval": RateLimitPolicy(
+            "store_approval", configured.RATE_LIMIT_STORE_APPROVAL_WINDOW_SECONDS,
+            (
+                RateLimitDimension("source", configured.RATE_LIMIT_STORE_APPROVAL_SOURCE_LIMIT),
+                RateLimitDimension("user", configured.RATE_LIMIT_STORE_APPROVAL_USER_LIMIT),
+            ),
+        ),
+        "store_inventory": RateLimitPolicy(
+            "store_inventory", configured.RATE_LIMIT_STORE_INVENTORY_WINDOW_SECONDS,
+            (
+                RateLimitDimension("source", configured.RATE_LIMIT_STORE_INVENTORY_SOURCE_LIMIT),
+                RateLimitDimension("user", configured.RATE_LIMIT_STORE_INVENTORY_USER_LIMIT),
+                RateLimitDimension("store", configured.RATE_LIMIT_STORE_INVENTORY_STORE_LIMIT),
+            ),
+        ),
     }
     return policies[name]
 

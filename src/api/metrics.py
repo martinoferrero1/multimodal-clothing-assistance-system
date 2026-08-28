@@ -14,6 +14,7 @@ class RuntimeMetrics:
         self.latency_seconds = 0.0
         self.readiness_failures = 0
         self._routes: defaultdict[str, int] = defaultdict(int)
+        self._store_identity_events: defaultdict[tuple[str, str], int] = defaultdict(int)
 
     def observe_request(self, route: str, duration: float, status_code: int) -> None:
         with self._lock:
@@ -30,6 +31,10 @@ class RuntimeMetrics:
     def observe_readiness_failure(self) -> None:
         with self._lock:
             self.readiness_failures += 1
+
+    def observe_store_identity_event(self, event: str, outcome: str) -> None:
+        with self._lock:
+            self._store_identity_events[(event, outcome)] += 1
 
     def prometheus(self) -> str:
         with self._lock:
@@ -49,6 +54,12 @@ class RuntimeMetrics:
                     f"lookeate_dependency_failures_total {self.dependency_failures}",
                     "# TYPE lookeate_readiness_failures_total counter",
                     f"lookeate_readiness_failures_total {self.readiness_failures}",
+                    "# HELP lookeate_store_identity_events_total Non-PII commercial identity events.",
+                    "# TYPE lookeate_store_identity_events_total counter",
+                    *(
+                        f'lookeate_store_identity_events_total{{event="{event}",outcome="{outcome}"}} {count}'
+                        for (event, outcome), count in sorted(self._store_identity_events.items())
+                    ),
                     "",
                 )
             )

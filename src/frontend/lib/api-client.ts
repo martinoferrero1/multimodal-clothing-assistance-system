@@ -1,7 +1,8 @@
 import type {
   AuthResponse, ChatMessage, ChatTurnResponse, Conversation, ConversationStylePreferencesUpdate,
-  ConversationUpdate, HealthResponse, SearchPreferences, SearchPriorityField, UserStylePreferences,
-  UserStylePreferencesUpdate,
+  ConversationUpdate, HealthResponse, MfaEnrollmentResponse, SearchPreferences, SearchPriorityField,
+  StoreRegistrationRequest, StoreStatusResponse, UserStylePreferences, UserStylePreferencesUpdate,
+  StoreInventoryImportResponse, StoreInventoryItem, StoreInventoryItemWrite,
 } from "@/lib/types";
 
 type RequestOptions = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown };
@@ -52,6 +53,14 @@ async function apiFormRequest<T>(path: string, body: FormData): Promise<T> {
 export const login = (email: string, password: string) => apiRequest<AuthResponse>("api/auth/login", { method: "POST", body: { email, password } });
 export const register = (displayName: string, email: string, password: string) => apiRequest<AuthResponse>("api/auth/register", { method: "POST", body: { display_name: displayName, email, password } });
 export const restoreSession = () => apiRequest<AuthResponse>("api/auth/session");
+export const registerStore = (payload: StoreRegistrationRequest) => apiRequest<AuthResponse>("api/auth/store/register", { method: "POST", body: payload });
+export const verifyStoreEmail = (verificationValue: string) => apiRequest<AuthResponse>("api/auth/store/verify-email", { method: "POST", body: { verification_value: verificationValue } });
+export const getStoreStatus = () => apiRequest<StoreStatusResponse>("api/auth/store/status");
+export const enrollStoreMfa = () => apiRequest<MfaEnrollmentResponse>("api/auth/store/mfa/enroll", { method: "POST" });
+export const confirmStoreMfa = (code: string) => apiRequest<StoreStatusResponse>("api/auth/store/mfa/confirm", { method: "POST", body: { code } });
+export const listStoreInventory = () => apiRequest<StoreInventoryItem[]>("api/store/inventory/items");
+export const createStoreInventoryItem = (payload: StoreInventoryItemWrite) => apiRequest<StoreInventoryItem>("api/store/inventory/items", { method: "POST", body: payload });
+export const importStoreInventory = (items: StoreInventoryItemWrite[]) => apiRequest<StoreInventoryImportResponse>("api/store/inventory/import", { method: "POST", body: { items } });
 export const logout = () => apiRequest<void>("api/auth/logout", { method: "POST" });
 export const logoutAll = () => apiRequest<void>("api/auth/logout-all", { method: "POST" });
 export const getHealth = () => apiRequest<HealthResponse>("health");

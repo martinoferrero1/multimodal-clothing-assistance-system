@@ -11,6 +11,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 
 from infra.db.migration_metadata import application_metadata
 from infra.db.migration_state import (
@@ -124,6 +125,139 @@ def test_session_downgrade_preserves_non_session_data_and_reupgrades(tmp_path: P
             assert connection.scalar(text("SELECT count(*) FROM chat_users")) == 1
         command.upgrade(_config(database_url), "head")
         assert "auth_sessions" in set(inspect(engine).get_table_names())
+        assert current_database_heads(engine) == repository_heads()
+    finally:
+        engine.dispose()
+
+
+def test_commercial_identity_upgrade_backfills_consumers_and_cleanly_downgrades(tmp_path: Path) -> None:
+    database_url = _url(tmp_path / "commercial-identity.sqlite")
+    config = _config(database_url)
+    command.upgrade(config, "20260817_0002")
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO chat_users (id, display_name) "
+                    "VALUES ('existing-user', 'Existing user')"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO conversations "
+                    "(id, user_id, title, is_pinned, summary_message_count) "
+                    "VALUES ('existing-conversation', 'existing-user', 'Existing', 0, 0)"
+                )
+            )
+        command.upgrade(config, "head")
+
+        inspector = inspect(engine)
+        assert {
+            "stores",
+            "store_inventory_items",
+            "store_memberships",
+            "store_verification_tokens",
+            "user_mfa_credentials",
+            "store_security_events",
+        } <= set(inspector.get_table_names())
+        assert {column["name"] for column in inspector.get_columns("chat_users")} >= {
+            "account_kind",
+            "email_verified_at",
+        }
+        assert "active_store_id" in {
+            column["name"] for column in inspector.get_columns("auth_sessions")
+        }
+        assert "ck_stores_status" in {
+            constraint["name"] for constraint in inspector.get_check_constraints("stores")
+        }
+        assert {
+            "uq_stores_public_handle",
+            "uq_stores_jurisdiction_business_identifier",
+        } <= {
+            constraint["name"] for constraint in inspector.get_unique_constraints("stores")
+        }
+        assert "fk_auth_sessions_active_store_id_stores" in {
+            foreign_key["name"] for foreign_key in inspector.get_foreign_keys("auth_sessions")
+        }
+        assert "fk_store_inventory_items_store_id_stores" in {
+            foreign_key["name"] for foreign_key in inspector.get_foreign_keys("store_inventory_items")
+        }
+        with engine.connect() as connection:
+            owner_index_sql = connection.scalar(
+                text(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type = 'index' AND name = 'uq_store_memberships_active_owner'"
+                )
+            )
+        assert owner_index_sql is not None
+        assert "WHERE role = 'owner' AND revoked_at IS NULL" in owner_index_sql
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT count(*) FROM chat_users")) == 1
+            assert connection.scalar(text("SELECT count(*) FROM conversations")) == 1
+            assert connection.scalar(
+                text("SELECT account_kind FROM chat_users WHERE id = 'existing-user'")
+            ) == "consumer"
+            assert connection.scalar(text("SELECT count(*) FROM stores")) == 0
+            assert connection.scalar(text("SELECT count(*) FROM store_memberships")) == 0
+            assert compare_application_schema(connection).equivalent
+
+        command.downgrade(config, "20260817_0002")
+        inspector = inspect(engine)
+        assert "stores" not in set(inspector.get_table_names())
+        assert "account_kind" not in {column["name"] for column in inspector.get_columns("chat_users")}
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT count(*) FROM chat_users")) == 1
+            assert connection.scalar(text("SELECT count(*) FROM conversations")) == 1
+
+        command.upgrade(config, "head")
+        with engine.connect() as connection:
+            assert connection.scalar(
+                text("SELECT account_kind FROM chat_users WHERE id = 'existing-user'")
+            ) == "consumer"
+    finally:
+        engine.dispose()
+
+
+def test_commercial_identity_enforces_one_active_owner_and_refuses_data_loss(tmp_path: Path) -> None:
+    database_url = _url(tmp_path / "commercial-owner.sqlite")
+    config = _config(database_url)
+    _upgrade(database_url)
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO chat_users (id, display_name) VALUES "
+                    "('store-owner-a', 'Owner A'), ('store-owner-b', 'Owner B')"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO stores "
+                    "(id, legal_name, display_name, public_handle, jurisdiction, "
+                    "business_identifier, address, contact_email, contact_phone) VALUES "
+                    "('store-a', 'Store A LLC', 'Store A', 'store-a', 'ES', 'A-1', "
+                    "'Address', 'store@example.com', '+34123456789')"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO store_memberships (id, store_id, user_id, role) "
+                    "VALUES ('membership-a', 'store-a', 'store-owner-a', 'owner')"
+                )
+            )
+            with pytest.raises(IntegrityError):
+                with connection.begin_nested():
+                    connection.execute(
+                        text(
+                            "INSERT INTO store_memberships (id, store_id, user_id, role) "
+                            "VALUES ('membership-b', 'store-a', 'store-owner-b', 'owner')"
+                        )
+                    )
+
+        with pytest.raises(RuntimeError, match="would discard data"):
+            command.downgrade(config, "20260817_0002")
         assert current_database_heads(engine) == repository_heads()
     finally:
         engine.dispose()

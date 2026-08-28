@@ -2,6 +2,7 @@
 
 import { startTransition, useEffect, useState } from "react";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -67,6 +68,17 @@ export function RegisterForm() {
       footerHref="/login"
       footerAction={t("auth.register.signIn")}
     >
+      <div className="mb-8 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-[var(--accent)] bg-[var(--surface)] px-4 py-3 text-sm font-semibold text-[var(--text)]">
+          {t("auth.register.personalOption")}
+        </div>
+        <Link
+          className="rounded-lg border border-[var(--line)] px-4 py-3 text-sm font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
+          href="/store/register"
+        >
+          {t("auth.register.storeOption")}
+        </Link>
+      </div>
       <form className="space-y-6" noValidate onSubmit={handleSubmit}>
         <label className="block space-y-3">
           <span className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">

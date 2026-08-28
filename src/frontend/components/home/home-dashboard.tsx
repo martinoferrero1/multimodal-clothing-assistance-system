@@ -12,7 +12,8 @@ import {
   Palette,
   Search,
   Settings,
-  Shirt
+  Shirt,
+  Store,
 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -55,6 +56,7 @@ export function HomeDashboard() {
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const displayName = auth.user?.display_name?.trim() || t("common.account");
   const accountInitial = displayName.slice(0, 1).toLocaleUpperCase();
+  const canManageStore = auth.selectedStore?.status === "active";
 
   useEffect(() => {
     if (!accountMenuOpen) {
@@ -263,7 +265,7 @@ export function HomeDashboard() {
               </Link>
 
               <div className="grid gap-4">
-                {productExperiences.map((experience, index) => {
+                {productExperiences.map((experience) => {
                   const Icon = experience.icon;
 
                   if (experience.id === "style") {
@@ -322,6 +324,34 @@ export function HomeDashboard() {
                     </article>
                   );
                 })}
+
+                {canManageStore ? (
+                  <Link
+                    className="group flex min-h-[10rem] flex-col justify-between rounded-[1.2rem] border border-[rgba(208,188,255,0.42)] bg-[var(--accent-soft)] p-5 text-[var(--text)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)] sm:p-6"
+                    href="/store/inventory"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <Store size={19} className="text-[var(--accent)]" />
+                    </div>
+                    <div className="mt-7 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {t("home.storeCatalogTitle")}
+                        </h3>
+                        <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                          {t("home.storeCatalogDescription")}
+                        </p>
+                      </div>
+                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent)]">
+                        {t("home.storeCatalogAction")}
+                        <ArrowUpRight
+                          size={17}
+                          className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1"
+                        />
+                      </span>
+                    </div>
+                  </Link>
+                ) : null}
               </div>
             </div>
           </div>

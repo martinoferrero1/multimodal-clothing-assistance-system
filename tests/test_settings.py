@@ -21,6 +21,11 @@ DEPLOYED_SETTINGS = {
     "ALLOWED_ORIGINS": '["https://app.lookeate.example"]',
     "RATE_LIMIT_REDIS_URL": "rediss://rate-limiter.lookeate.example:6380/0",
     "RATE_LIMIT_KEY_SECRET": "a-valid-random-rate-limit-key-secret-value-1234567890",
+    "STORE_APPROVER_EMAILS": "approver@lookeate.example",
+    "STORE_EMAIL_WEBHOOK_URL": "https://email.lookeate.example",
+    "STORE_EMAIL_WEBHOOK_TOKEN": "a-valid-random-store-email-webhook-token-value-1234567890",
+    "STORE_TOTP_ENCRYPTION_KEY": "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXpBQkNERUY=",
+    "STORE_EMAIL_VERIFICATION_MOCKED": False,
 }
 
 

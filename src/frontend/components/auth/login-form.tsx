@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -21,9 +21,9 @@ export function LoginForm() {
 
   useEffect(() => {
     if (auth.status === "authenticated") {
-      router.replace("/");
+      router.replace(auth.selectedStore && auth.selectedStore.status !== "active" ? "/store/onboarding" : "/");
     }
-  }, [auth.status, router]);
+  }, [auth.status, auth.selectedStore, router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,9 +44,6 @@ export function LoginForm() {
 
     try {
       await auth.signIn(email, password);
-      startTransition(() => {
-        router.replace("/");
-      });
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError && caughtError.hasExternalMessage

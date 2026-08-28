@@ -95,6 +95,18 @@ class Settings(BaseSettings):
     SESSION_COOKIE_NAME: str = "lookeate_session"
     SESSION_COOKIE_SECURE: bool = False
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict"] = "lax"
+    STORE_TOTP_ENCRYPTION_KEY: SecretStr = SecretStr("MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
+    STORE_TOTP_ISSUER: str = "Lookeate"
+    STORE_TOTP_STEP_UP_MAX_AGE_SECONDS: int = 900
+    # Temporary product switch: local/test may accept store email ownership
+    # without sending a real verification message. It is rejected in deployed
+    # environments so this cannot silently become a production bypass.
+    STORE_EMAIL_VERIFICATION_MOCKED: bool = True
+    STORE_EMAIL_VERIFICATION_TTL_SECONDS: int = 900
+    STORE_REGISTRATION_RETENTION_DAYS: int = 30
+    STORE_APPROVER_EMAILS: str | list[str] = ""
+    STORE_EMAIL_WEBHOOK_URL: Optional[str] = None
+    STORE_EMAIL_WEBHOOK_TOKEN: Optional[SecretStr] = None
     PUBLIC_APP_URL: Optional[str] = None
     ALLOWED_HOSTS: str | list[str] = ""
     ALLOWED_ORIGINS: str | list[str] = ""
@@ -126,6 +138,22 @@ class Settings(BaseSettings):
     RATE_LIMIT_IMAGE_WINDOW_SECONDS: int = 60
     RATE_LIMIT_IMAGE_SOURCE_LIMIT: int = 10
     RATE_LIMIT_IMAGE_USER_LIMIT: int = 10
+    RATE_LIMIT_STORE_REGISTRATION_WINDOW_SECONDS: int = 3600
+    RATE_LIMIT_STORE_REGISTRATION_SOURCE_LIMIT: int = 5
+    RATE_LIMIT_STORE_REGISTRATION_ACCOUNT_LIMIT: int = 3
+    RATE_LIMIT_STORE_REGISTRATION_STORE_LIMIT: int = 3
+    RATE_LIMIT_STORE_VERIFICATION_WINDOW_SECONDS: int = 900
+    RATE_LIMIT_STORE_VERIFICATION_SOURCE_LIMIT: int = 10
+    RATE_LIMIT_STORE_MFA_WINDOW_SECONDS: int = 300
+    RATE_LIMIT_STORE_MFA_SOURCE_LIMIT: int = 10
+    RATE_LIMIT_STORE_MFA_USER_LIMIT: int = 5
+    RATE_LIMIT_STORE_APPROVAL_WINDOW_SECONDS: int = 300
+    RATE_LIMIT_STORE_APPROVAL_SOURCE_LIMIT: int = 30
+    RATE_LIMIT_STORE_APPROVAL_USER_LIMIT: int = 20
+    RATE_LIMIT_STORE_INVENTORY_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_STORE_INVENTORY_SOURCE_LIMIT: int = 30
+    RATE_LIMIT_STORE_INVENTORY_USER_LIMIT: int = 20
+    RATE_LIMIT_STORE_INVENTORY_STORE_LIMIT: int = 20
     TRUSTED_BFF_PROXY_HOSTS: str | list[str] = "localhost,127.0.0.1"
     TRUSTED_BFF_SOURCE_HEADER: str = "x-lookeate-client-source"
 
@@ -176,6 +204,7 @@ class Settings(BaseSettings):
         self.ALLOWED_ORIGINS = _parse_list(self.ALLOWED_ORIGINS)
         self.CHAT_IMAGE_ALLOWED_MIME_TYPES = _parse_list(self.CHAT_IMAGE_ALLOWED_MIME_TYPES)
         self.TRUSTED_BFF_PROXY_HOSTS = _parse_list(self.TRUSTED_BFF_PROXY_HOSTS)
+        self.STORE_APPROVER_EMAILS = [email.lower() for email in _parse_list(self.STORE_APPROVER_EMAILS)]
         self.IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES = [
             scheme.lower() for scheme in _parse_list(self.IMAGE_VISUAL_SEARCH_ALLOWED_SCHEMES)
         ]
@@ -218,6 +247,25 @@ class Settings(BaseSettings):
             "RATE_LIMIT_IMAGE_WINDOW_SECONDS": self.RATE_LIMIT_IMAGE_WINDOW_SECONDS,
             "RATE_LIMIT_IMAGE_SOURCE_LIMIT": self.RATE_LIMIT_IMAGE_SOURCE_LIMIT,
             "RATE_LIMIT_IMAGE_USER_LIMIT": self.RATE_LIMIT_IMAGE_USER_LIMIT,
+            "STORE_TOTP_STEP_UP_MAX_AGE_SECONDS": self.STORE_TOTP_STEP_UP_MAX_AGE_SECONDS,
+            "STORE_EMAIL_VERIFICATION_TTL_SECONDS": self.STORE_EMAIL_VERIFICATION_TTL_SECONDS,
+            "STORE_REGISTRATION_RETENTION_DAYS": self.STORE_REGISTRATION_RETENTION_DAYS,
+            "RATE_LIMIT_STORE_REGISTRATION_WINDOW_SECONDS": self.RATE_LIMIT_STORE_REGISTRATION_WINDOW_SECONDS,
+            "RATE_LIMIT_STORE_REGISTRATION_SOURCE_LIMIT": self.RATE_LIMIT_STORE_REGISTRATION_SOURCE_LIMIT,
+            "RATE_LIMIT_STORE_REGISTRATION_ACCOUNT_LIMIT": self.RATE_LIMIT_STORE_REGISTRATION_ACCOUNT_LIMIT,
+            "RATE_LIMIT_STORE_REGISTRATION_STORE_LIMIT": self.RATE_LIMIT_STORE_REGISTRATION_STORE_LIMIT,
+            "RATE_LIMIT_STORE_VERIFICATION_WINDOW_SECONDS": self.RATE_LIMIT_STORE_VERIFICATION_WINDOW_SECONDS,
+            "RATE_LIMIT_STORE_VERIFICATION_SOURCE_LIMIT": self.RATE_LIMIT_STORE_VERIFICATION_SOURCE_LIMIT,
+            "RATE_LIMIT_STORE_MFA_WINDOW_SECONDS": self.RATE_LIMIT_STORE_MFA_WINDOW_SECONDS,
+            "RATE_LIMIT_STORE_MFA_SOURCE_LIMIT": self.RATE_LIMIT_STORE_MFA_SOURCE_LIMIT,
+            "RATE_LIMIT_STORE_MFA_USER_LIMIT": self.RATE_LIMIT_STORE_MFA_USER_LIMIT,
+            "RATE_LIMIT_STORE_APPROVAL_WINDOW_SECONDS": self.RATE_LIMIT_STORE_APPROVAL_WINDOW_SECONDS,
+            "RATE_LIMIT_STORE_APPROVAL_SOURCE_LIMIT": self.RATE_LIMIT_STORE_APPROVAL_SOURCE_LIMIT,
+            "RATE_LIMIT_STORE_APPROVAL_USER_LIMIT": self.RATE_LIMIT_STORE_APPROVAL_USER_LIMIT,
+            "RATE_LIMIT_STORE_INVENTORY_WINDOW_SECONDS": self.RATE_LIMIT_STORE_INVENTORY_WINDOW_SECONDS,
+            "RATE_LIMIT_STORE_INVENTORY_SOURCE_LIMIT": self.RATE_LIMIT_STORE_INVENTORY_SOURCE_LIMIT,
+            "RATE_LIMIT_STORE_INVENTORY_USER_LIMIT": self.RATE_LIMIT_STORE_INVENTORY_USER_LIMIT,
+            "RATE_LIMIT_STORE_INVENTORY_STORE_LIMIT": self.RATE_LIMIT_STORE_INVENTORY_STORE_LIMIT,
             "IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES": self.IMAGE_VISUAL_SEARCH_MAX_IMAGE_BYTES,
             "IMAGE_VISUAL_SEARCH_MAX_REDIRECTS": self.IMAGE_VISUAL_SEARCH_MAX_REDIRECTS,
         }
@@ -257,6 +305,8 @@ class Settings(BaseSettings):
             raise ValueError("TRUSTED_BFF_PROXY_HOSTS must contain explicit hosts")
         if not self.TRUSTED_BFF_SOURCE_HEADER.startswith("x-"):
             raise ValueError("TRUSTED_BFF_SOURCE_HEADER must be a private x- header")
+        if len(self.STORE_TOTP_ENCRYPTION_KEY.get_secret_value()) != 44:
+            raise ValueError("STORE_TOTP_ENCRYPTION_KEY must be a URL-safe 32-byte key")
 
         if self.APP_ENV not in _DEPLOYED_ENVIRONMENTS:
             self.PUBLIC_APP_URL = self.PUBLIC_APP_URL or "http://localhost:3000"
@@ -269,6 +319,16 @@ class Settings(BaseSettings):
 
         if not self.RATE_LIMIT_REDIS_URL or not self.RATE_LIMIT_REDIS_URL.lower().startswith(("redis://", "rediss://")):
             raise ValueError("RATE_LIMIT_REDIS_URL must use Redis in staging and production")
+        if not self.STORE_APPROVER_EMAILS:
+            raise ValueError("STORE_APPROVER_EMAILS is required in staging and production")
+        if not self.STORE_EMAIL_WEBHOOK_URL or not _is_https_origin(self.STORE_EMAIL_WEBHOOK_URL):
+            raise ValueError("STORE_EMAIL_WEBHOOK_URL must be an HTTPS origin in staging and production")
+        if not self.STORE_EMAIL_WEBHOOK_TOKEN:
+            raise ValueError("STORE_EMAIL_WEBHOOK_TOKEN is required in staging and production")
+        if self.STORE_TOTP_ENCRYPTION_KEY.get_secret_value() == "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=":
+            raise ValueError("STORE_TOTP_ENCRYPTION_KEY must not use the local/test value in staging and production")
+        if self.STORE_EMAIL_VERIFICATION_MOCKED:
+            raise ValueError("STORE_EMAIL_VERIFICATION_MOCKED must be false in staging and production")
         rate_key_secret = self.RATE_LIMIT_KEY_SECRET.get_secret_value()
         normalized_rate_key_secret = rate_key_secret.strip().lower()
         if len(rate_key_secret) < 32:

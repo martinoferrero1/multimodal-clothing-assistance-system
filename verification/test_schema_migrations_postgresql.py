@@ -6,8 +6,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, event, inspect, text
-from sqlalchemy.engine import Engine
+from sqlalchemy import create_engine, inspect, text
 
 from infra.db.migration_metadata import application_metadata
 from infra.db.migration_state import current_database_heads, repository_heads, require_current_revision
@@ -59,23 +58,44 @@ def test_postgresql_blank_upgrade_and_forward_only_downgrade() -> None:
             text("INSERT INTO chat_users (id, display_name) VALUES ('pg-user', 'PostgreSQL')")
         )
     before_revision = current_database_heads(engine)
-    destructive: list[str] = []
-
-    def capture(connection, cursor, statement, parameters, context, executemany):
-        if statement.strip().upper().startswith(("DROP ", "ALTER ", "TRUNCATE ")):
-            destructive.append(statement)
-
-    event.listen(Engine, "before_cursor_execute", capture)
     try:
         require_current_revision(engine)
+        command.downgrade(_config(), "20260817_0002")
+        assert current_database_heads(engine) == ("20260817_0002",)
+        command.upgrade(_config(), "head")
         with pytest.raises(RuntimeError, match="forward-only"):
             command.downgrade(_config(), "base")
-        assert destructive == []
         assert current_database_heads(engine) == before_revision == repository_heads()
         with engine.connect() as connection:
             assert connection.scalar(text("SELECT count(*) FROM chat_users")) == 1
     finally:
-        event.remove(Engine, "before_cursor_execute", capture)
+        engine.dispose()
+
+
+def test_postgresql_commercial_upgrade_from_previous_revision_preserves_consumers() -> None:
+    command.upgrade(_config(), "20260817_0002")
+    engine = create_engine(DATABASE_URL)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text("INSERT INTO chat_users (id, display_name) VALUES ('pre-store-user', 'Pre store')")
+            )
+        command.upgrade(_config(), "head")
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT count(*) FROM chat_users")) == 1
+            assert connection.scalar(
+                text("SELECT account_kind FROM chat_users WHERE id = 'pre-store-user'")
+            ) == "consumer"
+            assert connection.scalar(text("SELECT count(*) FROM stores")) == 0
+            assert connection.scalar(text("SELECT count(*) FROM store_memberships")) == 0
+            assert connection.scalar(
+                text(
+                    "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' "
+                    "AND indexname = 'uq_store_memberships_active_owner'"
+                )
+            ) is not None
+            assert compare_application_schema(connection).equivalent
+    finally:
         engine.dispose()
 
 

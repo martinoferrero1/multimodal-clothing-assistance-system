@@ -17,6 +17,7 @@ from api.dependencies import (
 )
 from api.routes.auth import router as auth_router
 from api.routes.conversations import router as conversations_router
+from api.routes.stores import get_store_service, router as stores_router
 from services.rate_limit_service import RateLimitResult, RateLimitUnavailable, rate_limit_outcome_counts
 
 
@@ -72,6 +73,7 @@ def app() -> FastAPI:
     test_app = FastAPI()
     test_app.middleware("http")(protect_unsafe_browser_requests)
     test_app.include_router(auth_router)
+    test_app.include_router(stores_router)
     test_app.include_router(conversations_router)
 
     async def fake_session():
@@ -80,6 +82,21 @@ def app() -> FastAPI:
     test_app.dependency_overrides[get_db_session] = fake_session
     test_app.state.chat_runtime = object()
     return test_app
+
+
+STORE_REGISTRATION_BODY = {
+    "owner_display_name": "Store Owner",
+    "owner_email": "owner@example.com",
+    "owner_password": "password123",
+    "legal_name": "Store Owner LLC",
+    "display_name": "Store Owner",
+    "handle": "store-owner",
+    "jurisdiction": "ES",
+    "business_identifier": "ES-123",
+    "address": "Main Street 1",
+    "contact_email": "contact@example.com",
+    "contact_phone": "+34123456789",
+}
 
 
 def test_known_and_unknown_accounts_receive_stable_429_contract(app: FastAPI) -> None:
@@ -135,6 +152,48 @@ def test_auth_rejection_precedes_password_work_and_writes(
     assert response.status_code == 429
     assert limiter.calls == [policy]
     assert operations.calls == []
+
+
+def test_store_registration_rejection_precedes_identity_writes(app: FastAPI) -> None:
+    limiter = RecordingLimiter()
+
+    class ForbiddenStoreService:
+        async def register(self, *args, **kwargs):
+            pytest.fail("store registration must not run after rate-limit rejection")
+
+    app.state.rate_limiter = limiter
+    app.dependency_overrides[get_store_service] = ForbiddenStoreService
+
+    response = TestClient(app).post(
+        "/api/auth/store/register", headers=SAME_ORIGIN_HEADERS, json=STORE_REGISTRATION_BODY
+    )
+
+    assert response.status_code == 429
+    assert limiter.calls == ["store_registration"]
+
+
+def test_guest_store_registration_is_generic_and_creates_no_commercial_records(app: FastAPI) -> None:
+    class GuestAuth:
+        async def resolve_session(self, session, token):
+            return SimpleNamespace(user=SimpleNamespace(account_kind="guest"), session=object())
+
+    class ForbiddenStoreService:
+        async def register(self, *args, **kwargs):
+            pytest.fail("guest registration must not create commercial records")
+
+    app.state.rate_limiter = RecordingLimiter([RateLimitResult(True)])
+    app.dependency_overrides[get_auth_service] = GuestAuth
+    app.dependency_overrides[get_store_service] = ForbiddenStoreService
+
+    response = TestClient(app).post(
+        "/api/auth/store/register",
+        headers={**SAME_ORIGIN_HEADERS, "cookie": "lookeate_session=guest-token"},
+        json=STORE_REGISTRATION_BODY,
+    )
+
+    assert response.status_code == 202
+    assert response.json() == {"accepted": True}
+    assert "lookeate_session=" in response.headers["set-cookie"]
 
 
 def test_session_rejection_precedes_database_lookup(app: FastAPI) -> None:

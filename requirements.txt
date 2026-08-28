@@ -12,6 +12,7 @@ pydantic-settings
 python-dotenv
 email-validator
 python-multipart
+cryptography
 Pillow
 redis>=5,<7
 langchain-core

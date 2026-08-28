@@ -20,7 +20,7 @@ from api.schemas import (
 from core.metaclasses.singleton_meta import SingletonMeta
 from core.settings import settings
 from fastapi import HTTPException, status
-from infra.db.models.chat_models import AuthSession, ChatUser
+from infra.db.models.chat_models import AuthSession, ChatUser, StoreMembership
 from services.preference_learning_service import get_preference_learning_service
 from services.search_preferences_service import get_search_preferences_service
 from services.style_preferences_service import get_style_preferences_service
@@ -48,7 +48,10 @@ class AuthenticationService(metaclass=SingletonMeta):
     _SCRYPT_R = 8
     _SCRYPT_P = 1
     _SALT_SIZE = 16
-    _REVOKE_REASONS = {"logout", "logout_all", "rotated", "expired"}
+    _REVOKE_REASONS = {
+        "logout", "logout_all", "rotated", "expired", "store_rejected",
+        "store_suspended", "membership_revoked", "ownership_transferred",
+    }
 
     async def register_user(
         self, session: AsyncSession, payload: UserRegister, previous_token: str | None = None
@@ -81,7 +84,22 @@ class AuthenticationService(metaclass=SingletonMeta):
         if user is None or not user.password_hash or not self._verify_password(payload.password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
         try:
-            issued = await self._create_session(session, user, previous_token)
+            # A store owner normally has exactly one store. Bind that store to
+            # the new session so a later regular login can resume store
+            # onboarding/access without requiring an email-verification token.
+            store_ids = (
+                await session.scalars(
+                    select(StoreMembership.store_id).where(
+                        StoreMembership.user_id == user.id,
+                        StoreMembership.role == "owner",
+                        StoreMembership.revoked_at.is_(None),
+                    )
+                )
+            ).all()
+            active_store_id = store_ids[0] if len(store_ids) == 1 else None
+            issued = await self.create_session(
+                session, user, previous_token, active_store_id=active_store_id
+            )
             await session.commit()
         except Exception:
             await session.rollback()
@@ -128,8 +146,12 @@ class AuthenticationService(metaclass=SingletonMeta):
         )
         await session.commit()
 
-    def build_auth_response(self, issued: IssuedSession) -> AuthResponse:
-        return AuthResponse(user=self.build_user_read(issued.user), csrf_token=self.csrf_token(issued.session))
+    def build_auth_response(self, issued: IssuedSession, selected_store=None) -> AuthResponse:
+        return AuthResponse(
+            user=self.build_user_read(issued.user),
+            csrf_token=self.csrf_token(issued.session),
+            selected_store=selected_store,
+        )
 
     def csrf_token(self, session: AuthSession) -> str:
         payload = f"v1:{session.id}:{session.token_hash}".encode("utf-8")
@@ -181,7 +203,13 @@ class AuthenticationService(metaclass=SingletonMeta):
             created_at=user.created_at,
         )
 
-    async def _create_session(self, session: AsyncSession, user: ChatUser, previous_token: str | None) -> IssuedSession:
+    async def create_session(
+        self,
+        session: AsyncSession,
+        user: ChatUser,
+        previous_token: str | None,
+        active_store_id: str | None = None,
+    ) -> IssuedSession:
         if previous_token:
             previous = await session.scalar(select(AuthSession).where(AuthSession.token_hash == self._hash_session_token(previous_token)))
             if previous is not None and previous.revoked_at is None and self._session_is_active(previous):
@@ -190,13 +218,17 @@ class AuthenticationService(metaclass=SingletonMeta):
         token = secrets.token_urlsafe(32)
         absolute_expires_at = now + timedelta(hours=settings.SESSION_ABSOLUTE_HOURS)
         row = AuthSession(
-            user_id=user.id, token_hash=self._hash_session_token(token), created_at=now, last_seen_at=now,
+            user_id=user.id, active_store_id=active_store_id,
+            token_hash=self._hash_session_token(token), created_at=now, last_seen_at=now,
             idle_expires_at=min(now + timedelta(minutes=settings.SESSION_IDLE_MINUTES), absolute_expires_at),
             absolute_expires_at=absolute_expires_at,
         )
         session.add(row)
         await session.flush()
         return IssuedSession(user=user, session=row, token=token)
+
+    async def _create_session(self, session: AsyncSession, user: ChatUser, previous_token: str | None) -> IssuedSession:
+        return await self.create_session(session, user, previous_token)
 
     async def _revoke(self, session_row: AuthSession, reason: str) -> None:
         if reason not in self._REVOKE_REASONS:

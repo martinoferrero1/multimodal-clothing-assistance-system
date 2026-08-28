@@ -12,6 +12,80 @@ export type User = {
 export type AuthResponse = {
   user: User;
   csrf_token: string;
+  selected_store: SelectedStoreStatus | null;
+};
+
+export type StoreLifecycle = "pending" | "active" | "rejected" | "suspended";
+
+// This is intentionally limited to the store bound to the current session.
+export type SelectedStoreStatus = {
+  id: string;
+  display_name: string;
+  handle: string;
+  status: StoreLifecycle;
+  email_verified: boolean;
+  mfa_enrolled: boolean;
+  mfa_confirmed: boolean;
+};
+
+export type StoreStatusResponse = {
+  selected_store: SelectedStoreStatus | null;
+};
+
+export type StoreRegistrationRequest = {
+  owner_display_name: string;
+  owner_email: string;
+  owner_password: string;
+  legal_name: string;
+  display_name: string;
+  handle: string;
+  jurisdiction: string;
+  business_identifier: string;
+  address: string;
+  contact_email: string;
+  contact_phone: string;
+};
+
+export type MfaEnrollmentResponse = {
+  provisioning_uri: string;
+};
+
+export type StoreInventoryItemWrite = {
+  external_id: string;
+  product_display_name: string;
+  price?: number | null;
+  gender?: string | null;
+  master_category?: string | null;
+  sub_category?: string | null;
+  article_type?: string | null;
+  base_colour?: string | null;
+  colour1?: string | null;
+  colour2?: string | null;
+  season?: string | null;
+  year?: number | null;
+  usage?: string | null;
+  brand?: string | null;
+  description?: string | null;
+  details?: Record<string, unknown>;
+  image_top?: string | null;
+  image_back?: string | null;
+  image_search?: string | null;
+  image_default?: string | null;
+  image_left?: string | null;
+  image_front?: string | null;
+  image_right?: string | null;
+};
+
+export type StoreInventoryItem = StoreInventoryItemWrite & {
+  id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StoreInventoryImportResponse = {
+  created_count: number;
+  updated_count: number;
+  total_count: number;
 };
 
 export type Conversation = {

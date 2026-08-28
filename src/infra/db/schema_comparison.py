@@ -87,8 +87,15 @@ def _compare_checks_and_primary_keys(connection: Connection) -> Iterable[str]:
 
 def _normalize_sql(value: str) -> str:
     normalized = value.strip().lower().replace('"', "").replace("`", "")
-    normalized = re.sub(r"::[a-z_]+(?:\s+[a-z_]+)?", "", normalized)
+    normalized = re.sub(r"::[a-z_]+(?:\s+[a-z_]+)?(?:\[\])?", "", normalized)
+    # PostgreSQL reflects CHECK ... IN (...) as = ANY (ARRAY[...]).
+    normalized = re.sub(
+        r"([a-z_][a-z0-9_]*)\s*=\s*any\s*\(array\s*\[([^\]]+)\]\)",
+        r"\1 in (\2)",
+        normalized,
+    )
     normalized = re.sub(r"\s+", " ", normalized)
+    normalized = re.sub(r"\s*,\s*", ",", normalized)
     while normalized.startswith("(") and normalized.endswith(")"):
         normalized = normalized[1:-1].strip()
     return normalized
