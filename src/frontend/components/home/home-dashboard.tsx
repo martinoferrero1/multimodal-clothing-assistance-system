@@ -53,10 +53,21 @@ export function HomeDashboard() {
   const router = useRouter();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const displayName = auth.user?.display_name?.trim() || t("common.account");
   const accountInitial = displayName.slice(0, 1).toLocaleUpperCase();
   const canManageStore = auth.selectedStore?.status === "active";
+
+  useEffect(() => {
+    function handleScroll() {
+      setIsScrolled(window.scrollY > 12);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (!accountMenuOpen) {
@@ -90,7 +101,7 @@ export function HomeDashboard() {
   }
 
   return (
-    <main className="home-background relative min-h-screen overflow-hidden">
+    <main className="home-background relative min-h-screen overflow-x-hidden">
       <div
         className="home-grid pointer-events-none absolute inset-0 opacity-50"
         aria-hidden="true"
@@ -101,7 +112,13 @@ export function HomeDashboard() {
       />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[92rem] flex-col px-5 sm:px-8 lg:px-12">
-        <header className="flex items-center justify-between border-b border-[var(--line)] py-5 sm:py-6">
+        <header
+          className={`glass hairline fixed left-1/2 z-50 flex -translate-x-1/2 items-center justify-between rounded-2xl transition-[top,width,max-width,padding,box-shadow,background-color,border-color] duration-300 ease-out ${
+            isScrolled
+              ? "top-6 w-[calc(100%-3rem)] max-w-[100rem] px-3 py-3.5 shadow-[0_12px_35px_rgba(0,0,0,0.24)] sm:px-5 sm:py-4"
+              : "top-4 w-[calc(100%-2rem)] max-w-[112rem] px-4 py-4 sm:px-6 sm:py-5"
+          }`}
+        >
           <div className="flex items-center gap-4">
             <Link
               className="serif text-3xl leading-none text-[var(--text)] transition hover:opacity-80 sm:text-[2.15rem]"
@@ -182,6 +199,8 @@ export function HomeDashboard() {
             </div>
           </div>
         </header>
+
+        <div className="h-24 shrink-0" aria-hidden="true" />
 
         <section className="grid flex-1 items-end gap-10 pb-16 pt-20 lg:grid-cols-[minmax(0,1fr)_18rem] lg:pb-20 lg:pt-28">
           <div className="max-w-5xl">
