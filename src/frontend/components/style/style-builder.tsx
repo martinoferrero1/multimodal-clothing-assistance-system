@@ -1,14 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Check,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   Rotate3D,
   RotateCcw,
   Search,
@@ -17,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteNavigation } from "@/components/layout/site-navigation";
 import { useLocale } from "@/components/providers/locale-provider";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -186,30 +185,10 @@ export function StyleBuilder() {
 
   return (
     <main className="style-builder-background min-h-screen text-[var(--text)]">
-      <header className="flex min-h-16 items-center justify-between gap-4 border-b border-[var(--line)] px-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-4">
-          <Link
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:border-[var(--line-strong)] hover:text-[var(--text)]"
-            href="/"
-            aria-label={t("style.backHome")}
-          >
-            <ArrowLeft size={18} />
-          </Link>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{t("home.styleTitle")}</p>
-            <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-[var(--muted-soft)]">
-              Lookeate Studio · {t("style.prototype")}
-            </p>
-          </div>
-        </div>
+      <SiteNavigation />
 
-        <div className="hidden items-center gap-2 text-xs text-[var(--muted)] sm:flex">
-          <CircleHelp size={15} />
-          {t("style.headerHelp")}
-        </div>
-      </header>
-
-      <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[20rem_minmax(28rem,1fr)_17rem]">
+      <div className="pt-28 sm:pt-32">
+        <div className="grid min-h-[calc(100vh-7rem)] lg:grid-cols-[20rem_minmax(28rem,1fr)_17rem]">
         <aside className="order-2 border-t border-[var(--line)] bg-[rgba(18,18,18,0.86)] lg:order-1 lg:border-r lg:border-t-0">
           <div className="border-b border-[var(--line)] p-5">
             <div className="flex items-center justify-between gap-3">
@@ -426,6 +405,9 @@ export function StyleBuilder() {
             </p>
           </div>
         </aside>
+        </div>
+
+        <SiteFooter />
       </div>
     </main>
   );

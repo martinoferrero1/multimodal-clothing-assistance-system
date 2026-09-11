@@ -3,6 +3,7 @@ import type {
   ConversationUpdate, HealthResponse, MfaEnrollmentResponse, SearchPreferences, SearchPriorityField,
   StoreRegistrationRequest, StoreStatusResponse, UserStylePreferences, UserStylePreferencesUpdate,
   StoreInventoryImportResponse, StoreInventoryItem, StoreInventoryItemWrite,
+  CatalogMeta, CatalogPage, CatalogQuery,
 } from "@/lib/types";
 
 type RequestOptions = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown };
@@ -64,6 +65,25 @@ export const importStoreInventory = (items: StoreInventoryItemWrite[]) => apiReq
 export const logout = () => apiRequest<void>("api/auth/logout", { method: "POST" });
 export const logoutAll = () => apiRequest<void>("api/auth/logout-all", { method: "POST" });
 export const getHealth = () => apiRequest<HealthResponse>("health");
+export const getCatalogMeta = () => apiRequest<CatalogMeta>("api/catalog/meta");
+export const listCatalogProducts = (filters: CatalogQuery = {}) => {
+  const params = new URLSearchParams();
+  if (filters.query) params.set("query", filters.query);
+  if (filters.masterCategory) params.set("master_category", filters.masterCategory);
+  if (filters.subCategory) params.set("sub_category", filters.subCategory);
+  if (filters.articleType) params.set("article_type", filters.articleType);
+  if (filters.brand) params.set("brand", filters.brand);
+  if (filters.tryOnOnly) params.set("try_on_only", "true");
+  if (filters.sort) params.set("sort", filters.sort);
+  if (filters.offset !== undefined) params.set("offset", String(filters.offset));
+  if (filters.limit !== undefined) params.set("limit", String(filters.limit));
+  return apiRequest<CatalogPage>(`api/catalog/products?${params.toString()}`);
+};
+export const searchCatalogByImage = (images: File[], offset = 0, limit = 12) => {
+  const body = new FormData();
+  images.forEach((image) => body.append("images", image));
+  return apiFormRequest<CatalogPage>(`api/catalog/visual-search?offset=${offset}&limit=${limit}`, body);
+};
 export const updateUserSearchPreferences = (priorityFields: SearchPriorityField[]) => apiRequest<SearchPreferences>("api/users/me/search-preferences", { method: "PUT", body: { priority_fields: priorityFields } });
 export const updateUserStylePreferences = (payload: UserStylePreferencesUpdate) => apiRequest<UserStylePreferences>("api/users/me/style-preferences", { method: "PUT", body: payload });
 export const clearUserExplicitStylePreferences = () => apiRequest<UserStylePreferences>("api/users/me/style-preferences/explicit", { method: "DELETE" });

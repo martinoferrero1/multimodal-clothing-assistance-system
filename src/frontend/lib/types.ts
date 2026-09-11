@@ -197,6 +197,57 @@ export type ProductRecommendation = {
   images: Record<string, string | null>;
 };
 
+export type CatalogSubcategory = {
+  name: string;
+  article_types: string[];
+};
+
+export type CatalogTaxonomy = {
+  name: string;
+  subcategories: CatalogSubcategory[];
+};
+
+export type CatalogMeta = {
+  taxonomy: CatalogTaxonomy[];
+  brands: string[];
+};
+
+export type CatalogProduct = {
+  id: number;
+  product_display_name: string;
+  price: number | null;
+  year: number | null;
+  usage: string | null;
+  gender: string | null;
+  master_category: string;
+  sub_category: string;
+  article_type: string;
+  brand: string | null;
+  season: string | null;
+  has_try_on: boolean;
+  images: Record<"top" | "back" | "search" | "default" | "left" | "front" | "right", string | null>;
+};
+
+export type CatalogPage = {
+  items: CatalogProduct[];
+  total: number;
+  offset: number;
+  limit: number;
+  has_more: boolean;
+};
+
+export type CatalogQuery = {
+  query?: string;
+  masterCategory?: string;
+  subCategory?: string;
+  articleType?: string;
+  brand?: string;
+  tryOnOnly?: boolean;
+  sort?: "relevance" | "newest" | "priceAsc" | "priceDesc";
+  offset?: number;
+  limit?: number;
+};
+
 export type GarmentRecommendation = {
   kind: "garment";
   summary_label: string;

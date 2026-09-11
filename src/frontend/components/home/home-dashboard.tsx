@@ -1,24 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUpRight,
-  ChevronDown,
-  LogOut,
   MessageCircle,
   Palette,
   Search,
-  Settings,
   Shirt,
   Store,
 } from "lucide-react";
 
+import { SiteFooter } from "@/components/layout/site-footer";
+import { SiteNavigation } from "@/components/layout/site-navigation";
+import { HomeNewsHighlights } from "@/components/news/home-news-highlights";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
-import { SettingsDialog } from "@/components/settings/settings-dialog";
 import type { MessageKey } from "@/lib/i18n";
 
 const productExperiences: Array<{
@@ -50,55 +48,51 @@ const productExperiences: Array<{
 export function HomeDashboard() {
   const auth = useAuth();
   const { t } = useLocale();
-  const router = useRouter();
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement | null>(null);
-  const displayName = auth.user?.display_name?.trim() || t("common.account");
-  const accountInitial = displayName.slice(0, 1).toLocaleUpperCase();
+  const [betaVisible, setBetaVisible] = useState(false);
+  const [betaShimmerVisible, setBetaShimmerVisible] = useState(false);
+  const betaSectionRef = useRef<HTMLElement | null>(null);
   const canManageStore = auth.selectedStore?.status === "active";
+  const betaTitle = t("home.betaTitle");
+  const betaDescription = t("home.betaDescription");
+  const betaDescriptionParts = betaDescription.split(/(\s+)/);
+  const betaWordCount = betaDescriptionParts.filter((part) => part.trim()).length;
 
   useEffect(() => {
-    function handleScroll() {
-      setIsScrolled(window.scrollY > 12);
-    }
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    if (!accountMenuOpen) {
+    const section = betaSectionRef.current;
+    if (!section) {
       return;
     }
 
-    function handlePointerDown(event: PointerEvent) {
-      if (!accountMenuRef.current?.contains(event.target as Node)) {
-        setAccountMenuOpen(false);
-      }
+    if (typeof IntersectionObserver === "undefined") {
+      const fallbackTimer = window.setTimeout(() => setBetaVisible(true), 0);
+      return () => window.clearTimeout(fallbackTimer);
     }
 
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setAccountMenuOpen(false);
-      }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setBetaVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.25 },
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!betaVisible) {
+      return;
     }
 
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [accountMenuOpen]);
-
-  async function handleSignOut() {
-    setAccountMenuOpen(false);
-    await auth.signOut();
-    router.replace("/login");
-  }
+    const shimmerTimer = window.setTimeout(
+      () => setBetaShimmerVisible(true),
+      betaWordCount * 70 + 600,
+    );
+    return () => window.clearTimeout(shimmerTimer);
+  }, [betaVisible, betaWordCount]);
 
   return (
     <main className="home-background relative min-h-screen overflow-x-hidden">
@@ -112,93 +106,7 @@ export function HomeDashboard() {
       />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[92rem] flex-col px-5 sm:px-8 lg:px-12">
-        <header
-          className={`glass hairline fixed left-1/2 z-50 flex -translate-x-1/2 items-center justify-between rounded-2xl transition-[top,width,max-width,padding,box-shadow,background-color,border-color] duration-300 ease-out ${
-            isScrolled
-              ? "top-6 w-[calc(100%-3rem)] max-w-[100rem] px-3 py-3.5 shadow-[0_12px_35px_rgba(0,0,0,0.24)] sm:px-5 sm:py-4"
-              : "top-4 w-[calc(100%-2rem)] max-w-[112rem] px-4 py-4 sm:px-6 sm:py-5"
-          }`}
-        >
-          <div className="flex items-center gap-4">
-            <Link
-              className="serif text-3xl leading-none text-[var(--text)] transition hover:opacity-80 sm:text-[2.15rem]"
-              href="/"
-            >
-              Lookeate
-            </Link>
-            <span className="rounded-full border border-[var(--line-strong)] bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">
-              {t("common.beta")}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-6">
-            <nav
-              className="hidden items-center gap-7 text-sm text-[var(--muted)] md:flex"
-              aria-label={t("home.primaryNavigation")}
-            >
-              <span className="font-semibold text-[var(--text)]">
-                {t("sidebar.home")}
-              </span>
-              <Link
-                className="transition hover:text-[var(--text)]"
-                href="/chat/new"
-              >
-                {t("sidebar.assistant")}
-              </Link>
-            </nav>
-
-            <div className="relative" ref={accountMenuRef}>
-              <button
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-[var(--line)] bg-white/[0.035] p-1.5 pr-2.5 text-sm text-[var(--text)] transition hover:border-[var(--line-strong)] hover:bg-white/[0.07] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] sm:pr-4"
-                type="button"
-                aria-label={t("home.openAccountMenu")}
-                aria-haspopup="menu"
-                aria-expanded={accountMenuOpen}
-                onClick={() => setAccountMenuOpen((open) => !open)}
-              >
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--text)] text-xs font-bold text-[var(--bg-strong)]">
-                  {accountInitial}
-                </span>
-                <span className="hidden max-w-32 truncate sm:inline">
-                  {displayName}
-                </span>
-                <ChevronDown
-                  size={14}
-                  className={`transition ${accountMenuOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {accountMenuOpen ? (
-                <div
-                  className="floating-shadow absolute right-0 top-[calc(100%+0.65rem)] z-40 w-56 rounded-xl border border-[var(--line-strong)] bg-[var(--surface)] p-2"
-                  role="menu"
-                >
-                  <button
-                    className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--surface-high)]"
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setAccountMenuOpen(false);
-                      setSettingsOpen(true);
-                    }}
-                  >
-                    <Settings size={16} />
-                    {t("sidebar.settings")}
-                  </button>
-                  <button
-                    className="option-row flex w-full items-center gap-3 px-3 py-3 text-left text-sm text-[var(--text)] hover:bg-[var(--surface-high)]"
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void handleSignOut()}
-                  >
-                    <LogOut size={16} />
-                    {t("sidebar.signOut")}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </header>
+        <SiteNavigation />
 
         <div className="h-24 shrink-0" aria-hidden="true" />
 
@@ -226,15 +134,6 @@ export function HomeDashboard() {
                 <ArrowDown size={16} />
               </a>
             </div>
-          </div>
-
-          <div className="hidden justify-self-end border-l border-[var(--line)] pl-7 lg:block">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted-soft)]">
-              {t("home.betaLabel")}
-            </p>
-            <p className="mt-4 text-sm leading-7 text-[var(--muted)]">
-              {t("home.betaSummary")}
-            </p>
           </div>
         </section>
 
@@ -287,12 +186,12 @@ export function HomeDashboard() {
                 {productExperiences.map((experience) => {
                   const Icon = experience.icon;
 
-                  if (experience.id === "style") {
+                  if (experience.id === "style" || experience.id === "catalogs") {
                     return (
                       <Link
                         key={experience.id}
                         className="group flex min-h-[10rem] flex-col justify-between rounded-[1.2rem] border border-[rgba(208,188,255,0.42)] bg-[var(--accent-soft)] p-5 text-[var(--text)] transition hover:-translate-y-0.5 hover:border-[var(--accent)] sm:p-6"
-                        href="/style"
+                        href={experience.id === "style" ? "/style" : "/catalog"}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <Icon size={19} className="text-[var(--accent)]" />
@@ -376,25 +275,40 @@ export function HomeDashboard() {
           </div>
         </section>
 
-        <section className="grid gap-6 border-t border-[var(--line)] py-10 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start sm:py-12">
-          <span className="w-fit rounded-full border border-[var(--accent)]/35 bg-[var(--accent-soft)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
-            {t("common.beta")}
-          </span>
-          <div className="max-w-3xl sm:pl-6">
-            <h2 className="text-lg font-semibold text-[var(--text)]">
-              {t("home.betaTitle")}
+        <HomeNewsHighlights />
+
+        <section ref={betaSectionRef} id="about" className="py-24 sm:py-32 lg:py-40">
+          <div className="max-w-6xl">
+            <h2 data-text={betaTitle} className={`beta-title relative font-semibold text-[clamp(2.75rem,7vw,7rem)] leading-[0.98] tracking-[-0.065em] ${betaShimmerVisible ? "beta-copy-shimmer" : ""}`}>
+              {betaTitle}
             </h2>
-            <p className="mt-2 text-sm leading-7 text-[var(--muted)]">
-              {t("home.betaDescription")}
+            <p className={`serif mt-7 max-w-5xl text-xl font-semibold italic leading-[1.25] tracking-[-0.025em] text-[var(--muted)] sm:mt-9 sm:text-2xl lg:text-3xl ${betaVisible ? "beta-copy-reveal" : "opacity-0"}`}>
+              {betaDescriptionParts.map((part, index) => {
+                if (!part.trim()) {
+                  return part;
+                }
+
+                const wordIndex = betaDescriptionParts
+                  .slice(0, index)
+                  .filter((previousPart) => previousPart.trim()).length;
+
+                return (
+                  <span
+                    key={`${part}-${index}`}
+                    className="beta-copy-word"
+                    style={{ animationDelay: `${wordIndex * 70}ms` }}
+                  >
+                    {part}
+                  </span>
+                );
+              })}
             </p>
           </div>
         </section>
+
+        <SiteFooter />
       </div>
 
-      <SettingsDialog
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      />
     </main>
   );
 }

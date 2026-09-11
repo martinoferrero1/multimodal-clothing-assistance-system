@@ -28,8 +28,10 @@ class ImageSimilarityService(metaclass=SingletonMeta):
     def extract_attachment_features(
         self,
         attachments: list[dict[str, Any]],
+        *,
+        force_visual_search: bool = False,
     ) -> list[dict[str, Any]]:
-        if settings.IMAGE_SEARCH_MODE != "visual_similarity":
+        if settings.IMAGE_SEARCH_MODE != "visual_similarity" and not force_visual_search:
             return []
 
         features: list[dict[str, Any]] = []

@@ -562,6 +562,97 @@ label[for] {
   animation: rise-in 0.45s ease-out both;
 }
 
+.catalog-background {
+  background:
+    radial-gradient(circle at 86% 8%, rgba(208, 188, 255, 0.075), transparent 27rem),
+    linear-gradient(165deg, #101010 0%, var(--bg) 48%, #0e0e0e 100%);
+}
+
+.beta-title {
+  background: linear-gradient(180deg, #f8f5ff 0%, #d0bcff 48%, #9c7ce8 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 1.4rem rgba(208, 188, 255, 0.2));
+}
+
+@keyframes beta-word-reveal {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.beta-copy-reveal {
+  opacity: 1;
+}
+
+.beta-copy-word {
+  display: inline-block;
+  animation: beta-word-reveal 0.55s ease-out both;
+  will-change: opacity, filter;
+}
+
+.beta-copy-shimmer::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  content: attr(data-text);
+  color: transparent;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    transparent 32%,
+    rgba(255, 255, 255, 0.9) 44%,
+    #ffffff 50%,
+    var(--accent) 56%,
+    transparent 68%,
+    transparent 100%
+  );
+  background-size: 260% 100%;
+  background-position: 130% 50%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  opacity: 0;
+  filter: drop-shadow(0 0 0.45rem rgba(208, 188, 255, 0.58));
+}
+
+@keyframes beta-text-shimmer {
+  0% {
+    opacity: 0;
+    background-position: 130% 50%;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  56% {
+    opacity: 1;
+    background-position: -35% 50%;
+  }
+
+  70% {
+    opacity: 0;
+    background-position: -55% 50%;
+  }
+
+  100% {
+    opacity: 0;
+    background-position: -55% 50%;
+  }
+}
+
+.beta-copy-shimmer::after {
+  animation: beta-text-shimmer 5.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -569,6 +660,21 @@ label[for] {
 
   .animate-rise-in {
     animation: none;
+  }
+
+  .beta-copy-word {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+
+  .beta-copy-shimmer::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .beta-title {
+    filter: none;
   }
 
   .home-module-card {

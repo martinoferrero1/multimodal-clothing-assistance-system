@@ -338,6 +338,55 @@ class StoreInventoryImportRead(BaseModel):
     total_count: int
 
 
+class CatalogSubcategoryRead(BaseModel):
+    name: str
+    article_types: list[str] = Field(default_factory=list)
+
+
+class CatalogTaxonomyRead(BaseModel):
+    name: str
+    subcategories: list[CatalogSubcategoryRead] = Field(default_factory=list)
+
+
+class CatalogMetaRead(BaseModel):
+    taxonomy: list[CatalogTaxonomyRead] = Field(default_factory=list)
+    brands: list[str] = Field(default_factory=list)
+
+
+class CatalogProductImagesRead(BaseModel):
+    top: str | None = None
+    back: str | None = None
+    search: str | None = None
+    default: str | None = None
+    left: str | None = None
+    front: str | None = None
+    right: str | None = None
+
+
+class CatalogProductRead(BaseModel):
+    id: int
+    product_display_name: str
+    price: float | None = None
+    year: int | None = None
+    usage: str | None = None
+    gender: str | None = None
+    master_category: str
+    sub_category: str
+    article_type: str
+    brand: str | None = None
+    season: str | None = None
+    has_try_on: bool = False
+    images: CatalogProductImagesRead
+
+
+class CatalogPageRead(BaseModel):
+    items: list[CatalogProductRead] = Field(default_factory=list)
+    total: int = Field(ge=0)
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    has_more: bool
+
+
 class ConversationCreate(BaseModel):
     title: str | None = Field(default=None, max_length=160)
 
