@@ -28,15 +28,10 @@ export function FavoritesView() {
       <SiteNavigation />
       <div className="relative z-10 mx-auto w-full max-w-[92rem] px-5 pb-20 pt-32 sm:px-8 sm:pt-36 lg:px-12 lg:pt-40">
         <section className="mx-auto max-w-3xl py-8 sm:py-12">
-          <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--accent)]">{t("favorites.eyebrow")}</p>
           <div className="mt-4 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
             <div>
               <h1 className="serif text-5xl leading-[0.98] tracking-[-0.04em] sm:text-6xl">{t("favorites.title")}</h1>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-[var(--muted)]">{t("favorites.description")}</p>
             </div>
-            <Link className="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-[var(--line-strong)] px-4 py-2.5 text-xs font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:self-auto" href="/catalog">
-              {t("favorites.exploreCatalog")} <ArrowRight size={14} />
-            </Link>
           </div>
         </section>
 

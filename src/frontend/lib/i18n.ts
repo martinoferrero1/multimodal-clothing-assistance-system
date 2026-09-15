@@ -542,7 +542,7 @@ const esMessages = {
   "favorites.more": "+ {count} prendas guardadas más",
   "favorites.viewAll": "Ver todos los favoritos",
   "favorites.emptyTitle": "Tus favoritos te están esperando",
-  "favorites.emptyDescription": "Guardá prendas desde el catálogo y van a aparecer acá para tenerlas siempre a mano.",
+  "favorites.emptyDescription": "cuando veas una prenda que te guste, clickea en el corazon para tenerla siempre a mano",
   "favorites.eyebrow": "Tu selección guardada",
   "favorites.description": "Mantené cerca las prendas que te llamaron la atención mientras armás tu próximo look.",
   "favorites.exploreCatalog": "Explorar catálogo",
