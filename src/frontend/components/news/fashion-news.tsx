@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Clock3 } from "lucide-react";
+import { ArrowUpRight, Clock3 } from "lucide-react";
 
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteNavigation } from "@/components/layout/site-navigation";
@@ -30,20 +29,12 @@ export function FashionNews() {
         <div className="h-32 shrink-0 sm:h-36" aria-hidden="true" />
 
         <header className="border-b border-[var(--line)] pb-12 pt-8 sm:pb-16 sm:pt-12 lg:pb-20">
-          <Link
-            className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)] transition hover:text-[var(--text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)]"
-            href="/"
-          >
-            <ArrowLeft size={15} />
-            {t("news.backHome")}
-          </Link>
-
-          <div className="mt-10 grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.38fr)] lg:gap-16">
+          <div className="grid items-end gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.38fr)] lg:gap-16">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
                 {t("news.eyebrow")}
               </p>
-              <h1 className="serif mt-5 max-w-4xl text-[clamp(3.4rem,7vw,7rem)] leading-[0.94] tracking-[-0.055em] text-[var(--text)]">
+              <h1 className="serif mt-5 max-w-4xl text-[clamp(3.4rem,7vw,7rem)] leading-[1.02] tracking-[-0.02em] text-[var(--text)]">
                 {t("news.title")}
               </h1>
             </div>
