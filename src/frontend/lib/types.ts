@@ -88,6 +88,44 @@ export type StoreInventoryImportResponse = {
   total_count: number;
 };
 
+export type CommunityListingKind = "blog" | "event" | "space";
+
+export type CommunityListingBase = {
+  kind: CommunityListingKind;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  external_url?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+};
+
+export type CommunityListingWrite = CommunityListingBase & {
+  join_code?: string | null;
+};
+
+export type CommunityListing = CommunityListingBase & {
+  id: string;
+  store_id: string;
+  store_display_name: string | null;
+  store_handle: string | null;
+  is_subscribed: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CommunitySubscriptionState = {
+  is_subscribed: boolean;
+};
+
+export type CommunityJoinState = CommunitySubscriptionState & {
+  listing_id: string;
+};
+
+export type StoreCommunityListing = CommunityListing & {
+  join_code: string | null;
+};
+
 export type Conversation = {
   id: string;
   user_id: string;

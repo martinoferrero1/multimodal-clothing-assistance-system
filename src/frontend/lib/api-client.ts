@@ -3,6 +3,7 @@ import type {
   ConversationUpdate, HealthResponse, MfaEnrollmentResponse, SearchPreferences, SearchPriorityField,
   StoreRegistrationRequest, StoreStatusResponse, UserStylePreferences, UserStylePreferencesUpdate,
   StoreInventoryImportResponse, StoreInventoryItem, StoreInventoryItemWrite,
+  CommunityJoinState, CommunityListing, CommunityListingWrite, CommunitySubscriptionState, StoreCommunityListing,
   CatalogMeta, CatalogPage, CatalogQuery,
 } from "@/lib/types";
 
@@ -64,6 +65,14 @@ export const createStoreInventoryItem = (payload: StoreInventoryItemWrite) => ap
 export const updateStoreInventoryItem = (itemId: string, payload: StoreInventoryItemWrite) => apiRequest<StoreInventoryItem>(`api/store/inventory/items/${itemId}`, { method: "PUT", body: payload });
 export const deleteStoreInventoryItem = (itemId: string) => apiRequest<void>(`api/store/inventory/items/${itemId}`, { method: "DELETE" });
 export const importStoreInventory = (items: StoreInventoryItemWrite[]) => apiRequest<StoreInventoryImportResponse>("api/store/inventory/import", { method: "POST", body: { items } });
+export const listCommunityListings = () => apiRequest<CommunityListing[]>("api/community/listings");
+export const subscribeToCommunityListing = (listingId: string) => apiRequest<CommunitySubscriptionState>(`api/community/listings/${listingId}/subscribe`, { method: "POST" });
+export const unsubscribeFromCommunityListing = (listingId: string) => apiRequest<CommunitySubscriptionState>(`api/community/listings/${listingId}/subscribe`, { method: "DELETE" });
+export const joinCommunityListingByCode = (code: string) => apiRequest<CommunityJoinState>("api/community/join", { method: "POST", body: { code } });
+export const listStoreCommunityListings = () => apiRequest<StoreCommunityListing[]>("api/store/community/listings");
+export const createStoreCommunityListing = (payload: CommunityListingWrite) => apiRequest<StoreCommunityListing>("api/store/community/listings", { method: "POST", body: payload });
+export const updateStoreCommunityListing = (listingId: string, payload: CommunityListingWrite) => apiRequest<StoreCommunityListing>(`api/store/community/listings/${listingId}`, { method: "PUT", body: payload });
+export const deleteStoreCommunityListing = (listingId: string) => apiRequest<void>(`api/store/community/listings/${listingId}`, { method: "DELETE" });
 export const logout = () => apiRequest<void>("api/auth/logout", { method: "POST" });
 export const logoutAll = () => apiRequest<void>("api/auth/logout-all", { method: "POST" });
 export const getHealth = () => apiRequest<HealthResponse>("health");

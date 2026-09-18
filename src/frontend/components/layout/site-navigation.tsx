@@ -94,6 +94,7 @@ export function SiteNavigation() {
             <Link className={`transition hover:text-[var(--text)] ${pathname.startsWith("/style") ? "font-semibold text-[var(--text)]" : ""}`} href="/style">{t("home.styleTitle")}</Link>
             <Link className={`transition hover:text-[var(--text)] ${pathname.startsWith("/catalog") ? "font-semibold text-[var(--text)]" : ""}`} href="/catalog">{t("home.catalogTitle")}</Link>
             <Link className={`transition hover:text-[var(--text)] ${pathname.startsWith("/news") ? "font-semibold text-[var(--text)]" : ""}`} href="/news">{t("news.navLabel")}</Link>
+            <Link className={`transition hover:text-[var(--text)] ${pathname.startsWith("/community") ? "font-semibold text-[var(--text)]" : ""}`} href="/community">{t("community.navLabel")}</Link>
             <button className="cursor-not-allowed text-left text-[var(--muted-soft)] opacity-55" type="button" disabled aria-disabled="true" title={t("common.comingSoon")}>{t("home.garmentTitle")}</button>
           </nav>
 

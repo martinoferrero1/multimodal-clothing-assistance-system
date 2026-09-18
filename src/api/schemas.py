@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+import re
+from typing import Any, Literal
 import uuid
+from urllib.parse import urlparse
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field
 from pydantic import field_validator, model_validator
@@ -336,6 +338,100 @@ class StoreInventoryImportRead(BaseModel):
     created_count: int
     updated_count: int
     total_count: int
+
+
+CommunityListingKind = Literal["blog", "event", "space"]
+
+
+class StoreCommunityListingBase(BaseModel):
+    kind: CommunityListingKind
+    title: str = Field(min_length=1, max_length=180)
+    description: str | None = Field(default=None, max_length=10_000)
+    location: str | None = Field(default=None, max_length=255)
+    external_url: str | None = Field(default=None, max_length=4096)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+
+    @field_validator("title", "description", "location", mode="before")
+    @classmethod
+    def clean_text(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    @field_validator("external_url", mode="before")
+    @classmethod
+    def clean_external_url(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        if not normalized:
+            return None
+        parsed = urlparse(normalized)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("The external URL must use http or https.")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_dates(self):
+        if self.kind == "event" and self.starts_at is None:
+            raise ValueError("Events require a start date.")
+        if self.starts_at and self.ends_at and self.ends_at < self.starts_at:
+            raise ValueError("The end date must be after the start date.")
+        return self
+
+
+class StoreCommunityListingWrite(StoreCommunityListingBase):
+    join_code: str | None = Field(default=None, max_length=64)
+
+    @field_validator("join_code", mode="before")
+    @classmethod
+    def clean_join_code(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        normalized = str(value).strip().casefold()
+        if not normalized:
+            return None
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{2,63}", normalized):
+            raise ValueError("The join code must use 3–64 letters, numbers, or hyphens.")
+        return normalized
+
+
+class StoreCommunityListingRead(StoreCommunityListingBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    store_id: str
+    store_display_name: str | None = None
+    store_handle: str | None = None
+    is_subscribed: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class StoreCommunityListingManagementRead(StoreCommunityListingRead):
+    join_code: str | None = None
+
+
+class StoreCommunitySubscriptionStateRead(BaseModel):
+    is_subscribed: bool
+
+
+class StoreCommunityJoinCode(BaseModel):
+    code: str = Field(min_length=3, max_length=64)
+
+    @field_validator("code", mode="before")
+    @classmethod
+    def clean_code(cls, value: Any) -> str:
+        normalized = str(value).strip().casefold()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{2,63}", normalized):
+            raise ValueError("The join code must use 3–64 letters, numbers, or hyphens.")
+        return normalized
+
+
+class StoreCommunityJoinStateRead(StoreCommunitySubscriptionStateRead):
+    listing_id: str
 
 
 class CatalogSubcategoryRead(BaseModel):
