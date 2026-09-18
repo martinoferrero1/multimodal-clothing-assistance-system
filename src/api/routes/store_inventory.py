@@ -49,6 +49,38 @@ async def create_inventory_item(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This external ID already exists in the store inventory.") from exc
 
 
+@router.put("/items/{item_id}", response_model=StoreInventoryItemRead)
+async def update_inventory_item(
+    item_id: str,
+    payload: StoreInventoryItemWrite,
+    request: Request,
+    context: CommercialContext = Depends(get_commercial_context),
+    session: AsyncSession = Depends(get_db_session),
+    service: StoreInventoryService = Depends(get_store_inventory_service),
+) -> StoreInventoryItemRead:
+    await _enforce_inventory_limit(request, context)
+    try:
+        item = await service.update_item(session, context, item_id, payload)
+    except IntegrityError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This external ID already exists in the store inventory.") from exc
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found.")
+    return item
+
+
+@router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_inventory_item(
+    item_id: str,
+    request: Request,
+    context: CommercialContext = Depends(get_commercial_context),
+    session: AsyncSession = Depends(get_db_session),
+    service: StoreInventoryService = Depends(get_store_inventory_service),
+) -> None:
+    await _enforce_inventory_limit(request, context)
+    if not await service.delete_item(session, context, item_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found.")
+
+
 @router.post("/import", response_model=StoreInventoryImportRead)
 async def import_inventory_items(
     payload: StoreInventoryImport,

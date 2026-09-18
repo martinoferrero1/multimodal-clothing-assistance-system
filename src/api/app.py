@@ -98,11 +98,11 @@ async def request_telemetry(request: Request, call_next):
     try:
         response = await call_next(request)
     except Exception:
-        app.state.metrics.observe_request(request.url.path, time.monotonic() - started, 500)
+        request.app.state.metrics.observe_request(request.url.path, time.monotonic() - started, 500)
         logger.exception("request_failed", extra={"request_id": request_id, "path": request.url.path})
         raise
     duration = time.monotonic() - started
-    app.state.metrics.observe_request(request.url.path, duration, response.status_code)
+    request.app.state.metrics.observe_request(request.url.path, duration, response.status_code)
     response.headers["X-Request-ID"] = request_id
     logger.info(
         "request_complete",

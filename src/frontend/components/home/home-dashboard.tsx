@@ -17,6 +17,7 @@ import { SiteNavigation } from "@/components/layout/site-navigation";
 import { HomeNewsHighlights } from "@/components/news/home-news-highlights";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
+import { StoreInventoryManager } from "@/components/store/store-inventory-manager";
 import type { MessageKey } from "@/lib/i18n";
 
 const productExperiences: Array<{
@@ -93,6 +94,10 @@ export function HomeDashboard() {
     );
     return () => window.clearTimeout(shimmerTimer);
   }, [betaVisible, betaWordCount]);
+
+  if (canManageStore) {
+    return <StoreInventoryManager />;
+  }
 
   return (
     <main className="home-background relative min-h-screen overflow-x-hidden">

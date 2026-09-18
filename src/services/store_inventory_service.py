@@ -5,7 +5,7 @@ from decimal import Decimal
 from api.schemas import StoreInventoryImport, StoreInventoryImportRead, StoreInventoryItemRead, StoreInventoryItemWrite
 from infra.db.models.store_inventory_models import StoreInventoryItem
 from services.store_service import CommercialContext
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +34,43 @@ class StoreInventoryService:
             raise
         await session.refresh(item)
         return self._read(item)
+
+    async def update_item(
+        self,
+        session: AsyncSession,
+        context: CommercialContext,
+        item_id: str,
+        payload: StoreInventoryItemWrite,
+    ) -> StoreInventoryItemRead | None:
+        item = await session.scalar(
+            select(StoreInventoryItem).where(
+                StoreInventoryItem.id == item_id,
+                StoreInventoryItem.store_id == context.store.id,
+            )
+        )
+        if item is None:
+            return None
+        self._apply(item, payload)
+        try:
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            raise
+        await session.refresh(item)
+        return self._read(item)
+
+    async def delete_item(self, session: AsyncSession, context: CommercialContext, item_id: str) -> bool:
+        result = await session.execute(
+            delete(StoreInventoryItem).where(
+                StoreInventoryItem.id == item_id,
+                StoreInventoryItem.store_id == context.store.id,
+            )
+        )
+        if not result.rowcount:
+            await session.rollback()
+            return False
+        await session.commit()
+        return True
 
     async def import_items(
         self, session: AsyncSession, context: CommercialContext, payload: StoreInventoryImport

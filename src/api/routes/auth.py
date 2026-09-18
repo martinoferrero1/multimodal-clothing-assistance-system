@@ -74,10 +74,9 @@ async def logout(
     current: CurrentSession = Depends(get_current_session),
     session: AsyncSession = Depends(get_db_session),
     auth_service: AuthenticationService = Depends(get_auth_service),
-) -> Response:
+) -> None:
     await auth_service.revoke_current_session(session, current)
     clear_session_cookie(response)
-    return response
 
 
 @router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
@@ -86,7 +85,6 @@ async def logout_all(
     current: CurrentSession = Depends(get_current_session),
     session: AsyncSession = Depends(get_db_session),
     auth_service: AuthenticationService = Depends(get_auth_service),
-) -> Response:
+) -> None:
     await auth_service.revoke_all_sessions(session, current.user.id)
     clear_session_cookie(response)
-    return response

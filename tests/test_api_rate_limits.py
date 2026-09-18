@@ -8,16 +8,19 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from api.app import protect_unsafe_browser_requests
+from api.app import protect_unsafe_browser_requests, request_telemetry
 from api.dependencies import (
     get_auth_service,
     get_conversation_service,
+    get_current_session,
     get_current_user,
     get_db_session,
 )
 from api.routes.auth import router as auth_router
 from api.routes.conversations import router as conversations_router
 from api.routes.stores import get_store_service, router as stores_router
+from api.metrics import RuntimeMetrics
+from services.auth_service import CurrentSession
 from services.rate_limit_service import RateLimitResult, RateLimitUnavailable, rate_limit_outcome_counts
 
 
@@ -123,6 +126,35 @@ def test_known_and_unknown_accounts_receive_stable_429_contract(app: FastAPI) ->
     }
     assert known.headers["retry-after"] == unknown.headers["retry-after"] == "17"
     assert auth.calls == []
+
+
+@pytest.mark.parametrize("path", ["/api/auth/logout", "/api/auth/logout-all"])
+def test_logout_204_is_observable_by_request_telemetry(path: str, app: FastAPI) -> None:
+    """The injected response must keep the declared 204 status and deletion cookie."""
+    class LogoutAuth:
+        async def revoke_current_session(self, session, current):
+            return None
+
+        async def revoke_all_sessions(self, session, user_id):
+            return None
+
+    current = CurrentSession(
+        user=SimpleNamespace(id="user-1"),
+        session=SimpleNamespace(),
+    )
+    app.state.metrics = RuntimeMetrics()
+    app.middleware("http")(request_telemetry)
+    app.dependency_overrides[get_current_session] = lambda: current
+    app.dependency_overrides[get_auth_service] = LogoutAuth
+
+    with TestClient(app) as client:
+        result = client.post(path, headers=SAME_ORIGIN_HEADERS)
+
+    assert result.status_code == 204
+    assert result.content == b""
+    deletion_cookie = result.headers["set-cookie"]
+    assert deletion_cookie.startswith("lookeate_session=")
+    assert "Max-Age=0" in deletion_cookie
 
 
 @pytest.mark.parametrize(

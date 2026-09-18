@@ -61,6 +61,8 @@ export const enrollStoreMfa = () => apiRequest<MfaEnrollmentResponse>("api/auth/
 export const confirmStoreMfa = (code: string) => apiRequest<StoreStatusResponse>("api/auth/store/mfa/confirm", { method: "POST", body: { code } });
 export const listStoreInventory = () => apiRequest<StoreInventoryItem[]>("api/store/inventory/items");
 export const createStoreInventoryItem = (payload: StoreInventoryItemWrite) => apiRequest<StoreInventoryItem>("api/store/inventory/items", { method: "POST", body: payload });
+export const updateStoreInventoryItem = (itemId: string, payload: StoreInventoryItemWrite) => apiRequest<StoreInventoryItem>(`api/store/inventory/items/${itemId}`, { method: "PUT", body: payload });
+export const deleteStoreInventoryItem = (itemId: string) => apiRequest<void>(`api/store/inventory/items/${itemId}`, { method: "DELETE" });
 export const importStoreInventory = (items: StoreInventoryItemWrite[]) => apiRequest<StoreInventoryImportResponse>("api/store/inventory/import", { method: "POST", body: { items } });
 export const logout = () => apiRequest<void>("api/auth/logout", { method: "POST" });
 export const logoutAll = () => apiRequest<void>("api/auth/logout-all", { method: "POST" });

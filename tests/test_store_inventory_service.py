@@ -100,15 +100,34 @@ def test_store_inventory_is_scoped_to_the_active_store_and_bulk_import_upserts()
             await session.commit()
             assert len(await service.list_items(session, second_context)) == 1
 
+            edited = await service.update_item(
+                session,
+                first_context,
+                created.id,
+                StoreInventoryItemWrite(external_id="SKU-001", product_display_name="Campera editada"),
+            )
+            assert edited is not None
+            assert edited.product_display_name == "Campera editada"
+
+            assert await service.update_item(
+                session,
+                second_context,
+                created.id,
+                StoreInventoryItemWrite(external_id="SKU-001", product_display_name="No permitido"),
+            ) is None
+            assert not await service.delete_item(session, second_context, created.id)
+            assert await service.delete_item(session, first_context, created.id)
+            assert {item.external_id for item in await service.list_items(session, first_context)} == {"sku-002"}
+
             session.add(StoreInventoryItem(
-                store_id=first_store.id,
-                external_id="sku-001",
+                store_id=first_context.store.id,
+                external_id="sku-002",
                 product_display_name="Duplicado",
             ))
             with pytest.raises(IntegrityError):
                 await session.commit()
             await session.rollback()
-            assert len(await service.list_items(session, first_context)) == 2
+            assert len(await service.list_items(session, first_context)) == 1
 
         await engine.dispose()
 
