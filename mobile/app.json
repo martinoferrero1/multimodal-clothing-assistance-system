@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Lookeate",
+    "slug": "lookeate-mobile",
+    "version": "0.1.0",
+    "scheme": "lookeate",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#131313",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lookeate.mobile"
+    },
+    "android": {
+      "package": "com.lookeate.mobile",
+      "softwareKeyboardLayoutMode": "resize",
+      "predictiveBackGestureEnabled": true
+    },
+    "web": { "favicon": "./assets/icon.png" },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lookeate usa tus fotos para encontrar prendas e inspirar tus looks.",
+          "cameraPermission": "Lookeate usa la cámara para analizar prendas y looks.",
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}
