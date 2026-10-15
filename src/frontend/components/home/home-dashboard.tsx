@@ -17,6 +17,7 @@ import { SiteNavigation } from "@/components/layout/site-navigation";
 import { HomeNewsHighlights } from "@/components/news/home-news-highlights";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useLocale } from "@/components/providers/locale-provider";
+import { RegionalStyleMap } from "@/components/home/regional-style-map";
 import { StoreInventoryManager } from "@/components/store/store-inventory-manager";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -281,6 +282,8 @@ export function HomeDashboard() {
         </section>
 
         <HomeNewsHighlights />
+
+        <RegionalStyleMap />
 
         <section ref={betaSectionRef} id="about" className="py-24 sm:py-32 lg:py-40">
           <div className="max-w-6xl">
