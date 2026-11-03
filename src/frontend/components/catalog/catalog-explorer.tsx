@@ -18,6 +18,15 @@ import type { CatalogMeta, CatalogProduct, CatalogTaxonomy } from "@/lib/types";
 type SortOption = "relevance" | "newest" | "priceAsc" | "priceDesc";
 const PAGE_SIZE = 12;
 
+function subscribeToLocation(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  return () => window.removeEventListener("popstate", callback);
+}
+
+function getCatalogQueryFromLocation() {
+  return new URLSearchParams(window.location.search).get("q")?.trim() ?? "";
+}
+
 function productImage(product: CatalogProduct): string | null {
   return product.images.default || product.images.front || product.images.search || product.images.top || product.images.left || product.images.right || product.images.back;
 }
@@ -88,6 +97,7 @@ function CategoryPicker({ buttonClassName, buttonContent, label, menuClassName, 
 
 export function CatalogExplorer() {
   const { language, t } = useLocale();
+  const initialCatalogQuery = useSyncExternalStore(subscribeToLocation, getCatalogQueryFromLocation, () => "");
   const [meta, setMeta] = useState<CatalogMeta>({ taxonomy: [], brands: [] });
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [total, setTotal] = useState(0);
@@ -96,8 +106,8 @@ export function CatalogExplorer() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-  const [draftQuery, setDraftQuery] = useState("");
-  const [query, setQuery] = useState("");
+  const [draftQuery, setDraftQuery] = useState(initialCatalogQuery);
+  const [query, setQuery] = useState(initialCatalogQuery);
   const [masterCategory, setMasterCategory] = useState<string | null>(null);
   const [subCategory, setSubCategory] = useState<string | null>(null);
   const [articleType, setArticleType] = useState<string | null>(null);

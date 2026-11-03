@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUpRight,
@@ -48,6 +49,7 @@ const productExperiences: Array<{
 ];
 
 export function HomeDashboard() {
+  const router = useRouter();
   const auth = useAuth();
   const { t } = useLocale();
   const [betaVisible, setBetaVisible] = useState(false);
@@ -58,6 +60,13 @@ export function HomeDashboard() {
   const betaDescription = t("home.betaDescription");
   const betaDescriptionParts = betaDescription.split(/(\s+)/);
   const betaWordCount = betaDescriptionParts.filter((part) => part.trim()).length;
+  const [catalogQuery, setCatalogQuery] = useState("");
+
+  function submitCatalogSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = catalogQuery.trim();
+    router.push(query ? `/catalog?q=${encodeURIComponent(query)}` : "/catalog");
+  }
 
   useEffect(() => {
     const section = betaSectionRef.current;
@@ -114,7 +123,32 @@ export function HomeDashboard() {
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[92rem] flex-col px-5 sm:px-8 lg:px-12">
         <SiteNavigation />
 
-        <div className="h-24 shrink-0" aria-hidden="true" />
+        <section className="mx-auto w-full max-w-3xl pt-40 sm:pt-44" aria-label={t("catalog.searchLabel")}>
+          <form className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end" onSubmit={submitCatalogSearch}>
+            <div>
+              <h2 className="serif mb-5 text-center text-2xl font-semibold leading-tight tracking-[-0.025em] text-[var(--text)] sm:text-3xl">
+                {t("home.catalogSearchPrompt")}
+              </h2>
+              <label className="flex min-h-14 items-center gap-3 rounded-full border border-[var(--line-strong)] bg-black/25 px-5 text-left transition focus-within:border-[var(--accent)]">
+                <Search size={19} className="shrink-0 text-[var(--accent)]" aria-hidden="true" />
+                <span className="sr-only">{t("catalog.searchLabel")}</span>
+                <input
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--muted-soft)] sm:text-base"
+                  value={catalogQuery}
+                  onChange={(event) => setCatalogQuery(event.target.value)}
+                  placeholder={t("catalog.searchPlaceholder")}
+                  type="search"
+                />
+              </label>
+            </div>
+            <button className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-bold text-[#111] transition hover:bg-[var(--accent)]" type="submit">
+              {t("catalog.searchAction")}
+              <ArrowUpRight size={16} />
+            </button>
+          </form>
+        </section>
+
+        <div className="h-40 shrink-0 sm:h-48" aria-hidden="true" />
 
         <section className="grid flex-1 items-end gap-10 pb-16 pt-20 lg:grid-cols-[minmax(0,1fr)_18rem] lg:pb-20 lg:pt-28">
           <div className="max-w-5xl">

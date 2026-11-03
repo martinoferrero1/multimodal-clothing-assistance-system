@@ -230,6 +230,17 @@ export function RegionalStyleMap() {
   };
 
   const handleWheel = (event: React.WheelEvent<SVGSVGElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const scaleX = 440 / bounds.width;
+    const scaleY = 440 / bounds.height;
+    const pointerX = (event.clientX - bounds.left) * scaleX;
+    const pointerY = (event.clientY - bounds.top) * scaleY;
+    const distanceFromGlobeCenter = Math.hypot(pointerX - 220, pointerY - 220);
+
+    // The SVG includes some empty space around the globe. Let the page scroll
+    // there, and reserve wheel zoom for the visible globe itself.
+    if (distanceFromGlobeCenter > zoomRef.current) return;
+
     event.preventDefault();
     setZoomImmediately(Math.max(145, Math.min(380, zoomRef.current - event.deltaY * 0.12)));
   };
