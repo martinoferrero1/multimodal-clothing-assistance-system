@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-03T05:31:10.226663+00:00",
+  "title": "Design System: Lookeate",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Soft Lavender",
+        "tonalRamp": [
+          "#1d0f3d",
+          "#260080",
+          "#3500b2",
+          "#4500e6",
+          "#5e1aff",
+          "#8d5cff",
+          "#c4b0f2",
+          "#f1f0f5"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Soft Lavender wash",
+        "tonalRamp": [
+          "#1d0f3d",
+          "#260080",
+          "#3500b2",
+          "#4500e6",
+          "#5e1aff",
+          "#8d5cff",
+          "#c4b0f2",
+          "#f1f0f5"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Charcoal background",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#adadad",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "surface-lowest": {
+        "role": "neutral",
+        "displayName": "Deepest surface",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#adadad",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "surface-low": {
+        "role": "neutral",
+        "displayName": "Low surface",
+        "tonalRamp": [
+          "#272626",
+          "#413f3f",
+          "#5b5858",
+          "#757171",
+          "#8e8a8a",
+          "#afacac",
+          "#d2d0d0",
+          "#f2f2f2"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "tonalRamp": [
+          "#272626",
+          "#413f3f",
+          "#5b5858",
+          "#757171",
+          "#8e8a8a",
+          "#afacac",
+          "#d2d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "surface-high": {
+        "role": "neutral",
+        "displayName": "Raised surface",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#adadad",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "surface-highest": {
+        "role": "neutral",
+        "displayName": "Highest surface",
+        "tonalRamp": [
+          "#262626",
+          "#40403f",
+          "#5a5a58",
+          "#747472",
+          "#8d8d8b",
+          "#aeaead",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Warm light text",
+        "tonalRamp": [
+          "#282525",
+          "#443d3b",
+          "#605653",
+          "#7b6f6b",
+          "#948884",
+          "#b3aaa8",
+          "#d3d0cf",
+          "#f2f2f2"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted grey",
+        "tonalRamp": [
+          "#272525",
+          "#433c3d",
+          "#5e5456",
+          "#796d6e",
+          "#928688",
+          "#b2a9aa",
+          "#d3cfd0",
+          "#f2f2f2"
+        ]
+      },
+      "muted-soft": {
+        "role": "neutral",
+        "displayName": "Soft grey",
+        "tonalRamp": [
+          "#272526",
+          "#423e3e",
+          "#5c5657",
+          "#776f70",
+          "#908889",
+          "#b0abab",
+          "#d2d0d0",
+          "#f2f2f2"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#adadad",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Strong hairline",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#adadad",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "accent-ink": {
+        "role": "neutral",
+        "displayName": "Dark ink",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#8c8c8c",
+          "#adadad",
+          "#d1d1d1",
+          "#f2f2f2"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Soft coral",
+        "tonalRamp": [
+          "#3d140f",
+          "#800e00",
+          "#b21300",
+          "#e61900",
+          "#ff321a",
+          "#ff6d5c",
+          "#f2b7b0",
+          "#f5f0f0"
+        ]
+      },
+      "danger-surface": {
+        "role": "tertiary",
+        "displayName": "Error surface",
+        "tonalRamp": [
+          "#3d0f12",
+          "#800009",
+          "#b2000c",
+          "#e60010",
+          "#ff1a29",
+          "#ff5c67",
+          "#f2b0b5",
+          "#f5f0f0"
+        ]
+      },
+      "danger-line": {
+        "role": "tertiary",
+        "displayName": "Error hairline",
+        "tonalRamp": [
+          "#3d140f",
+          "#800e00",
+          "#b21300",
+          "#e61900",
+          "#ff321a",
+          "#ff6d5c",
+          "#f2b7b0",
+          "#f5f0f0"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Editorial serif",
+        "purpose": "Headings and branding."
+      },
+      "body": {
+        "displayName": "Interface sans",
+        "purpose": "Body copy and controls."
+      },
+      "label": {
+        "displayName": "Tracked label",
+        "purpose": "Small uppercase authentication labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "soft",
+        "value": "0 16px 48px rgba(0, 0, 0, 0.22)",
+        "purpose": "Ambient depth for surfaces."
+      },
+      {
+        "name": "floating",
+        "value": "0 8px 24px rgba(0, 0, 0, 0.18)",
+        "purpose": "Floating surfaces and dialogs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "option-row",
+        "value": "160ms ease",
+        "purpose": "Background, color and border changes."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Light authentication action.",
+      "html": "<button class=\"ds-primary\">Continue ?</button>",
+      "css": ".ds-primary{background:var(--text,#e5e2e1);color:var(--accent-ink,#1b1b1b);border:0;border-radius:.5rem;padding:1rem 1.25rem;font:600 14px sans-serif;transition:transform 150ms,opacity 150ms}.ds-primary:hover{transform:translateY(-1px);opacity:.95}.ds-primary:focus-visible{outline:2px solid var(--accent,#d0bcff);outline-offset:2px}.ds-primary:disabled{opacity:.6}"
+    },
+    {
+      "name": "Pill action",
+      "kind": "button",
+      "description": "Common catalog action.",
+      "html": "<button class=\"ds-pill\">Explore ?</button>",
+      "css": ".ds-pill{background:#fff;color:#111;border:0;border-radius:9999px;padding:.875rem 1.25rem;font:700 14px sans-serif;transition:background 150ms}.ds-pill:hover{background:var(--accent,#d0bcff)}.ds-pill:focus-visible{outline:2px solid var(--accent,#d0bcff);outline-offset:2px}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Authentication field with lavender focus.",
+      "html": "<input class=\"ds-input\" aria-label=\"Email\" placeholder=\"Email\">",
+      "css": ".ds-input{background:var(--surface,#201f1f);color:var(--text,#e5e2e1);border:1px solid var(--line,rgba(255,255,255,.1));border-radius:.5rem;padding:1rem 1.25rem;font:14px sans-serif;outline:none}.ds-input:focus{border-color:var(--accent,#d0bcff)}"
+    },
+    {
+      "name": "Selected filter",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Selected pill filter.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"true\">Selected</button>",
+      "css": ".ds-chip{border:1px solid var(--accent,#d0bcff);background:var(--accent-soft,rgba(208,188,255,.16));color:var(--accent,#d0bcff);border-radius:9999px;padding:.5rem 1rem;font:600 14px sans-serif}.ds-chip:hover{filter:brightness(1.1)}.ds-chip:focus-visible{outline:2px solid var(--accent,#d0bcff);outline-offset:2px}"
+    },
+    {
+      "name": "Content card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Rounded bordered content surface.",
+      "html": "<article class=\"ds-card\"><span class=\"ds-eyebrow\">LOOKEATE</span><h3>Discover your style</h3><p>Explore ideas and pieces.</p></article>",
+      "css": ".ds-card{background:var(--surface-low,#1c1b1b);color:var(--text,#e5e2e1);border:1px solid var(--line,rgba(255,255,255,.1));border-radius:1rem;padding:1.5rem}.ds-card h3{font:400 1.5rem Georgia,serif;margin:.75rem 0}.ds-card p{color:var(--muted,#b8b0b1);font:14px sans-serif}.ds-eyebrow{color:var(--accent,#d0bcff);font:600 10px sans-serif;letter-spacing:.18em}"
+    },
+    {
+      "name": "Sidebar navigation",
+      "kind": "nav",
+      "description": "Dark navigation with a selected item.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\" href=\"#\" aria-current=\"page\">Lookeate Assistant</a></nav>",
+      "css": ".ds-nav{background:#171717;padding:1rem;border-radius:.5rem}.ds-nav-item{display:block;border-radius:.5rem;background:var(--accent-soft,rgba(208,188,255,.16));color:var(--accent,#d0bcff);padding:.75rem;font:600 14px sans-serif;text-decoration:none}.ds-nav-item:hover{background:rgba(208,188,255,.24)}.ds-nav-item:focus-visible{outline:2px solid var(--accent,#d0bcff);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Styling Atelier",
+    "overview": "Lookeate is expressive and creative without overwhelming the user. Its modern workspace combines editorial serif headings with practical sans-serif controls, dark layered surfaces and Soft Lavender accents. The intent is intuitive, uncluttered interaction, with creative and tactile controls.",
+    "keyCharacteristics": [
+      "Dark, layered surfaces with restrained lavender highlights.",
+      "Editorial headings paired with functional interface typography.",
+      "Rounded controls, light borders and subtle ambient depth.",
+      "Clear hierarchy with room for content and interaction."
+    ],
+    "rules": [],
+    "dos": [
+      "Do use the existing surface and text tokens to preserve hierarchy.",
+      "Do use Soft Lavender for interaction emphasis and selected states.",
+      "Do keep depth ambient and controls creative and tactile.",
+      "Do keep interfaces intuitive and free of unnecessary clutter."
+    ],
+    "donts": [
+      "Don't overwhelm the user with excessive text or unnecessary elements.",
+      "Don't treat the light recommendation panel as a global light theme."
+    ]
+  }
+}
