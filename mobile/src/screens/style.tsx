@@ -12,7 +12,15 @@ import Svg, {
 } from "react-native-svg";
 import { useApp } from "../core/state";
 import { garments, type Garment, type GarmentCategory } from "../core/garments";
-import { Button, Chip, Field, Page, Photo } from "../ui/components";
+import {
+  Button,
+  Chip,
+  Field,
+  Page,
+  Photo,
+  ScreenHeading,
+  Sheet,
+} from "../ui/components";
 import { s, colors } from "../ui/theme";
 
 export function StyleScreen() {
@@ -23,6 +31,7 @@ export function StyleScreen() {
     Partial<Record<GarmentCategory, Garment>>
   >({});
   const [rotation, setRotation] = useState(0);
+  const [summary, setSummary] = useState(false);
   const rotationRef = useRef(0);
   const start = useRef(0);
   const rotate = (value: number) => {
@@ -58,19 +67,13 @@ export function StyleScreen() {
   }
   return (
     <Page>
-      <Text style={s.eyebrow}>
-        {l("TU ATELIER PERSONAL", "YOUR PERSONAL ATELIER")}
-      </Text>
-      <Text style={s.title}>{l("Creá tu estilo.", "Create your style.")}</Text>
-      <Text style={s.muted}>
-        {l(
-          "Elegí prendas, combiná colores y dale forma a tu próximo look.",
-          "Choose pieces, combine colors and shape your next look.",
-        )}
-      </Text>
+      <ScreenHeading
+        title={l("Creá tu estilo.", "Create your style.")}
+        eyebrow={l("TU ATELIER PERSONAL", "YOUR PERSONAL ATELIER")}
+      />
       <LinearGradient
         colors={["#25212b", "#171717"]}
-        style={[s.card, { alignItems: "center", paddingVertical: 20 }]}
+        style={[s.card, { alignItems: "center", paddingVertical: 12, gap: 6 }]}
       >
         <View
           {...pan.panHandlers}
@@ -95,7 +98,7 @@ export function StyleScreen() {
             transform: [{ perspective: 700 }, { rotateY: `${rotation}deg` }],
           }}
         >
-          <Svg width={230} height={330} viewBox="0 0 230 360">
+          <Svg width={170} height={230} viewBox="0 0 230 360">
             <Defs>
               <SvgGradient id="body" x1="0" x2="1">
                 <Stop offset="0" stopColor="#817974" />
@@ -154,17 +157,35 @@ export function StyleScreen() {
         <Text style={s.muted}>
           {l("Deslizá para girar el maniquí", "Swipe to rotate the mannequin")}
         </Text>
-        <View style={s.row}>
-          <Button title="↶" secondary onPress={() => rotate(rotation - 15)} />
+        <View style={s.wrap}>
+          <Button
+            title={l("Girar a la izquierda", "Rotate left")}
+            icon="arrow-undo"
+            iconOnly
+            secondary
+            onPress={() => rotate(rotation - 15)}
+          />
           <Button
             title={l("Centrar", "Center")}
             secondary
             onPress={() => rotate(0)}
           />
-          <Button title="↷" secondary onPress={() => rotate(rotation + 15)} />
+          <Button
+            title={l("Girar a la derecha", "Rotate right")}
+            icon="arrow-redo"
+            iconOnly
+            secondary
+            onPress={() => rotate(rotation + 15)}
+          />
         </View>
       </LinearGradient>
-      <View style={s.row}>
+      <Button
+        title={`${l("Tu look actual", "Your current look")} · ${Object.values(selected).filter(Boolean).length}`}
+        secondary
+        icon="layers-outline"
+        onPress={() => setSummary(true)}
+      />
+      <View style={s.wrap}>
         {(["top", "bottom", "shoes"] as const).map((key, i) => (
           <Chip
             key={key}
@@ -239,7 +260,11 @@ export function StyleScreen() {
           )}
         </Text>
       )}
-      <View style={s.card}>
+      <Sheet
+        title={l("Tu look actual", "Your current look")}
+        visible={summary}
+        onClose={() => setSummary(false)}
+      >
         <Text style={s.heading}>
           {l("Tu look actual", "Your current look")}
         </Text>
@@ -248,7 +273,13 @@ export function StyleScreen() {
           .map((g) => (
             <View key={g!.id} style={s.spread}>
               <Text style={[s.text, { flex: 1 }]}>{g!.name}</Text>
-              <Button title="×" secondary onPress={() => toggle(g!)} />
+              <Button
+                title={`${l("Quitar", "Remove")} ${g!.name}`}
+                icon="close"
+                iconOnly
+                secondary
+                onPress={() => toggle(g!)}
+              />
             </View>
           ))}
         {!Object.values(selected).some(Boolean) && (
@@ -270,7 +301,7 @@ export function StyleScreen() {
             rotate(0);
           }}
         />
-      </View>
+      </Sheet>
     </Page>
   );
 }

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Text, View, ScrollView } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as Clipboard from "expo-clipboard";
 import { File } from "expo-file-system";
 import { useApp } from "../core/state";
 import * as api from "../core/api";
 import { useResource } from "../core/use-resource";
+import { eventDateInput, parseEventDate, validEventDates } from "../core/dates";
 import type {
   CommunityListingWrite,
   StoreCommunityListing,
@@ -22,10 +23,11 @@ import {
   Page,
   Photo,
   confirmDelete,
+  Sheet,
+  Disclosure,
 } from "../ui/components";
 import { colors, s } from "../ui/theme";
 import { RequireAccount } from "./auth";
-import type { ScreenProps } from "../navigation-types";
 
 const registrationFields = [
   ["owner_display_name", "Tu nombre", "Your name"],
@@ -40,9 +42,7 @@ const registrationFields = [
   ["contact_email", "Email comercial", "Business email"],
   ["contact_phone", "Teléfono comercial", "Business phone"],
 ] as const;
-export function StoreRegisterScreen({
-  navigation,
-}: ScreenProps<"StoreRegister">) {
+export function StoreRegisterScreen() {
   const { l, accept, auth } = useApp();
   const [draft, setDraft] = useState<StoreRegistrationRequest>(
     () =>
@@ -123,7 +123,6 @@ export function StoreRegisterScreen({
           try {
             accept(await api.registerStore(draft));
             setDraft((v) => ({ ...v, owner_password: "" }));
-            navigation.replace("Store");
           } catch {
             setError(true);
             setDraft((v) => ({ ...v, owner_password: "" }));
@@ -212,7 +211,11 @@ function Store() {
     <View style={s.fill}>
       <View style={{ padding: 16, gap: 12 }}>
         <Text style={s.heading}>{store.display_name}</Text>
-        <View style={s.row}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8 }}
+        >
           {["inventory", "community", "security"].map((key, i) => (
             <Chip
               key={key}
@@ -231,7 +234,7 @@ function Store() {
               }}
             />
           ))}
-        </View>
+        </ScrollView>
       </View>
       {tab === "inventory" ? (
         <Inventory />
@@ -467,28 +470,60 @@ function Inventory() {
         </View>
       )}
       {notice && <Text style={{ color: colors.accent }}>{notice}</Text>}
-      {editing && (
-        <View style={s.card}>
-          <Text style={s.heading}>
-            {editing === "new"
-              ? l("Nuevo producto", "New product")
-              : l("Editar producto", "Edit product")}
-          </Text>
-          {inventoryFields.map(([key, es, en]) => (
-            <Field
-              key={key}
-              label={l(es, en)}
-              value={draft[key] ?? ""}
-              onChangeText={(value) =>
-                setDraft((v) => ({ ...v, [key]: value }))
-              }
-              keyboardType={
-                key === "price" || key === "year" ? "decimal-pad" : "default"
-              }
-              autoCapitalize={key.startsWith("image_") ? "none" : "sentences"}
-              multiline={key === "description"}
-            />
-          ))}
+      <Sheet
+        title={
+          editing === "new"
+            ? l("Nuevo producto", "New product")
+            : l("Editar producto", "Edit product")
+        }
+        visible={!!editing}
+        onClose={() => setEditing(null)}
+      >
+        <Text style={s.heading}>
+          {editing === "new"
+            ? l("Nuevo producto", "New product")
+            : l("Editar producto", "Edit product")}
+        </Text>
+        {[
+          {
+            title: l("Datos principales", "Main details"),
+            keys: inventoryFields.slice(0, 4),
+            open: true,
+          },
+          {
+            title: l("Categoría y atributos", "Category and attributes"),
+            keys: inventoryFields.slice(4, 15),
+            open: false,
+          },
+          {
+            title: l("Imágenes del producto", "Product images"),
+            keys: inventoryFields.slice(15),
+            open: false,
+          },
+        ].map((group) => (
+          <Disclosure
+            key={group.title}
+            title={group.title}
+            initiallyOpen={group.open}
+          >
+            {group.keys.map(([key, es, en]) => (
+              <Field
+                key={key}
+                label={l(es, en)}
+                value={draft[key] ?? ""}
+                onChangeText={(value) =>
+                  setDraft((v) => ({ ...v, [key]: value }))
+                }
+                keyboardType={
+                  key === "price" || key === "year" ? "decimal-pad" : "default"
+                }
+                autoCapitalize={key.startsWith("image_") ? "none" : "sentences"}
+                multiline={key === "description"}
+              />
+            ))}
+          </Disclosure>
+        ))}
+        <Disclosure title={l("Detalles adicionales", "Additional details")}>
           <Field
             label={l(
               "Detalles adicionales (JSON)",
@@ -499,23 +534,23 @@ function Inventory() {
             multiline
             autoCapitalize="none"
           />
-          <Button
-            title={l("Guardar producto", "Save product")}
-            disabled={
-              !draft.external_id?.trim() ||
-              !draft.product_display_name?.trim() ||
-              invalidNumber("price") ||
-              invalidNumber("year")
-            }
-            onPress={save}
-          />
-          <Button
-            title={l("Cancelar", "Cancel")}
-            secondary
-            onPress={() => setEditing(null)}
-          />
-        </View>
-      )}
+        </Disclosure>
+        <Button
+          title={l("Guardar producto", "Save product")}
+          disabled={
+            !draft.external_id?.trim() ||
+            !draft.product_display_name?.trim() ||
+            invalidNumber("price") ||
+            invalidNumber("year")
+          }
+          onPress={save}
+        />
+        <Button
+          title={l("Cancelar", "Cancel")}
+          secondary
+          onPress={() => setEditing(null)}
+        />
+      </Sheet>
       <Field
         label={l("Buscar en mi inventario", "Search my inventory")}
         value={query}
@@ -597,8 +632,8 @@ function StoreCommunity() {
             description: item.description,
             location: item.location,
             external_url: item.external_url,
-            starts_at: item.starts_at,
-            ends_at: item.ends_at,
+            starts_at: eventDateInput(item.starts_at),
+            ends_at: eventDateInput(item.ends_at),
             join_code: item.join_code,
           },
     );
@@ -610,10 +645,14 @@ function StoreCommunity() {
     ["external_url", "Enlace externo", "External link"],
     [
       "starts_at",
-      "Inicio (ISO: 2026-09-30T18:00:00-03:00)",
-      "Start (ISO: 2026-09-30T18:00:00-03:00)",
+      "Inicio (día/mes/año hora:minutos)",
+      "Start (day/month/year hour:minutes)",
     ],
-    ["ends_at", "Fin (fecha ISO)", "End (ISO date)"],
+    [
+      "ends_at",
+      "Fin (día/mes/año hora:minutos)",
+      "End (day/month/year hour:minutes)",
+    ],
     ["join_code", "Código de invitación", "Invitation code"],
   ] as const;
   return (
@@ -626,19 +665,32 @@ function StoreCommunity() {
         icon="add"
         onPress={() => edit("new")}
       />
-      {editing && (
-        <View style={s.card}>
-          <View style={s.row}>
-            {(["blog", "event", "space"] as const).map((kind, i) => (
-              <Chip
-                key={kind}
-                title={["Blog", l("Evento", "Event"), l("Espacio", "Space")][i]}
-                selected={draft.kind === kind}
-                onPress={() => setDraft((v) => ({ ...v, kind }))}
-              />
-            ))}
-          </View>
-          {fields.map(([key, es, en]) => (
+      <Sheet
+        title={
+          editing === "new"
+            ? l("Crear publicación", "Create listing")
+            : l("Editar publicación", "Edit listing")
+        }
+        visible={!!editing}
+        onClose={() => setEditing(null)}
+      >
+        <View style={s.wrap}>
+          {(["blog", "event", "space"] as const).map((kind, i) => (
+            <Chip
+              key={kind}
+              title={["Blog", l("Evento", "Event"), l("Espacio", "Space")][i]}
+              selected={draft.kind === kind}
+              onPress={() => setDraft((v) => ({ ...v, kind }))}
+            />
+          ))}
+        </View>
+        {fields
+          .filter(
+            ([key]) =>
+              !["starts_at", "ends_at"].includes(key) || draft.kind === "event",
+          )
+          .filter(([key]) => key !== "join_code" || draft.kind === "space")
+          .map(([key, es, en]) => (
             <Field
               key={key}
               label={l(es, en)}
@@ -647,6 +699,11 @@ function StoreCommunity() {
                 setDraft((v) => ({ ...v, [key]: value || null }))
               }
               multiline={key === "description"}
+              placeholder={
+                key === "starts_at" || key === "ends_at"
+                  ? "10/11/2026 18:00"
+                  : undefined
+              }
               autoCapitalize={
                 key === "external_url" || key === "join_code"
                   ? "none"
@@ -654,27 +711,46 @@ function StoreCommunity() {
               }
             />
           ))}
-          <Button
-            title={l("Guardar publicación", "Save listing")}
-            disabled={
-              !draft.title?.trim() ||
-              (draft.kind === "event" && !draft.starts_at)
-            }
-            onPress={async () => {
-              if (editing === "new")
-                await api.createStoreCommunityListing(draft);
-              else await api.updateStoreCommunityListing(editing.id, draft);
-              setEditing(null);
-              await result.reload();
-            }}
-          />
-          <Button
-            title={l("Cancelar", "Cancel")}
-            secondary
-            onPress={() => setEditing(null)}
-          />
-        </View>
-      )}
+        {draft.kind === "event" && (
+          <Text style={s.muted}>
+            {l(
+              "Usá la hora local de tu dispositivo. El fin debe ser posterior al inicio.",
+              "Use your device's local time. The end must follow the start.",
+            )}
+          </Text>
+        )}
+        <Button
+          title={l("Guardar publicación", "Save listing")}
+          disabled={
+            !draft.title?.trim() ||
+            (draft.kind === "event" &&
+              (!draft.starts_at ||
+                !validEventDates(draft.starts_at, draft.ends_at)))
+          }
+          onPress={async () => {
+            const payload = {
+              ...draft,
+              title: draft.title.trim(),
+              starts_at:
+                draft.kind === "event" ? parseEventDate(draft.starts_at) : null,
+              ends_at:
+                draft.kind === "event" ? parseEventDate(draft.ends_at) : null,
+              join_code: draft.kind === "space" ? draft.join_code : null,
+            };
+            if (editing === "new")
+              await api.createStoreCommunityListing(payload);
+            else if (editing)
+              await api.updateStoreCommunityListing(editing.id, payload);
+            setEditing(null);
+            await result.reload();
+          }}
+        />
+        <Button
+          title={l("Cancelar", "Cancel")}
+          secondary
+          onPress={() => setEditing(null)}
+        />
+      </Sheet>
       {result.loading && <Loading />}
       {result.error && (
         <Empty

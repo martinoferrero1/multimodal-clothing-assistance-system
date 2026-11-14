@@ -7,13 +7,20 @@ import { Button, Chip, Empty, Field, Loading, Page } from "../ui/components";
 import { s, colors } from "../ui/theme";
 import type { Navigation, ScreenProps } from "../navigation-types";
 
-export function RequireAccount({ children }: { children: ReactNode }) {
+export function RequireAccount({
+  children,
+  inline = false,
+}: {
+  children: ReactNode;
+  inline?: boolean;
+}) {
   const { status, l, restore, error } = useApp();
   const navigation = useNavigation<Navigation>();
+  const Container = inline ? View : Page;
   if (status === "loading") return <Loading />;
   if (status === "error")
     return (
-      <Page>
+      <Container>
         <Empty
           title={l("No pudimos conectar", "Unable to connect")}
           body={
@@ -29,11 +36,11 @@ export function RequireAccount({ children }: { children: ReactNode }) {
           }
           retry={() => void restore()}
         />
-      </Page>
+      </Container>
     );
   if (status !== "authenticated")
     return (
-      <Page>
+      <Container>
         <Empty
           title={l("Tu estilo empieza acá", "Your style starts here")}
           body={l(
@@ -45,7 +52,7 @@ export function RequireAccount({ children }: { children: ReactNode }) {
           title={l("Ingresar o crear cuenta", "Sign in or register")}
           onPress={() => navigation.navigate("Auth")}
         />
-      </Page>
+      </Container>
     );
   return children;
 }
@@ -64,7 +71,6 @@ export function AuthScreen({ navigation }: ScreenProps<"Auth">) {
         : await api.login(email.trim(), password);
       setPassword("");
       accept(result);
-      navigation.goBack();
     } catch {
       setPassword("");
       setError(

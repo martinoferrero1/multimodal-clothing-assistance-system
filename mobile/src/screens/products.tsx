@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import {
   FlatList,
   Pressable,
@@ -6,12 +7,14 @@ import {
   Switch,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import { useApp } from "../core/state";
 import * as api from "../core/api";
 import { useResource } from "../core/use-resource";
+import { garmentProducts } from "../core/recommendations";
 import type {
   CatalogProduct,
   ProductRecommendation,
@@ -25,10 +28,11 @@ import {
   Loading,
   Page,
   Photo,
+  Sheet,
 } from "../ui/components";
 import { colors, s } from "../ui/theme";
 import { RequireAccount } from "./auth";
-import type { Navigation, ScreenProps } from "../navigation-types";
+import type { Navigation, ScreenProps, TabRoutes } from "../navigation-types";
 
 export function imageFor(product: CatalogProduct | ProductRecommendation) {
   return (
@@ -70,19 +74,30 @@ export function ProductCard({
     </Pressable>
   );
 }
-export function CatalogScreen() {
+export function CatalogScreen({
+  route,
+}: BottomTabScreenProps<TabRoutes, "Catalog">) {
   return (
     <RequireAccount>
-      <Catalog />
+      <Catalog initialQuery={route.params?.query} />
     </RequireAccount>
   );
 }
-function Catalog() {
+function Catalog({ initialQuery }: { initialQuery?: string }) {
   const { l } = useApp();
-  const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<CatalogQuery>({});
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [query, setQuery] = useState(initialQuery ?? "");
+  const [filters, setFilters] = useState<CatalogQuery>({ query: initialQuery });
   const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [paging, setPaging] = useState(false);
+  useEffect(() => {
+    if (initialQuery === undefined) return;
+    queueMicrotask(() => {
+      setQuery(initialQuery);
+      setFilters({ query: initialQuery });
+      setPhoto(null);
+    });
+  }, [initialQuery]);
   const generation = useRef(0);
   const meta = useResource(api.getCatalogMeta);
   const loader = useCallback(() => {
@@ -116,54 +131,74 @@ function Catalog() {
   return (
     <FlatList
       style={s.fill}
-      contentContainerStyle={s.page}
-      data={result.data?.items ?? []}
+      contentContainerStyle={[s.page, { gap: 0 }]}
+      data={result.error ? [] : (result.data?.items ?? [])}
       numColumns={2}
       columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
       keyExtractor={(p) => String(p.id)}
-      renderItem={({ item }) => <ProductCard product={item} />}
+      renderItem={({ item }) => (
+        <View style={{ flex: 1, maxWidth: "50%" }}>
+          <ProductCard product={item} />
+        </View>
+      )}
       refreshing={result.loading}
       onRefresh={() => void result.reload()}
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
         <View style={{ gap: 16, paddingBottom: 20 }}>
-          <Text style={s.title}>
-            {l(
-              "Encontrá tu próxima\npieza favorita.",
-              "Find your next\nfavorite piece.",
-            )}
+          <Text accessibilityRole="header" style={s.title}>
+            {l("Explorá el catálogo", "Explore the catalog")}
           </Text>
-          <Field
-            label={l("Buscar prendas o marcas", "Search pieces or brands")}
-            value={query}
-            maxLength={160}
-            onChangeText={setQuery}
-            returnKeyType="search"
-            onSubmitEditing={() => {
-              setPhoto(null);
-              setFilters((v) => ({ ...v, query }));
-            }}
-          />
-          <Button
-            title={l("Buscar", "Search")}
-            icon="search-outline"
-            onPress={() => {
-              setPhoto(null);
-              setFilters((v) => ({ ...v, query }));
-            }}
-          />
-          <Button
-            title={l("Buscar con una foto", "Search with a photo")}
-            secondary
-            icon="camera-outline"
-            onPress={async () => {
-              const picked = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ["images"],
-                quality: 0.8,
-              });
-              if (!picked.canceled) setPhoto(picked.assets[0]);
-            }}
-          />
+          <View style={[s.row, { alignItems: "flex-end", gap: 8 }]}>
+            <View style={{ flex: 1 }}>
+              <Field
+                label={l("Buscar prendas o marcas", "Search pieces or brands")}
+                value={query}
+                maxLength={160}
+                onChangeText={setQuery}
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  setPhoto(null);
+                  setFilters((v) => ({ ...v, query }));
+                }}
+              />
+            </View>
+            <Button
+              title={l("Buscar", "Search")}
+              icon="search-outline"
+              iconOnly
+              onPress={() => {
+                setPhoto(null);
+                setFilters((v) => ({ ...v, query }));
+              }}
+            />
+          </View>
+          <View style={s.row}>
+            <View style={{ flex: 1 }}>
+              <Button
+                title={l("Por foto", "By photo")}
+                secondary
+                icon="camera-outline"
+                onPress={async () => {
+                  const picked = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ["images"],
+                    quality: 0.8,
+                  });
+                  if (!picked.canceled) setPhoto(picked.assets[0]);
+                }}
+              />
+            </View>
+            {!photo && (
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={l("Filtros y orden", "Filter and sort")}
+                  icon="options-outline"
+                  secondary
+                  onPress={() => setFilterOpen(true)}
+                />
+              </View>
+            )}
+          </View>
           {photo ? (
             <>
               <Photo uri={photo.uri} size={100} />
@@ -175,146 +210,187 @@ function Catalog() {
             </>
           ) : (
             <>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8 }}
+              {Object.values(filters).some(Boolean) && (
+                <Button
+                  title={l("Limpiar filtros", "Clear filters")}
+                  secondary
+                  onPress={() => {
+                    setFilters({});
+                    setQuery("");
+                  }}
+                />
+              )}
+              <Sheet
+                title={l("Filtros y orden", "Filter and sort")}
+                visible={filterOpen}
+                onClose={() => setFilterOpen(false)}
               >
-                <Chip
-                  title={l("Todo", "All")}
-                  selected={!filters.masterCategory}
-                  onPress={() =>
-                    setFilters((v) => ({
-                      ...v,
-                      masterCategory: undefined,
-                      subCategory: undefined,
-                      articleType: undefined,
-                    }))
-                  }
-                />
-                {meta.data?.taxonomy.map((category) => (
+                {meta.error && (
+                  <Empty
+                    title={l(
+                      "No pudimos cargar los filtros",
+                      "Could not load filters",
+                    )}
+                    retry={() => void meta.reload()}
+                  />
+                )}
+                <Text style={s.eyebrow}>{l("CATEGORÍA", "CATEGORY")}</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8 }}
+                >
                   <Chip
-                    key={category.name}
-                    title={category.name}
-                    selected={filters.masterCategory === category.name}
+                    title={l("Todo", "All")}
+                    selected={!filters.masterCategory}
                     onPress={() =>
                       setFilters((v) => ({
                         ...v,
-                        masterCategory: category.name,
+                        masterCategory: undefined,
                         subCategory: undefined,
                         articleType: undefined,
                       }))
                     }
                   />
-                ))}
-              </ScrollView>
-              {filters.masterCategory && (
+                  {meta.data?.taxonomy.map((category) => (
+                    <Chip
+                      key={category.name}
+                      title={category.name}
+                      selected={filters.masterCategory === category.name}
+                      onPress={() =>
+                        setFilters((v) => ({
+                          ...v,
+                          masterCategory: category.name,
+                          subCategory: undefined,
+                          articleType: undefined,
+                        }))
+                      }
+                    />
+                  ))}
+                </ScrollView>
+                {filters.masterCategory && (
+                  <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+                    <Chip
+                      title={l("Todas las subcategorías", "All subcategories")}
+                      selected={!filters.subCategory}
+                      onPress={() =>
+                        setFilters((v) => ({
+                          ...v,
+                          subCategory: undefined,
+                          articleType: undefined,
+                        }))
+                      }
+                    />
+                    {meta.data?.taxonomy
+                      .find((c) => c.name === filters.masterCategory)
+                      ?.subcategories.map((c) => (
+                        <Chip
+                          key={c.name}
+                          title={c.name}
+                          selected={filters.subCategory === c.name}
+                          onPress={() =>
+                            setFilters((v) => ({
+                              ...v,
+                              subCategory: c.name,
+                              articleType: undefined,
+                            }))
+                          }
+                        />
+                      ))}
+                  </ScrollView>
+                )}
+                {filters.subCategory && (
+                  <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+                    <Chip
+                      title={l("Todos los tipos", "All article types")}
+                      selected={!filters.articleType}
+                      onPress={() =>
+                        setFilters((v) => ({ ...v, articleType: undefined }))
+                      }
+                    />
+                    {meta.data?.taxonomy
+                      .find((c) => c.name === filters.masterCategory)
+                      ?.subcategories.find(
+                        (c) => c.name === filters.subCategory,
+                      )
+                      ?.article_types.map((articleType) => (
+                        <Chip
+                          key={articleType}
+                          title={articleType}
+                          selected={filters.articleType === articleType}
+                          onPress={() =>
+                            setFilters((v) => ({ ...v, articleType }))
+                          }
+                        />
+                      ))}
+                  </ScrollView>
+                )}
+                <Text style={s.eyebrow}>{l("MARCA", "BRAND")}</Text>
                 <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
                   <Chip
-                    title={l("Todas las subcategorías", "All subcategories")}
-                    selected={!filters.subCategory}
+                    title={l("Todas las marcas", "All brands")}
+                    selected={!filters.brand}
                     onPress={() =>
-                      setFilters((v) => ({
-                        ...v,
-                        subCategory: undefined,
-                        articleType: undefined,
-                      }))
+                      setFilters((v) => ({ ...v, brand: undefined }))
                     }
                   />
-                  {meta.data?.taxonomy
-                    .find((c) => c.name === filters.masterCategory)
-                    ?.subcategories.map((c) => (
-                      <Chip
-                        key={c.name}
-                        title={c.name}
-                        selected={filters.subCategory === c.name}
-                        onPress={() =>
-                          setFilters((v) => ({
-                            ...v,
-                            subCategory: c.name,
-                            articleType: undefined,
-                          }))
-                        }
-                      />
-                    ))}
+                  {meta.data?.brands.map((brand) => (
+                    <Chip
+                      key={brand}
+                      title={brand}
+                      selected={filters.brand === brand}
+                      onPress={() => setFilters((v) => ({ ...v, brand }))}
+                    />
+                  ))}
                 </ScrollView>
-              )}
-              {filters.subCategory && (
                 <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
-                  <Chip
-                    title={l("Todos los tipos", "All article types")}
-                    selected={!filters.articleType}
-                    onPress={() =>
-                      setFilters((v) => ({ ...v, articleType: undefined }))
-                    }
-                  />
-                  {meta.data?.taxonomy
-                    .find((c) => c.name === filters.masterCategory)
-                    ?.subcategories.find((c) => c.name === filters.subCategory)
-                    ?.article_types.map((articleType) => (
-                      <Chip
-                        key={articleType}
-                        title={articleType}
-                        selected={filters.articleType === articleType}
-                        onPress={() =>
-                          setFilters((v) => ({ ...v, articleType }))
-                        }
-                      />
-                    ))}
+                  {(
+                    ["relevance", "newest", "priceAsc", "priceDesc"] as const
+                  ).map((sort, index) => (
+                    <Chip
+                      key={sort}
+                      title={
+                        [
+                          l("Relevancia", "Relevance"),
+                          l("Novedades", "Newest"),
+                          l("Menor precio", "Price ↑"),
+                          l("Mayor precio", "Price ↓"),
+                        ][index]
+                      }
+                      selected={(filters.sort ?? "relevance") === sort}
+                      onPress={() => setFilters((v) => ({ ...v, sort }))}
+                    />
+                  ))}
                 </ScrollView>
-              )}
-              <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
-                <Chip
-                  title={l("Todas las marcas", "All brands")}
-                  selected={!filters.brand}
-                  onPress={() =>
-                    setFilters((v) => ({ ...v, brand: undefined }))
-                  }
-                />
-                {meta.data?.brands.map((brand) => (
-                  <Chip
-                    key={brand}
-                    title={brand}
-                    selected={filters.brand === brand}
-                    onPress={() => setFilters((v) => ({ ...v, brand }))}
-                  />
-                ))}
-              </ScrollView>
-              <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
-                {(
-                  ["relevance", "newest", "priceAsc", "priceDesc"] as const
-                ).map((sort, index) => (
-                  <Chip
-                    key={sort}
-                    title={
-                      [
-                        l("Relevancia", "Relevance"),
-                        l("Novedades", "Newest"),
-                        l("Menor precio", "Price ↑"),
-                        l("Mayor precio", "Price ↓"),
-                      ][index]
+                <View style={s.spread}>
+                  <Text style={[s.muted, { flex: 1 }]}>
+                    {l("Con vista para probar", "With try-on view")}
+                  </Text>
+                  <Switch
+                    accessibilityLabel={l(
+                      "Con vista para probar",
+                      "With try-on view",
+                    )}
+                    value={filters.tryOnOnly ?? false}
+                    onValueChange={(tryOnOnly) =>
+                      setFilters((v) => ({ ...v, tryOnOnly }))
                     }
-                    selected={(filters.sort ?? "relevance") === sort}
-                    onPress={() => setFilters((v) => ({ ...v, sort }))}
+                    trackColor={{ true: colors.accent }}
                   />
-                ))}
-              </ScrollView>
-              <View style={s.spread}>
-                <Text style={s.muted}>
-                  {l("Con vista para probar", "With try-on view")}
-                </Text>
-                <Switch
-                  accessibilityLabel={l(
-                    "Con vista para probar",
-                    "With try-on view",
-                  )}
-                  value={filters.tryOnOnly ?? false}
-                  onValueChange={(tryOnOnly) =>
-                    setFilters((v) => ({ ...v, tryOnOnly }))
-                  }
-                  trackColor={{ true: colors.accent }}
+                </View>
+                <Button
+                  title={l("Ver resultados", "View results")}
+                  onPress={() => setFilterOpen(false)}
                 />
-              </View>
+                <Button
+                  title={l("Restablecer filtros", "Reset filters")}
+                  secondary
+                  onPress={() => {
+                    setFilters({});
+                    setQuery("");
+                  }}
+                />
+              </Sheet>
             </>
           )}
           {result.data && (
@@ -363,6 +439,7 @@ export function ProductScreen({ route }: ScreenProps<"Product">) {
   const { product } = route.params;
   const { l, favorites, toggleFavorite } = useApp();
   const [uri, setUri] = useState(imageFor(product));
+  const { height } = useWindowDimensions();
   const normalized: CatalogProduct = {
     ...product,
     master_category: product.master_category ?? "",
@@ -382,14 +459,26 @@ export function ProductScreen({ route }: ScreenProps<"Product">) {
   };
   return (
     <Page>
-      <Photo key={uri} uri={uri} size={340} />
+      <Photo key={uri} uri={uri} size={Math.min(340, height * 0.36)} />
       <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
         {Object.entries(product.images)
           .filter(([, value]) => value)
           .map(([key, value]) => (
             <Chip
               key={key}
-              title={key}
+              title={
+                (
+                  {
+                    default: l("Principal", "Main"),
+                    front: l("Frente", "Front"),
+                    back: l("Espalda", "Back"),
+                    left: l("Izquierda", "Left"),
+                    right: l("Derecha", "Right"),
+                    top: l("Superior", "Top"),
+                    search: l("Referencia", "Reference"),
+                  } as Record<string, string>
+                )[key] ?? key
+              }
               selected={uri === value}
               onPress={() => setUri(value)}
             />
@@ -420,35 +509,72 @@ export function ProductScreen({ route }: ScreenProps<"Product">) {
   );
 }
 export function FavoritesScreen() {
-  const { favorites, l } = useApp();
+  const { favorites, l, toggleFavorite } = useApp();
+  const navigation = useNavigation<Navigation>();
   return (
     <FlatList
       style={s.fill}
       contentContainerStyle={s.page}
       data={favorites}
-      numColumns={2}
       keyExtractor={(p) => String(p.id)}
-      columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
-      renderItem={({ item }) => <ProductCard product={item} />}
+      renderItem={({ item }) => (
+        <View style={[s.card, { marginBottom: 12 }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={item.product_display_name}
+            onPress={() => navigation.navigate("Product", { product: item })}
+            style={s.row}
+          >
+            <View style={{ width: 82 }}>
+              <Photo uri={imageFor(item)} size={105} />
+            </View>
+            <View style={{ flex: 1, gap: 5 }}>
+              <Text style={s.eyebrow}>{item.brand ?? "Lookeate"}</Text>
+              <Text style={[s.text, { fontWeight: "600" }]}>
+                {item.product_display_name}
+              </Text>
+              <Text style={s.muted}>
+                {item.price == null
+                  ? l("Precio no disponible", "Price unavailable")
+                  : `$ ${item.price.toLocaleString()}`}
+              </Text>
+            </View>
+          </Pressable>
+          <Button
+            title={l("Quitar de favoritos", "Remove from favorites")}
+            secondary
+            icon="heart-dislike-outline"
+            onPress={() => toggleFavorite(item)}
+          />
+        </View>
+      )}
       ListHeaderComponent={
         <View style={{ gap: 12, marginBottom: 20 }}>
-          <Text style={s.title}>{l("Tus favoritos", "Your favorites")}</Text>
+          <Text style={s.title}>
+            {l("Tus favoritos", "Your favorites")} · {favorites.length}
+          </Text>
           <Text style={s.muted}>
             {l("Guardados en este dispositivo.", "Saved on this device.")}
           </Text>
         </View>
       }
       ListEmptyComponent={
-        <Empty
-          title={l(
-            "Tu colección empieza con un favorito",
-            "Your collection starts with a favorite",
-          )}
-          body={l(
-            "Abrí una prenda y tocá el corazón para guardarla.",
-            "Open a piece and tap the heart to save it.",
-          )}
-        />
+        <View style={{ gap: 12 }}>
+          <Empty
+            title={l(
+              "Tu colección empieza con un favorito",
+              "Your collection starts with a favorite",
+            )}
+            body={l(
+              "Abrí una prenda y tocá el corazón para guardarla.",
+              "Open a piece and tap the heart to save it.",
+            )}
+          />
+          <Button
+            title={l("Explorar catálogo", "Explore catalog")}
+            onPress={() => navigation.navigate("Main", { screen: "Catalog" })}
+          />
+        </View>
       }
     />
   );
@@ -460,11 +586,9 @@ export function OutfitScreen({ route }: ScreenProps<"Outfit">) {
       {route.params.outfit.items.map((item, i) => (
         <View key={i} style={{ gap: 12 }}>
           <Text style={s.heading}>{item.garment_type_label}</Text>
-          {(item.best_match ? [item.best_match] : item.product_highlights).map(
-            (product) => (
-              <ProductCard key={product.id} product={product} />
-            ),
-          )}
+          {garmentProducts(item).map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </View>
       ))}
     </Page>

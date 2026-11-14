@@ -25,6 +25,8 @@ const enMessages = {
   "home.openAccountMenu": "Open account menu",
   "home.eyebrow": "Your personal style, expanded",
   "home.title": "Imagine it. Combine it. Make it yours.",
+  "home.catalogSearchPrompt":
+    "What’s the piece you can’t get out of your head?",
   "home.description":
     "Lookeate brings together the tools to explore ideas, shape complete looks, create garments, and find the right pieces for your style.",
   "home.openAssistant": "Open Lookeate Assistant",
@@ -49,6 +51,45 @@ const enMessages = {
   "home.storeCatalogDescription":
     "Add garments or import your catalog from a dedicated store workspace.",
   "home.storeCatalogAction": "Open store catalog",
+  "home.regionalMapEyebrow": "Lookeate around",
+  "home.regionalMapTitle": "See what style looks like around the world.",
+  "home.regionalMapDescription":
+    "Explore the silhouettes, materials, and combinations that define each region, then open a curated starting point for your next look.",
+  "home.regionalMapMostWorn": "Most worn",
+  "home.regionalMapSuggested": "Lookeate suggests",
+  "home.regionalMapExplore": "See suggested combinations",
+  "home.regionalMapSelectHint": "Hover or select a region",
+  "home.regionalMapAccessibleLabel":
+    "Stylized world map with interactive regional style markers",
+  "home.regionalMapPrototype": "Curated prototype",
+  "home.globeTitle": "Explore style, one place at a time.",
+  "home.globeDescription":
+    "Turn the globe, zoom into a place, and explore sample style signals across Argentina and the United States.",
+  "home.globeAccessibleLabel":
+    "Interactive globe with country outlines and selectable regional style markers",
+  "home.globeZoomIn": "Zoom in",
+  "home.globeZoomOut": "Zoom out",
+  "home.globeReset": "Reset globe view",
+  "home.globeLocationCount": "{count} marked places",
+  "home.globeDragHint": "Drag to rotate · scroll to zoom",
+  "home.globeSampleLabel": "Curated sample",
+  "home.globeSampleDisclaimer":
+    "Illustrative style signals curated by Lookeate. They are not measured local trends or live data.",
+  "home.globeLocationLabel": "Explore a province or state",
+  "home.globeSearchPlaceholder": "Search a place...",
+  "home.globeClearSearch": "Clear location search",
+  "home.globeNoMatches": "No matching places found.",
+  "home.globeFocusLocation": "Focus on this place",
+  "home.globePalette": "Color direction",
+  "home.globeMaterials": "Materials",
+  "home.globeSilhouette": "Silhouette",
+  "home.globeStylePrompt": "A Lookeate styling prompt",
+  "home.regionalOutfitsEyebrow": "Suggested combinations",
+  "home.regionalOutfitsTitle": "looks to start from",
+  "home.regionalOutfitsDescription":
+    "Use these combinations as a starting point and make them yours with Lookeate Assistant.",
+  "home.regionalOutfitsBackToMap": "Back to the map",
+  "home.regionalOutfitsLookLabel": "Look",
   "news.navLabel": "News",
   "news.eyebrow": "Lookeate editorial",
   "news.homeTitle": "What is moving fashion now.",
@@ -542,6 +583,8 @@ const esMessages = {
   "home.openAccountMenu": "Abrir menú de cuenta",
   "home.eyebrow": "Tu estilo personal, expandido",
   "home.title": "Imaginalo. Combinalo. Hacelo tuyo.",
+  "home.catalogSearchPrompt":
+    "¿Cuál es esa prenda que no te podés sacar de la cabeza?",
   "home.description":
     "Lookeate reúne las herramientas para explorar ideas, dar forma a looks completos, crear prendas y encontrar las piezas indicadas para tu estilo.",
   "home.openAssistant": "Abrir Lookeate Assistant",
@@ -566,6 +609,45 @@ const esMessages = {
   "home.storeCatalogDescription":
     "Agregá prendas o importá tu catálogo desde un espacio exclusivo para tu tienda.",
   "home.storeCatalogAction": "Abrir catálogo",
+  "home.regionalMapEyebrow": "Lookeate por el mundo",
+  "home.regionalMapTitle": "Mirá cómo se viste el mundo.",
+  "home.regionalMapDescription":
+    "Explorá las siluetas, materiales y combinaciones que definen cada región, y abrí un punto de partida curado para tu próximo look.",
+  "home.regionalMapMostWorn": "Más usado",
+  "home.regionalMapSuggested": "Lookeate sugiere",
+  "home.regionalMapExplore": "Ver combinaciones sugeridas",
+  "home.regionalMapSelectHint": "Pasá el cursor o elegí una región",
+  "home.regionalMapAccessibleLabel":
+    "Mapa estilizado del mundo con marcadores regionales de estilo interactivos",
+  "home.regionalMapPrototype": "Prototipo curado",
+  "home.globeTitle": "Explorá el estilo, lugar por lugar.",
+  "home.globeDescription":
+    "Girá el globo, acercate a un lugar y explorá señales de estilo de muestra en Argentina y Estados Unidos.",
+  "home.globeAccessibleLabel":
+    "Globo interactivo con fronteras de países y marcadores regionales de estilo seleccionables",
+  "home.globeZoomIn": "Acercar",
+  "home.globeZoomOut": "Alejar",
+  "home.globeReset": "Restablecer vista del globo",
+  "home.globeLocationCount": "{count} lugares marcados",
+  "home.globeDragHint": "Arrastrá para girar · desplazate para acercar",
+  "home.globeSampleLabel": "Muestra curada",
+  "home.globeSampleDisclaimer":
+    "Señales de estilo ilustrativas curadas por Lookeate. No son tendencias locales medidas ni datos en vivo.",
+  "home.globeLocationLabel": "Explorá una provincia o estado",
+  "home.globeSearchPlaceholder": "Buscá un lugar...",
+  "home.globeClearSearch": "Borrar búsqueda de ubicación",
+  "home.globeNoMatches": "No encontramos lugares que coincidan.",
+  "home.globeFocusLocation": "Enfocar este lugar",
+  "home.globePalette": "Dirección de color",
+  "home.globeMaterials": "Materiales",
+  "home.globeSilhouette": "Silueta",
+  "home.globeStylePrompt": "Una sugerencia de estilo de Lookeate",
+  "home.regionalOutfitsEyebrow": "Combinaciones sugeridas",
+  "home.regionalOutfitsTitle": "looks para empezar",
+  "home.regionalOutfitsDescription":
+    "Usá estas combinaciones como punto de partida y hacelas tuyas con Lookeate Assistant.",
+  "home.regionalOutfitsBackToMap": "Volver al mapa",
+  "home.regionalOutfitsLookLabel": "Look",
   "news.navLabel": "Noticias",
   "news.eyebrow": "Editorial Lookeate",
   "news.homeTitle": "Lo que está moviendo la moda ahora.",

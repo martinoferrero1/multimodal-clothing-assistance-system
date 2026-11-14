@@ -1,12 +1,19 @@
 import { useState } from "react";
-import { Switch, Text, View } from "react-native";
+import { Switch, Text, View, ScrollView } from "react-native";
 import { useApp } from "../core/state";
 import * as api from "../core/api";
 import type {
   SearchPriorityField,
   StylePreferenceDetails,
 } from "../core/types";
-import { Button, Chip, Field, Page, confirmDelete } from "../ui/components";
+import {
+  Button,
+  Chip,
+  Field,
+  Page,
+  Disclosure,
+  confirmDelete,
+} from "../ui/components";
 import { colors, s } from "../ui/theme";
 import { RequireAccount } from "./auth";
 import type { ScreenProps } from "../navigation-types";
@@ -17,7 +24,11 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
   return (
     <Page>
       <Text style={s.title}>{l("Configuración", "Settings")}</Text>
-      <View style={s.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+      >
         {["general", "assistant", "account"].map((key, i) => (
           <Chip
             key={key}
@@ -28,7 +39,7 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
             onPress={() => setSection(key)}
           />
         ))}
-      </View>
+      </ScrollView>
       {section === "general" && (
         <View style={s.card}>
           <Text style={s.heading}>
@@ -58,7 +69,10 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
               onChange={(compactChat) => setPreferences({ compactChat })}
             />
             <SettingToggle
-              label={l("Mostrar recomendaciones", "Show recommendations")}
+              label={l(
+                "Expandir productos recomendados",
+                "Expand recommended products",
+              )}
               value={preferences.showRecommendations}
               onChange={(showRecommendations) =>
                 setPreferences({ showRecommendations })
@@ -66,12 +80,12 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
             />
             <Text style={s.muted}>
               {l(
-                "Los outfits se abren en una pantalla completa.",
-                "Outfits open in a full screen view.",
+                "Los outfits se abren en una pantalla completa. Siempre podés desplegar los productos dentro del chat.",
+                "Outfits open in a full screen view. You can always expand products inside the chat.",
               )}
             </Text>
           </View>
-          <RequireAccount>
+          <RequireAccount inline>
             <PersonalPreferences />
           </RequireAccount>
         </>
@@ -86,7 +100,6 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
               secondary
               onPress={async () => {
                 await signOut();
-                navigation.goBack();
               }}
             />
             <Button
@@ -101,7 +114,6 @@ export function SettingsScreen({ navigation }: ScreenProps<"Settings">) {
                   ),
                   async () => {
                     await signOut(true);
-                    navigation.goBack();
                   },
                   l("Cancelar", "Cancel"),
                   l("Cerrar sesiones", "Sign out"),
@@ -249,87 +261,89 @@ function PersonalPreferences() {
             await refresh();
           }}
         />
-        <Text style={s.muted}>
-          {l("Separá los valores con comas.", "Separate values with commas.")}
-        </Text>
-        {listFields.map(({ key, label }) => (
-          <Field
-            key={key}
-            label={label}
-            value={listDraft[key] ?? ""}
-            onChangeText={(value) => {
-              setListDraft((v) => ({ ...v, [key]: value }));
-              setSaved(false);
-            }}
-          />
-        ))}
-        {(
-          [
-            { key: "budget_notes", label: t("settings.budgetNotes") },
-            { key: "sizing_notes", label: t("settings.sizingNotes") },
-            { key: "freeform_notes", label: t("settings.styleNotes") },
-          ] as const
-        ).map(({ key, label }) => (
-          <Field
-            key={key}
-            label={label}
-            value={draft[key] ?? ""}
-            onChangeText={(value) => {
-              setDraft((v) => ({ ...v, [key]: value }));
-              setSaved(false);
-            }}
-            multiline
-          />
-        ))}
-        <Button
-          title={l("Guardar mi estilo", "Save my style")}
-          onPress={async () => {
-            const explicit = {
-              ...draft,
-              ...Object.fromEntries(
-                Object.entries(listDraft).map(([key, value]) => [
-                  key,
-                  value
-                    .split(",")
-                    .map((v) => v.trim())
-                    .filter(Boolean),
-                ]),
-              ),
-            };
-            await api.updateUserStylePreferences({ explicit });
-            await refresh();
-            setSaved(true);
-          }}
-        />
-        {saved && (
-          <Text style={{ color: colors.accent }}>
-            {l("Preferencias guardadas.", "Preferences saved.")}
+        <Disclosure title={l("Editar mis preferencias", "Edit my preferences")}>
+          <Text style={s.muted}>
+            {l("Separá los valores con comas.", "Separate values with commas.")}
           </Text>
-        )}
-        <Button
-          title={l(
-            "Borrar preferencias explícitas",
-            "Clear explicit preferences",
+          {listFields.map(({ key, label }) => (
+            <Field
+              key={key}
+              label={label}
+              value={listDraft[key] ?? ""}
+              onChangeText={(value) => {
+                setListDraft((v) => ({ ...v, [key]: value }));
+                setSaved(false);
+              }}
+            />
+          ))}
+          {(
+            [
+              { key: "budget_notes", label: t("settings.budgetNotes") },
+              { key: "sizing_notes", label: t("settings.sizingNotes") },
+              { key: "freeform_notes", label: t("settings.styleNotes") },
+            ] as const
+          ).map(({ key, label }) => (
+            <Field
+              key={key}
+              label={label}
+              value={draft[key] ?? ""}
+              onChangeText={(value) => {
+                setDraft((v) => ({ ...v, [key]: value }));
+                setSaved(false);
+              }}
+              multiline
+            />
+          ))}
+          <Button
+            title={l("Guardar mi estilo", "Save my style")}
+            onPress={async () => {
+              const explicit = {
+                ...draft,
+                ...Object.fromEntries(
+                  Object.entries(listDraft).map(([key, value]) => [
+                    key,
+                    value
+                      .split(",")
+                      .map((v) => v.trim())
+                      .filter(Boolean),
+                  ]),
+                ),
+              };
+              await api.updateUserStylePreferences({ explicit });
+              await refresh();
+              setSaved(true);
+            }}
+          />
+          {saved && (
+            <Text style={{ color: colors.accent }}>
+              {l("Preferencias guardadas.", "Preferences saved.")}
+            </Text>
           )}
-          secondary
-          onPress={() =>
-            confirmDelete(
-              l("Borrar preferencias", "Clear preferences"),
-              l(
-                "Se borrarán tus preferencias de estilo guardadas.",
-                "Your saved explicit style preferences will be cleared.",
-              ),
-              async () => {
-                await api.clearUserExplicitStylePreferences();
-                setDraft({});
-                setListDraft({});
-                await refresh();
-              },
-              l("Cancelar", "Cancel"),
-              l("Borrar", "Clear"),
-            )
-          }
-        />
+          <Button
+            title={l(
+              "Borrar preferencias explícitas",
+              "Clear explicit preferences",
+            )}
+            secondary
+            onPress={() =>
+              confirmDelete(
+                l("Borrar preferencias", "Clear preferences"),
+                l(
+                  "Se borrarán tus preferencias de estilo guardadas.",
+                  "Your saved explicit style preferences will be cleared.",
+                ),
+                async () => {
+                  await api.clearUserExplicitStylePreferences();
+                  setDraft({});
+                  setListDraft({});
+                  await refresh();
+                },
+                l("Cancelar", "Cancel"),
+                l("Borrar", "Clear"),
+              )
+            }
+          />
+        </Disclosure>
       </View>
       <View style={s.card}>
         <Text style={s.heading}>

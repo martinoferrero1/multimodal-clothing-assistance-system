@@ -72,11 +72,17 @@ La web completa existente sigue en `src/frontend`.
 
 La navegación de conversaciones pertenece al Assistant. Los outfits se abren
 en modales de pantalla completa. La preferencia de recomendaciones controla su
-visibilidad; no existe un panel lateral en el teléfono. El maniquí es una
+expansión inicial; los productos siempre se pueden desplegar dentro del chat.
+No existe un panel lateral en el teléfono. El maniquí es una
 representación vectorial con transformación de perspectiva, no un motor de
 prueba virtual ni un modelo corporal 3D. Los looks no se guardan en el servidor.
 
-`src/core/types.ts`, `i18n.ts`, `fashion-news.ts` y `garments.ts` contienen una
+Lookeate Around está disponible desde Inicio y Más, con globo, búsqueda por
+provincia/estado y los mismos perfiles regionales de la web. Filtros de catálogo,
+resumen del look, preferencias del chat y edición de tienda usan modales.
+
+`src/core/types.ts`, `i18n.ts`, `fashion-news.ts`, `garments.ts` y
+`regional-style-*.ts` contienen una
 copia inicial de contratos/contenidos del frontend. Mantenerlos sincronizados
 al cambiar la API o el contenido editorial. La independencia permite extraer
 esta carpeta a otro repositorio sin depender de archivos hermanos.
@@ -111,6 +117,13 @@ npm audit
 
 Los tests ejercitan el contrato de cookies/CSRF, expiración, logout, carreras
 entre sesiones, multipart y rechazo de configuración insegura de release.
+Playwright inicia su propio servidor en el puerto 8082 con API simulada:
+`LOOKEATE_UI_TEST=1` activa un resolver exclusivo de web en Metro. Este resolver
+no se aplica a bundles Android/iOS ni al servidor de desarrollo normal. No usar
+esa variable al iniciar una vista conectada. No se consultan cuentas reales ni
+se envían credenciales desde estas pruebas.
+
+Ver [PARITY_REVIEW.md](PARITY_REVIEW.md) para la comparación completa con main.
 `expo export` comprueba la generación de bundles, **no produce un APK/IPA
 firmado ni reemplaza las pruebas en un teléfono**.
 

@@ -7,12 +7,21 @@ import type {
   ProductRecommendation,
   OutfitRecommendation,
 } from "./core/types";
+import type { NavigatorScreenParams } from "@react-navigation/native";
+export type TabRoutes = {
+  Home: undefined;
+  Assistant: undefined;
+  Style: undefined;
+  Catalog: { query?: string } | undefined;
+  More: undefined;
+};
 export type RootRoutes = {
-  Main: undefined;
+  Main: NavigatorScreenParams<TabRoutes> | undefined;
   Auth: undefined;
   Settings: undefined;
   Favorites: undefined;
-  News: undefined;
+  News: { articleId?: string } | undefined;
+  Around: undefined;
   Community: undefined;
   Store: undefined;
   StoreRegister: undefined;

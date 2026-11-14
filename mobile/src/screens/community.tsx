@@ -1,23 +1,36 @@
 import { useState } from "react";
-import { Linking, Text, View } from "react-native";
+import { Linking, Text, View, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useApp } from "../core/state";
 import { fashionNewsArticles } from "../core/fashion-news";
 import * as api from "../core/api";
 import { useResource } from "../core/use-resource";
-import { Button, Chip, Empty, Field, Loading, Page } from "../ui/components";
+import {
+  Button,
+  Chip,
+  Empty,
+  Field,
+  Loading,
+  Page,
+  Sheet,
+} from "../ui/components";
+import type { ScreenProps } from "../navigation-types";
 import { colors, s } from "../ui/theme";
 import { RequireAccount } from "./auth";
 
 export async function openExternal(url: string) {
   if (/^https?:\/\//i.test(url)) await Linking.openURL(url);
 }
-export function NewsScreen() {
+export function NewsScreen({ route }: ScreenProps<"News">) {
   const { l, preferences } = useApp();
   const language = preferences.language;
   const [category, setCategory] = useState("");
+  const [articleId, setArticleId] = useState(route.params?.articleId);
+  const selectedArticle = fashionNewsArticles.find(
+    (article) => article.id === articleId,
+  );
   const categories = [
-    ...new Set(fashionNewsArticles.map((a) => a.category[language])),
+    ...new Set(fashionNewsArticles.map((a) => a.category.en)),
   ];
   return (
     <Page>
@@ -33,7 +46,11 @@ export function NewsScreen() {
           "The Lookeate editorial selection.",
         )}
       </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+      >
         <Chip
           title={l("Todo", "All")}
           selected={!category}
@@ -42,14 +59,35 @@ export function NewsScreen() {
         {categories.map((c) => (
           <Chip
             key={c}
-            title={c}
+            title={
+              fashionNewsArticles.find((article) => article.category.en === c)!
+                .category[language]
+            }
             selected={category === c}
             onPress={() => setCategory(c)}
           />
         ))}
-      </View>
+      </ScrollView>
+      <Sheet
+        title={l("En la mirada", "In focus")}
+        visible={!!selectedArticle}
+        onClose={() => setArticleId(undefined)}
+      >
+        {selectedArticle && (
+          <>
+            <Text style={s.eyebrow}>{selectedArticle.category[language]}</Text>
+            <Text style={s.title}>{selectedArticle.title[language]}</Text>
+            <Text style={s.muted}>{selectedArticle.source}</Text>
+            <Text style={s.text}>{selectedArticle.summary[language]}</Text>
+            <Button
+              title={l("Leer en la fuente", "Read at source")}
+              onPress={() => openExternal(selectedArticle.url)}
+            />
+          </>
+        )}
+      </Sheet>
       {fashionNewsArticles
-        .filter((a) => !category || a.category[language] === category)
+        .filter((a) => !category || a.category.en === category)
         .map((article, i) => (
           <View
             key={article.id}
@@ -98,11 +136,31 @@ export function CommunityScreen() {
   );
 }
 function Community() {
-  const { l, auth } = useApp();
+  const { l, auth, preferences } = useApp();
   const result = useResource(api.listCommunityListings);
   const [code, setCode] = useState("");
   const [filter, setFilter] = useState("all");
   const [joined, setJoined] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [query, setQuery] = useState("");
+  const visible = result.data?.filter(
+    (item) =>
+      (filter === "all" ||
+        (filter === "subscribed"
+          ? item.is_subscribed
+          : item.kind === filter)) &&
+      [
+        item.title,
+        item.description,
+        item.location,
+        item.store_display_name,
+        item.store_handle,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(query.trim().toLocaleLowerCase()),
+  );
   if (auth?.selected_store)
     return (
       <Page>
@@ -124,7 +182,31 @@ function Community() {
       <Text style={s.title}>
         {l("El estilo también\nse comparte.", "Style is better\nshared.")}
       </Text>
-      <View style={s.card}>
+      <Field
+        label={l("Buscar en comunidad", "Search community")}
+        value={query}
+        onChangeText={setQuery}
+        placeholder={l(
+          "Tiendas, publicaciones o lugares",
+          "Stores, posts or places",
+        )}
+      />
+      <Button
+        title={l("Tengo una invitación", "I have an invitation")}
+        icon="key-outline"
+        secondary
+        onPress={() => setJoining(true)}
+      />
+      {joined && (
+        <Text style={{ color: colors.accent }}>
+          {l("Ya sos parte del espacio.", "You have joined the space.")}
+        </Text>
+      )}
+      <Sheet
+        title={l("Unirme con invitación", "Join by invitation")}
+        visible={joining}
+        onClose={() => setJoining(false)}
+      >
         <Field
           label={l("Código de invitación", "Invitation code")}
           value={code}
@@ -139,16 +221,16 @@ function Community() {
             await api.joinCommunityListingByCode(code.trim());
             setCode("");
             setJoined(true);
+            setJoining(false);
             await result.reload();
           }}
         />
-        {joined && (
-          <Text style={{ color: colors.accent }}>
-            {l("Ya sos parte del espacio.", "You have joined the space.")}
-          </Text>
-        )}
-      </View>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      </Sheet>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+      >
         {["all", "blog", "event", "space", "subscribed"].map((key, i) => (
           <Chip
             key={key}
@@ -165,7 +247,7 @@ function Community() {
             onPress={() => setFilter(key)}
           />
         ))}
-      </View>
+      </ScrollView>
       {result.loading && <Loading />}
       {result.error && (
         <Empty
@@ -176,68 +258,60 @@ function Community() {
           retry={() => void result.reload()}
         />
       )}
-      {result.data
-        ?.filter(
-          (item) =>
-            filter === "all" ||
-            (filter === "subscribed"
-              ? item.is_subscribed
-              : item.kind === filter),
-        )
-        .map((item) => (
-          <View key={item.id} style={s.card}>
-            <Text style={s.eyebrow}>
-              {item.store_display_name ?? "Lookeate"}
+      {visible?.map((item) => (
+        <View key={item.id} style={s.card}>
+          <Text style={s.eyebrow}>
+            {item.store_display_name ?? "Lookeate"} ·{" "}
+            {item.kind === "event"
+              ? l("Evento", "Event")
+              : item.kind === "space"
+                ? l("Espacio", "Space")
+                : "Blog"}
+          </Text>
+          <Text style={s.heading}>{item.title}</Text>
+          {item.description && <Text style={s.text}>{item.description}</Text>}
+          {item.location && <Text style={s.muted}>{item.location}</Text>}
+          {item.starts_at && (
+            <Text style={s.muted}>
+              {new Date(item.starts_at).toLocaleString(
+                preferences.language === "es" ? "es-AR" : "en-US",
+                { dateStyle: "medium", timeStyle: "short" },
+              )}
             </Text>
-            <Text style={s.heading}>{item.title}</Text>
-            {item.description && <Text style={s.text}>{item.description}</Text>}
-            {item.location && <Text style={s.muted}>{item.location}</Text>}
-            {item.starts_at && (
-              <Text style={s.muted}>
-                {new Date(item.starts_at).toLocaleString()}
-              </Text>
-            )}
+          )}
+          <Button
+            title={
+              item.is_subscribed
+                ? l("Dejar de seguir", "Unsubscribe")
+                : l("Suscribirme", "Subscribe")
+            }
+            secondary={item.is_subscribed}
+            onPress={async () => {
+              const value = item.is_subscribed
+                ? await api.unsubscribeFromCommunityListing(item.id)
+                : await api.subscribeToCommunityListing(item.id);
+              result.setData(
+                (current) =>
+                  current?.map((v) =>
+                    v.id === item.id
+                      ? { ...v, is_subscribed: value.is_subscribed }
+                      : v,
+                  ) ?? null,
+              );
+            }}
+          />
+          {item.external_url && (
             <Button
-              title={
-                item.is_subscribed
-                  ? l("Dejar de seguir", "Unsubscribe")
-                  : l("Suscribirme", "Subscribe")
-              }
-              secondary={item.is_subscribed}
-              onPress={async () => {
-                const value = item.is_subscribed
-                  ? await api.unsubscribeFromCommunityListing(item.id)
-                  : await api.subscribeToCommunityListing(item.id);
-                result.setData(
-                  (current) =>
-                    current?.map((v) =>
-                      v.id === item.id
-                        ? { ...v, is_subscribed: value.is_subscribed }
-                        : v,
-                    ) ?? null,
-                );
-              }}
+              title={l("Abrir enlace", "Open link")}
+              secondary
+              onPress={() => openExternal(item.external_url!)}
             />
-            {item.external_url && (
-              <Button
-                title={l("Abrir enlace", "Open link")}
-                secondary
-                onPress={() => openExternal(item.external_url!)}
-              />
-            )}
-          </View>
-        ))}
-      {!result.loading &&
-        !result.error &&
-        !result.data?.some(
-          (item) =>
-            filter === "all" ||
-            (filter === "subscribed"
-              ? item.is_subscribed
-              : item.kind === filter),
-        ) && (
-          <Empty title={l("Todavía no hay publicaciones", "No posts yet")} />
-        )}
+          )}
+        </View>
+      ))}
+      {!result.loading && !result.error && !visible?.length && (
+        <Empty title={l("Todavía no hay publicaciones", "No posts yet")} />
+      )}
     </Page>
   );
 }

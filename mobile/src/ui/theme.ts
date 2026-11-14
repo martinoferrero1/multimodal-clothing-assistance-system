@@ -18,14 +18,20 @@ export const serif = Platform.select({
 export const s = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg },
   page: {
-    padding: 20,
-    gap: 20,
+    padding: 16,
+    gap: 18,
     paddingBottom: 36,
     maxWidth: 760,
     width: "100%",
     alignSelf: "center",
   },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  wrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   spread: {
     flexDirection: "row",
     alignItems: "center",
@@ -34,8 +40,8 @@ export const s = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 22,
-    padding: 20,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: colors.line,
     gap: 12,
@@ -46,14 +52,20 @@ export const s = StyleSheet.create({
     fontSize: 36,
     lineHeight: 41,
   },
-  heading: { color: colors.text, fontFamily: serif, fontSize: 26 },
+  heading: {
+    color: colors.text,
+    fontFamily: serif,
+    fontSize: 24,
+    flexShrink: 1,
+  },
   text: { color: colors.text, fontSize: 16, lineHeight: 24 },
   muted: { color: colors.muted, fontSize: 14, lineHeight: 22 },
   eyebrow: {
     color: colors.accent,
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 2,
+    letterSpacing: 1.5,
+    flexShrink: 1,
   },
   input: {
     color: colors.text,

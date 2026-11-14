@@ -1,13 +1,50 @@
-import { Text, View, Pressable } from "react-native";
+import {
+  Text,
+  View,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useApp } from "../core/state";
-import { Button, Page } from "../ui/components";
+import { Button, Page, ScreenHeading } from "../ui/components";
 import { colors, s } from "../ui/theme";
 import type { Navigation } from "../navigation-types";
 import { fashionNewsArticles } from "../core/fashion-news";
 
+function Destination({
+  title,
+  description,
+  icon,
+  onPress,
+}: {
+  title: string;
+  description: string;
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  onPress(): void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={[s.card, s.row]}
+    >
+      <View
+        style={{ padding: 12, borderRadius: 16, backgroundColor: colors.soft }}
+      >
+        <Ionicons name={icon} color={colors.accent} size={23} />
+      </View>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={[s.text, { fontWeight: "600" }]}>{title}</Text>
+        <Text style={s.muted}>{description}</Text>
+      </View>
+      <Ionicons name="chevron-forward" color={colors.muted} size={18} />
+    </Pressable>
+  );
+}
 export function HomeScreen({
   openTab,
 }: {
@@ -15,199 +52,280 @@ export function HomeScreen({
 }) {
   const { l, t, auth, preferences } = useApp();
   const navigation = useNavigation<Navigation>();
+  const { width } = useWindowDimensions();
   return (
     <Page>
       <View style={s.spread}>
         <Text style={s.eyebrow}>
           {l("TU ESTILO, A TU MANERA", "YOUR STYLE, YOUR WAY")}
         </Text>
-        <View
+        <Text
+          style={{
+            color: colors.accent,
+            fontSize: 10,
+            padding: 7,
+            borderWidth: 1,
+            borderColor: colors.line,
+            borderRadius: 10,
+          }}
+        >
+          BETA
+        </Text>
+      </View>
+      <View style={{ gap: 12, paddingVertical: 8 }}>
+        <Text
+          accessibilityRole="header"
           style={[
-            s.chip,
-            { minHeight: 30, paddingVertical: 5, borderColor: colors.accent },
+            s.title,
+            {
+              fontSize: width < 360 ? 39 : 46,
+              lineHeight: width < 360 ? 43 : 50,
+            },
           ]}
         >
-          <Text style={{ color: colors.accent, fontSize: 11 }}>BETA</Text>
-        </View>
+          {l(
+            "Imaginalo. Combinalo.\nHacelo tuyo.",
+            "Imagine it. Combine it.\nMake it yours.",
+          )}
+        </Text>
+        <Text style={s.muted}>{t("home.description")}</Text>
       </View>
-      <Text style={[s.title, { fontSize: 46, lineHeight: 49, marginTop: 10 }]}>
-        {l(
-          "Imaginalo.\nCombinalo.\nHacelo tuyo.",
-          "Imagine it.\nCombine it.\nMake it yours.",
-        )}
-      </Text>
-      <Text style={[s.muted, { maxWidth: 400 }]}>{t("home.description")}</Text>
-      {auth?.selected_store && (
-        <Button
-          title={l("Mi tienda", "My store")}
-          icon="storefront-outline"
-          secondary
-          onPress={() => navigation.navigate("Store")}
-        />
-      )}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Lookeate Assistant"
         onPress={() => openTab("Assistant")}
       >
         <LinearGradient
-          colors={["#221a2d", "#4a3566"]}
+          colors={["#241c30", "#493463"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[
-            s.card,
-            {
-              minHeight: 290,
-              justifyContent: "space-between",
-              borderColor: "#74558e",
-            },
-          ]}
+          style={[s.card, { borderColor: "#74558e", gap: 18, padding: 22 }]}
         >
           <View style={s.spread}>
-            <Ionicons name="sparkles-outline" size={30} color={colors.accent} />
-            <Ionicons
-              name="arrow-up-outline"
-              size={24}
-              style={{ transform: [{ rotate: "45deg" }] }}
-              color={colors.text}
-            />
+            <Ionicons name="sparkles-outline" size={26} color={colors.accent} />
+            <Ionicons name="arrow-forward" size={22} color={colors.text} />
           </View>
-          <View style={{ gap: 14 }}>
-            <Text style={[s.title, { fontSize: 38 }]}>
-              Lookeate{"\n"}Assistant
-            </Text>
-            <Text style={s.text}>
-              {l(
-                "Un poco de inspiración. Un look muy vos.",
-                "A little inspiration. A look that is all you.",
-              )}
-            </Text>
-            <Text style={{ color: colors.accent, fontWeight: "700" }}>
-              {l("Empezar una conversación", "Start a conversation")} →
-            </Text>
-          </View>
+          <Text style={[s.title, { fontSize: 34, lineHeight: 38 }]}>
+            Lookeate Assistant
+          </Text>
+          <Text style={s.text}>
+            {l(
+              "Un poco de inspiración. Un look muy vos.",
+              "A little inspiration. A look that is all you.",
+            )}
+          </Text>
+          <Text style={{ color: colors.accent, fontWeight: "700" }}>
+            {l("Empezar una conversación", "Start a conversation")} →
+          </Text>
         </LinearGradient>
       </Pressable>
       <Text style={s.eyebrow}>
         {l("EXPLORÁ LAS POSIBILIDADES", "EXPLORE THE POSSIBILITIES")}
       </Text>
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        {(
-          [
-            {
-              tab: "Style",
-              icon: "color-palette-outline",
-              title: l("Creá tu estilo", "Create your style"),
-              text: l("Combiná prendas.", "Combine pieces."),
-            },
-            {
-              tab: "Catalog",
-              icon: "search-outline",
-              title: l("Catálogo", "Catalog"),
-              text: l("Encontrá tu próxima pieza.", "Find your next piece."),
-            },
-          ] as const
-        ).map((item) => (
-          <Pressable
-            key={item.tab}
-            accessibilityRole="button"
-            onPress={() => openTab(item.tab)}
-            style={[s.card, { flex: 1, padding: 16, minHeight: 185 }]}
-          >
-            <Ionicons name={item.icon} color={colors.accent} size={25} />
-            <Text style={s.heading}>{item.title}</Text>
-            <Text style={s.muted}>{item.text}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={[s.card, { opacity: 0.65 }]}>
-        <View style={s.spread}>
-          <Text style={s.heading}>
+      <Destination
+        title={l("Creá tu estilo", "Create your style")}
+        description={l(
+          "Tu guardarropa, tus combinaciones.",
+          "Your wardrobe, your combinations.",
+        )}
+        icon="color-palette-outline"
+        onPress={() => openTab("Style")}
+      />
+      <Destination
+        title={l("Catálogo", "Catalog")}
+        description={l(
+          "Encontrá tu próxima pieza favorita.",
+          "Find your next favorite piece.",
+        )}
+        icon="search-outline"
+        onPress={() => openTab("Catalog")}
+      />
+      <View
+        style={[s.card, s.spread]}
+        accessibilityLabel={l(
+          "Creador de prendas. Próximamente",
+          "Garment creator. Coming soon",
+        )}
+      >
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={s.text}>
             {l("Creador de prendas", "Garment creator")}
           </Text>
-          <Ionicons name="lock-closed-outline" color={colors.muted} size={18} />
+          <Text style={s.muted}>{l("Próximamente", "Coming soon")}</Text>
         </View>
-        <Text style={s.muted}>{l("Próximamente", "Coming soon")}</Text>
+        <Ionicons name="lock-closed-outline" color={colors.muted} size={20} />
       </View>
+      {auth?.selected_store && (
+        <Destination
+          title={l("Mi tienda", "My store")}
+          description={l(
+            "Inventario, publicaciones y estado.",
+            "Inventory, listings and status.",
+          )}
+          icon="storefront-outline"
+          onPress={() => navigation.navigate("Store")}
+        />
+      )}
       <View style={s.divider} />
-      <Text style={s.heading}>
-        {l("El mundo de la moda", "The world of fashion")}
-      </Text>
-      <Text style={s.muted}>
-        {fashionNewsArticles[0].title[preferences.language]}
-      </Text>
+      <ScreenHeading
+        title={l("El mundo de la moda", "The world of fashion")}
+        eyebrow={l("EN LA MIRADA", "IN FOCUS")}
+      />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 12 }}
+      >
+        {fashionNewsArticles
+          .filter((article) => article.homeFeature)
+          .map((article) => (
+            <Pressable
+              key={article.id}
+              accessibilityRole="button"
+              accessibilityLabel={article.title[preferences.language]}
+              onPress={() =>
+                navigation.navigate("News", { articleId: article.id })
+              }
+              style={[
+                s.card,
+                {
+                  width: Math.min(width - 56, 300),
+                  justifyContent: "space-between",
+                  backgroundColor: colors.soft,
+                },
+              ]}
+            >
+              <Text style={s.eyebrow}>
+                {article.category[preferences.language]}
+              </Text>
+              <Text style={s.heading}>
+                {article.title[preferences.language]}
+              </Text>
+              <Text style={s.muted}>{article.source} ↗</Text>
+            </Pressable>
+          ))}
+      </ScrollView>
       <Button
-        title={l("Ver noticias", "Read stories")}
+        title={l("Ver todas las noticias", "See all stories")}
         secondary
         onPress={() => navigation.navigate("News")}
       />
-      <Text style={[s.muted, { fontSize: 12 }]}>
-        {l(
-          "Lookeate está en Beta. Estamos construyendo nuevas formas de explorar tu estilo.",
-          "Lookeate is in Beta. We are building new ways to explore your style.",
+      <Destination
+        title="Lookeate Around"
+        description={l(
+          "Explorá estilos de Argentina y Estados Unidos.",
+          "Explore styles across Argentina and the United States.",
         )}
-      </Text>
+        icon="globe-outline"
+        onPress={() => navigation.navigate("Around")}
+      />
+      <Destination
+        title={l("Comunidad", "Community")}
+        description={l(
+          "Blogs, eventos y espacios para compartir.",
+          "Blogs, events and spaces to share.",
+        )}
+        icon="people-outline"
+        onPress={() => navigation.navigate("Community")}
+      />
+      <View style={{ gap: 10, paddingVertical: 20 }}>
+        <Text style={s.heading}>
+          {l("Lookeate está en Beta.", "Lookeate is in Beta.")}
+        </Text>
+        <Text style={s.muted}>
+          {l(
+            "Estamos construyendo nuevas formas de explorar tu estilo.",
+            "We are building new ways to explore your style.",
+          )}
+        </Text>
+      </View>
     </Page>
   );
 }
 export function MoreScreen() {
-  const { l, auth } = useApp();
+  const { l, auth, favorites } = useApp();
   const navigation = useNavigation<Navigation>();
-  const links = [
-    {
-      route: "Favorites",
-      label: l("Mis favoritos", "My favorites"),
-      icon: "heart-outline",
-    },
-    {
-      route: "News",
-      label: l("Noticias de moda", "Fashion news"),
-      icon: "newspaper-outline",
-    },
-    {
-      route: "Community",
-      label: l("Comunidad", "Community"),
-      icon: "people-outline",
-    },
-    {
-      route: "Settings",
-      label: l("Configuración", "Settings"),
-      icon: "settings-outline",
-    },
-    {
-      route: auth?.selected_store ? "Store" : "StoreRegister",
-      label: auth?.selected_store
-        ? l("Mi tienda", "My store")
-        : l("Registrar tienda", "Register store"),
-      icon: "storefront-outline",
-    },
-  ] as const;
   return (
     <Page>
-      <Text style={s.eyebrow}>LOOKEATE</Text>
-      <Text style={s.title}>
-        {auth?.user.display_name ?? l("Tu espacio", "Your space")}
-      </Text>
-      <Text style={s.muted}>
-        {l(
+      <ScreenHeading
+        title={auth?.user.display_name ?? l("Tu espacio", "Your space")}
+        eyebrow="LOOKEATE"
+        description={l(
           "Todo lo que te inspira, en un lugar.",
           "Everything that inspires you, in one place.",
         )}
+      />
+      <Text style={s.eyebrow}>
+        {l("DESCUBRÍ Y GUARDÁ", "DISCOVER AND SAVE")}
       </Text>
-      {links.map((item) => (
-        <Pressable
-          key={item.route}
-          accessibilityRole="button"
-          onPress={() => navigation.navigate(item.route)}
-          style={[s.card, s.spread]}
-        >
-          <View style={s.row}>
-            <Ionicons name={item.icon} color={colors.accent} size={23} />
-            <Text style={s.text}>{item.label}</Text>
-          </View>
-          <Ionicons name="chevron-forward" color={colors.muted} size={19} />
-        </Pressable>
-      ))}
+      <Destination
+        title={l("Mis favoritos", "My favorites")}
+        description={
+          favorites.length + " " + l("prendas guardadas", "saved pieces")
+        }
+        icon="heart-outline"
+        onPress={() => navigation.navigate("Favorites")}
+      />
+      <Destination
+        title={l("Noticias de moda", "Fashion news")}
+        description={l(
+          "La selección editorial de Lookeate.",
+          "The Lookeate editorial selection.",
+        )}
+        icon="newspaper-outline"
+        onPress={() => navigation.navigate("News")}
+      />
+      <Destination
+        title="Lookeate Around"
+        description={l(
+          "Inspiración por provincia y estado.",
+          "Inspiration by province and state.",
+        )}
+        icon="globe-outline"
+        onPress={() => navigation.navigate("Around")}
+      />
+      <Destination
+        title={l("Comunidad", "Community")}
+        description={l(
+          "Blogs, eventos y espacios.",
+          "Blogs, events and spaces.",
+        )}
+        icon="people-outline"
+        onPress={() => navigation.navigate("Community")}
+      />
+      <Text style={s.eyebrow}>{l("TU CUENTA", "YOUR ACCOUNT")}</Text>
+      <Destination
+        title={l("Configuración", "Settings")}
+        description={l(
+          "Idioma, Assistant y cuenta.",
+          "Language, Assistant and account.",
+        )}
+        icon="settings-outline"
+        onPress={() => navigation.navigate("Settings")}
+      />
+      {auth?.selected_store ? (
+        <Destination
+          title={l("Mi tienda", "My store")}
+          description={l(
+            "Inventario, publicaciones y seguridad.",
+            "Inventory, listings and security.",
+          )}
+          icon="storefront-outline"
+          onPress={() => navigation.navigate("Store")}
+        />
+      ) : (
+        !auth && (
+          <Destination
+            title={l("Registrar tienda", "Register store")}
+            description={l(
+              "Sumá tu negocio a Lookeate.",
+              "Bring your business to Lookeate.",
+            )}
+            icon="storefront-outline"
+            onPress={() => navigation.navigate("StoreRegister")}
+          />
+        )
+      )}
       {!auth && (
         <Button
           title={l("Ingresar", "Sign in")}

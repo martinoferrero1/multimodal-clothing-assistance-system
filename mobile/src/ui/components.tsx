@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
   View,
   type TextInputProps,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { colors, s } from "./theme";
 import { useApp } from "../core/state";
@@ -93,6 +95,8 @@ export function Button({
             color: secondary ? colors.text : colors.bg,
             fontWeight: "700",
             fontSize: 14,
+            flexShrink: 1,
+            textAlign: "center",
           }}
         >
           {title}
@@ -119,19 +123,126 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
   );
 }
 export function Page({ children }: { children: ReactNode }) {
+  const insets = useSafeAreaInsets();
   return (
     <KeyboardAvoidingView
       style={s.fill}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={100}
+      keyboardVerticalOffset={insets.top + 56}
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={s.page}
+        contentContainerStyle={[
+          s.page,
+          {
+            paddingLeft: 16 + insets.left,
+            paddingRight: 16 + insets.right,
+            paddingBottom: Math.max(24, insets.bottom + 16),
+          },
+        ]}
+        keyboardDismissMode="on-drag"
       >
         {children}
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+export function ScreenHeading({
+  title,
+  eyebrow,
+  description,
+}: {
+  title: string;
+  eyebrow?: string;
+  description?: string;
+}) {
+  return (
+    <View style={{ gap: 8 }}>
+      {eyebrow && <Text style={s.eyebrow}>{eyebrow}</Text>}
+      <Text accessibilityRole="header" style={s.title}>
+        {title}
+      </Text>
+      {description && <Text style={s.muted}>{description}</Text>}
+    </View>
+  );
+}
+
+// Native modal provides focus isolation and Android back dismissal. Content scrolls
+// independently, so long forms never push their originating list out of reach.
+export function Sheet({
+  title,
+  visible,
+  onClose,
+  children,
+}: {
+  title: string;
+  visible: boolean;
+  onClose(): void;
+  children: ReactNode;
+}) {
+  const { l } = useApp();
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <View
+        style={[s.fill, { paddingTop: insets.top }]}
+        accessibilityViewIsModal
+      >
+        <View
+          style={[
+            s.spread,
+            { padding: 16, borderBottomWidth: 1, borderColor: colors.line },
+          ]}
+        >
+          <Text accessibilityRole="header" style={[s.heading, { flex: 1 }]}>
+            {title}
+          </Text>
+          <Button
+            title={l("Cerrar", "Close")}
+            icon="close"
+            iconOnly
+            secondary
+            onPress={onClose}
+          />
+        </View>
+        <Page>{children}</Page>
+      </View>
+    </Modal>
+  );
+}
+
+export function Disclosure({
+  title,
+  children,
+  initiallyOpen = false,
+}: {
+  title: string;
+  children: ReactNode;
+  initiallyOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(initiallyOpen);
+  return (
+    <View style={{ gap: 12 }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen(!open)}
+        style={[s.spread, { minHeight: 48 }]}
+      >
+        <Text style={[s.text, { flex: 1, fontWeight: "600" }]}>{title}</Text>
+        <Ionicons
+          name={open ? "chevron-up" : "chevron-down"}
+          size={20}
+          color={colors.accent}
+        />
+      </Pressable>
+      {open && children}
+    </View>
   );
 }
 export function Chip({

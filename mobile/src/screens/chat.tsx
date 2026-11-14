@@ -30,11 +30,14 @@ import {
   Field,
   Loading,
   Photo,
+  Sheet,
+  Disclosure,
   confirmDelete,
 } from "../ui/components";
 import { colors, s } from "../ui/theme";
 import { RequireAccount } from "./auth";
 import { ProductCard } from "./products";
+import { garmentProducts } from "../core/recommendations";
 import type { Navigation, ScreenProps } from "../navigation-types";
 
 export function AssistantScreen() {
@@ -90,32 +93,35 @@ function Conversations() {
             icon="add"
             onPress={() => navigation.navigate("Chat", {})}
           />
-          {editing && (
-            <View style={s.card}>
-              <Field
-                label={l("Título", "Title")}
-                value={title}
-                onChangeText={setTitle}
-                maxLength={100}
-              />
-              <Button
-                title={l("Guardar", "Save")}
-                disabled={!title.trim()}
-                onPress={async () => {
-                  await api.updateConversation(editing.id, {
-                    title: title.trim(),
-                  });
-                  setEditing(null);
-                  await result.reload();
-                }}
-              />
-              <Button
-                title={l("Cancelar", "Cancel")}
-                secondary
-                onPress={() => setEditing(null)}
-              />
-            </View>
-          )}
+          <Sheet
+            title={l("Renombrar conversación", "Rename conversation")}
+            visible={!!editing}
+            onClose={() => setEditing(null)}
+          >
+            <Field
+              label={l("Título", "Title")}
+              value={title}
+              onChangeText={setTitle}
+              maxLength={100}
+            />
+            <Button
+              title={l("Guardar", "Save")}
+              disabled={!title.trim()}
+              onPress={async () => {
+                if (!editing) return;
+                await api.updateConversation(editing.id, {
+                  title: title.trim(),
+                });
+                setEditing(null);
+                await result.reload();
+              }}
+            />
+            <Button
+              title={l("Cancelar", "Cancel")}
+              secondary
+              onPress={() => setEditing(null)}
+            />
+          </Sheet>
           {result.error && (
             <Empty
               title={l(
@@ -142,7 +148,9 @@ function Conversations() {
                 l("Lista para empezar", "Ready to start")}
             </Text>
           </Pressable>
-          <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>
+          <Disclosure
+            title={l("Acciones de la conversación", "Conversation actions")}
+          >
             <Button
               title={
                 item.is_pinned ? l("Desfijar", "Unpin") : l("Fijar", "Pin")
@@ -164,13 +172,13 @@ function Conversations() {
               }}
             />
             <Button
-              title="↑"
+              title={l("Mover arriba", "Move up")}
               secondary
               disabled={index === 0}
               onPress={() => move(item.id, -1)}
             />
             <Button
-              title="↓"
+              title={l("Mover abajo", "Move down")}
               secondary
               disabled={index === (result.data?.length ?? 0) - 1}
               onPress={() => move(item.id, 1)}
@@ -191,7 +199,7 @@ function Conversations() {
                 )
               }
             />
-          </ScrollView>
+          </Disclosure>
         </View>
       )}
       ListEmptyComponent={
@@ -222,7 +230,7 @@ export function ChatScreen(props: ScreenProps<"Chat">) {
 }
 function Chat({ route, navigation }: ScreenProps<"Chat">) {
   const insets = useSafeAreaInsets();
-  const { l, preferences } = useApp();
+  const { l, t, preferences } = useApp();
   const [id, setId] = useState(route.params.id);
   const [content, setContent] = useState("");
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
@@ -234,6 +242,7 @@ function Chat({ route, navigation }: ScreenProps<"Chat">) {
   const [priority, setPriority] = useState<SearchPriorityField[] | null>(null);
   const mounted = useRef(true);
   const sendingRef = useRef(false);
+  const followLatest = useRef(true);
   const list = useRef<FlatList<ChatMessage>>(null);
   useEffect(() => {
     mounted.current = true;
@@ -294,6 +303,7 @@ function Chat({ route, navigation }: ScreenProps<"Chat">) {
   async function send() {
     if (sendingRef.current || (!content.trim() && !images.length)) return;
     sendingRef.current = true;
+    followLatest.current = true;
     setSending(true);
     setSendError(false);
     let activeId = id;
@@ -340,7 +350,7 @@ function Chat({ route, navigation }: ScreenProps<"Chat">) {
     <KeyboardAvoidingView
       style={s.fill}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={100}
+      keyboardVerticalOffset={insets.top + 56}
     >
       <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
         <Button
@@ -353,160 +363,168 @@ function Chat({ route, navigation }: ScreenProps<"Chat">) {
                 )
           }
           secondary
+          disabled={conversation.loading || sending}
           onPress={openSettings}
         />
       </View>
-      {settings ? (
-        <ScrollView contentContainerStyle={s.page}>
-          <Text style={s.heading}>
-            {l("Estilo para esta conversación", "Style for this conversation")}
-          </Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {([null, true, false] as const).map((value) => (
-              <Chip
-                key={String(value)}
-                title={
-                  value === null
-                    ? l("Heredar", "Inherit")
-                    : value
-                      ? l("Personalizar", "Personalize")
-                      : l("Ignorar memoria", "Ignore memory")
-                }
-                selected={personalized === value}
-                onPress={() => setPersonalized(value)}
-              />
-            ))}
-          </View>
-          <Field
-            label={l("Notas temporales", "Temporary notes")}
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-          />
-          <Text style={s.heading}>
-            {l("Prioridad de búsqueda", "Search priority")}
-          </Text>
-          <Chip
-            title={l(
-              "Heredar prioridad de mi cuenta",
-              "Inherit account priority",
-            )}
-            selected={priority === null}
-            onPress={() => setPriority(null)}
-          />
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {(
-              [
-                "category",
-                "gender",
-                "base_colors",
-                "secondary_colors",
-                "season",
-                "max_price",
-              ] as const
-            ).map((field) => (
-              <Chip
-                key={field}
-                title={field.replaceAll("_", " ")}
-                selected={priority?.includes(field)}
-                onPress={() =>
-                  setPriority((current) =>
-                    current?.includes(field)
-                      ? current.filter((f) => f !== field)
-                      : [...(current ?? []), field],
-                  )
-                }
-              />
-            ))}
-          </View>
-          <Button
-            title={l("Guardar para este chat", "Save for this chat")}
-            disabled={!id}
-            onPress={async () => {
-              await api.updateConversationStylePreferences(id!, {
-                use_personalized_styles: personalized,
-                temporary: { freeform_notes: notes.trim() || null },
-              });
-              await api.updateConversationSearchPreferences(id!, priority);
-              setSettings(false);
-            }}
-          />
-          {!id && (
-            <Text style={s.muted}>
-              {l(
-                "Enviá el primer mensaje para guardar preferencias.",
-                "Send the first message to save preferences.",
-              )}
-            </Text>
-          )}
-        </ScrollView>
-      ) : (
-        <FlatList
-          ref={list}
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            s.page,
-            { gap: preferences.compactChat ? 10 : 22 },
-          ]}
-          data={messages.data ?? []}
-          keyExtractor={(m) => m.id}
-          onContentSizeChange={() =>
-            list.current?.scrollToEnd({ animated: true })
-          }
-          keyboardShouldPersistTaps="handled"
-          renderItem={({ item }) => <Message message={item} />}
-          ListHeaderComponent={
-            messages.error ? (
-              <Empty
-                title={l(
-                  "No pudimos cargar los mensajes",
-                  "Could not load messages",
-                )}
-                retry={() => void messages.reload()}
-              />
-            ) : null
-          }
-          ListEmptyComponent={
-            messages.loading ? (
-              <Loading />
-            ) : (
-              <View style={{ gap: 20, paddingTop: 36 }}>
-                <Text style={s.title}>
-                  {l(
-                    "¿Qué tenés\nen mente hoy?",
-                    "What’s on\nyour mind today?",
-                  )}
-                </Text>
-                {[
-                  l("Un look para una cena", "An outfit for dinner"),
-                  l("Cómo combinar mis zapatillas", "How to style my sneakers"),
-                  l(
-                    "Ideas para renovar mi estilo",
-                    "Ideas to refresh my style",
-                  ),
-                ].map((idea) => (
-                  <Button
-                    key={idea}
-                    title={idea}
-                    secondary
-                    onPress={() => setContent(idea)}
-                  />
-                ))}
-              </View>
-            )
-          }
-          ListFooterComponent={
-            sending ? (
-              <View style={s.row}>
-                <Loading />
-                <Text style={s.muted}>
-                  {l("Pensando tu look…", "Thinking about your look…")}
-                </Text>
-              </View>
-            ) : null
-          }
+      <Sheet
+        title={l(
+          "Preferencias de esta conversación",
+          "Conversation preferences",
+        )}
+        visible={settings}
+        onClose={() => setSettings(false)}
+      >
+        <Text style={s.heading}>
+          {l("Estilo para esta conversación", "Style for this conversation")}
+        </Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {([null, true, false] as const).map((value) => (
+            <Chip
+              key={String(value)}
+              title={
+                value === null
+                  ? l("Heredar", "Inherit")
+                  : value
+                    ? l("Personalizar", "Personalize")
+                    : l("Ignorar memoria", "Ignore memory")
+              }
+              selected={personalized === value}
+              onPress={() => setPersonalized(value)}
+            />
+          ))}
+        </View>
+        <Field
+          label={l("Notas temporales", "Temporary notes")}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
         />
-      )}
+        <Text style={s.heading}>
+          {l("Prioridad de búsqueda", "Search priority")}
+        </Text>
+        <Chip
+          title={l(
+            "Heredar prioridad de mi cuenta",
+            "Inherit account priority",
+          )}
+          selected={priority === null}
+          onPress={() => setPriority(null)}
+        />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {(
+            [
+              "category",
+              "gender",
+              "base_colors",
+              "secondary_colors",
+              "season",
+              "max_price",
+            ] as const
+          ).map((field, index) => (
+            <Chip
+              key={field}
+              title={`${priority?.includes(field) ? `${priority.indexOf(field) + 1}. ` : ""}${[t("priority.category"), t("priority.gender"), t("priority.baseColors"), t("priority.secondaryColors"), t("priority.season"), t("priority.maxPrice")][index]}`}
+              selected={priority?.includes(field)}
+              onPress={() =>
+                setPriority((current) =>
+                  current?.includes(field)
+                    ? current.filter((f) => f !== field)
+                    : [...(current ?? []), field],
+                )
+              }
+            />
+          ))}
+        </View>
+        <Button
+          title={l("Guardar para este chat", "Save for this chat")}
+          onPress={async () => {
+            const activeId = id ?? (await api.createConversation()).id;
+            if (!id) {
+              setId(activeId);
+              navigation.setParams({ id: activeId });
+            }
+            await api.updateConversationStylePreferences(activeId, {
+              use_personalized_styles: personalized,
+              temporary: { freeform_notes: notes.trim() || null },
+            });
+            const updated = await api.updateConversationSearchPreferences(
+              activeId,
+              priority,
+            );
+            conversation.setData(updated);
+            setSettings(false);
+          }}
+        />
+      </Sheet>
+      <FlatList
+        ref={list}
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          s.page,
+          { gap: preferences.compactChat ? 10 : 22 },
+        ]}
+        data={messages.data ?? []}
+        keyExtractor={(m) => m.id}
+        onContentSizeChange={() => {
+          if (followLatest.current)
+            list.current?.scrollToEnd({ animated: true });
+        }}
+        onScroll={({
+          nativeEvent: { contentOffset, contentSize, layoutMeasurement },
+        }) => {
+          followLatest.current =
+            contentSize.height - layoutMeasurement.height - contentOffset.y <
+            120;
+        }}
+        scrollEventThrottle={100}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => <Message message={item} />}
+        ListHeaderComponent={
+          messages.error ? (
+            <Empty
+              title={l(
+                "No pudimos cargar los mensajes",
+                "Could not load messages",
+              )}
+              retry={() => void messages.reload()}
+            />
+          ) : null
+        }
+        ListEmptyComponent={
+          messages.loading ? (
+            <Loading />
+          ) : (
+            <View style={{ gap: 20, paddingTop: 36 }}>
+              <Text style={s.title}>
+                {l("¿Qué tenés\nen mente hoy?", "What’s on\nyour mind today?")}
+              </Text>
+              {[
+                l("Un look para una cena", "An outfit for dinner"),
+                l("Cómo combinar mis zapatillas", "How to style my sneakers"),
+                l("Ideas para renovar mi estilo", "Ideas to refresh my style"),
+              ].map((idea) => (
+                <Button
+                  key={idea}
+                  title={idea}
+                  secondary
+                  onPress={() => setContent(idea)}
+                />
+              ))}
+            </View>
+          )
+        }
+        ListFooterComponent={
+          sending ? (
+            <View style={s.row}>
+              <Loading />
+              <Text style={s.muted}>
+                {l("Pensando tu look…", "Thinking about your look…")}
+              </Text>
+            </View>
+          ) : null
+        }
+      />
       {sendError && (
         <View style={{ padding: 12 }}>
           <Text accessibilityRole="alert" style={{ color: colors.danger }}>
@@ -533,7 +551,9 @@ function Chat({ route, navigation }: ScreenProps<"Chat">) {
               <View key={`${image.uri}-${index}`} style={{ width: 85, gap: 4 }}>
                 <Photo uri={image.uri} size={70} />
                 <Button
-                  title="×"
+                  title={l("Quitar imagen", "Remove image")}
+                  icon="close"
+                  iconOnly
                   disabled={sending}
                   secondary
                   onPress={() =>
@@ -589,6 +609,7 @@ function Chat({ route, navigation }: ScreenProps<"Chat">) {
 }
 function Message({ message }: { message: ChatMessage }) {
   const { l, preferences } = useApp();
+  const [expanded, setExpanded] = useState(false);
   const navigation = useNavigation<Navigation>();
   const recommendations = message.final_response_payload?.recommendations;
   return (
@@ -623,7 +644,7 @@ function Message({ message }: { message: ChatMessage }) {
       >
         {message.content}
       </Markdown>
-      {preferences.showRecommendations && recommendations && (
+      {recommendations && (
         <View style={{ gap: 14 }}>
           {recommendations.outfits.map((outfit, index) => (
             <Button
@@ -634,25 +655,45 @@ function Message({ message }: { message: ChatMessage }) {
               onPress={() => navigation.navigate("Outfit", { outfit })}
             />
           ))}
-          {recommendations.garments.map((garment, i) => (
-            <View key={i} style={{ gap: 8 }}>
-              <Text style={s.heading}>{garment.summary_label}</Text>
-              {(garment.best_match
-                ? [garment.best_match]
-                : garment.product_highlights
-              ).map((product) => (
-                <ProductCard key={product.id} product={product} />
+          {!preferences.showRecommendations && (
+            <Button
+              title={
+                expanded
+                  ? l("Contraer productos", "Collapse products")
+                  : l("Ver productos recomendados", "View recommended products")
+              }
+              secondary
+              onPress={() => setExpanded(!expanded)}
+            />
+          )}
+          {(preferences.showRecommendations || expanded) && (
+            <>
+              {recommendations.garments.map((garment, i) => (
+                <View key={i} style={{ gap: 8 }}>
+                  <Text style={s.heading}>{garment.summary_label}</Text>
+                  <ScrollView horizontal contentContainerStyle={{ gap: 12 }}>
+                    {garmentProducts(garment).map((product) => (
+                      <View key={product.id} style={{ width: 190 }}>
+                        <ProductCard key={product.id} product={product} />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
               ))}
-            </View>
-          ))}
-          {recommendations.product_highlights.map((group, i) => (
-            <View key={i} style={{ gap: 8 }}>
-              <Text style={s.heading}>{group.group_label}</Text>
-              {group.products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {recommendations.product_highlights.map((group, i) => (
+                <View key={i} style={{ gap: 8 }}>
+                  <Text style={s.heading}>{group.group_label}</Text>
+                  <ScrollView horizontal contentContainerStyle={{ gap: 12 }}>
+                    {group.products.map((product) => (
+                      <View key={product.id} style={{ width: 190 }}>
+                        <ProductCard key={product.id} product={product} />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
               ))}
-            </View>
-          ))}
+            </>
+          )}
         </View>
       )}
     </View>

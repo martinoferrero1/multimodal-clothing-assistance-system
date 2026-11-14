@@ -1,4 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { mockApi } from "./fixtures/api";
+
+test.beforeEach(async ({ page }) => {
+  await mockApi(page, "anonymous");
+});
 
 // Browser checks cover native-component layout and local state only.
 // SecureStore, native gestures, camera and authenticated API flows need a device.
@@ -14,7 +19,10 @@ test("home fits a narrow phone and keeps all five navigation destinations access
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(320);
-  await page.screenshot({ path: "test-results/home-320.png" });
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/home-320.png",
+  });
   expect(errors).toEqual([]);
 });
 test("style builder layers a garment, removes it, and resets rotation", async ({
@@ -26,17 +34,29 @@ test("style builder layers a garment, removes it, and resets rotation", async ({
     page.getByText("Creá tu estilo.", { exact: true }),
   ).toBeVisible();
   await page.getByText("Turtle Check Shirt", { exact: true }).click();
+  await page
+    .getByRole("button", { name: "Tu look actual · 1", exact: true })
+    .click();
   await expect(
-    page.getByText("Turtle Check Shirt", { exact: true }),
-  ).toHaveCount(2);
-  await page.getByRole("button", { name: "×", exact: true }).click();
+    page.getByText("Turtle Check Shirt", { exact: true }).last(),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Quitar Turtle Check Shirt", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Cerrar", exact: true }).click();
   await expect(
     page.getByText("Turtle Check Shirt", { exact: true }),
   ).toHaveCount(1);
-  await page.getByRole("button", { name: "↷", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Girar a la derecha", exact: true })
+    .click();
   await expect(page.getByRole("slider")).toHaveAttribute("aria-valuenow", "15");
   await page.getByRole("button", { name: "Centrar", exact: true }).click();
   await expect(page.getByRole("slider")).toHaveAttribute("aria-valuenow", "0");
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/style-390.png",
+  });
 });
 test("language selection persists and updates navigation", async ({ page }) => {
   await page.goto("/");

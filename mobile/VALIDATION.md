@@ -1,23 +1,42 @@
 # Evidencia de implementación
 
-Verificación realizada el 19 de septiembre de 2026:
+Verificación de la refactorización realizada el 4 de noviembre de 2026.
+Referencia web: `origin/main` en `b54394bd`. Comparación por sección y decisiones
+en [PARITY_REVIEW.md](PARITY_REVIEW.md).
 
 | Control | Resultado |
 | --- | --- |
 | `npm run typecheck` | Correcto |
 | `npm run lint` | Correcto, sin advertencias |
-| `npm test` | 8 pruebas de transporte/configuración aprobadas |
-| `npm run test:ui` | 4 pruebas de interfaz aprobadas en Chromium |
+| `npm test` | 11 pruebas de transporte/configuración, recomendaciones y fechas aprobadas |
+| `npm run test:ui` | 17 pruebas de interfaz aprobadas en Chromium, con API simulada |
 | `npm run export:native` | Bundles Hermes de Android e iOS generados |
 | `npx expo install --check` | Versiones compatibles |
 | `npx expo-doctor` | 21/21 controles aprobados |
-| `npm audit --omit=dev` | 0 vulnerabilidades |
+| `npm audit --omit=dev` | 13 alertas: 2 bajas, 9 moderadas y 2 altas; ninguna crítica |
 
-Se inspeccionaron capturas de inicio y creador de estilos a 390 × 844 y se
-comprobó la navegación a 320 px. Las pruebas de interfaz verifican selección de
-prendas, giro del maniquí, idioma persistente y validación del formulario. No
-ejercitan SecureStore ni una sesión real de FastAPI. No había emulador Android
-ni simulador iOS instalado; no se afirma validación nativa de extremo a extremo.
+Se inspeccionaron capturas de inicio, catálogo, estilo, Around, comunidad,
+outfits, configuración y tienda. La navegación se ejercitó a 320 × 740,
+390 × 844, 768 × 1024 y 844 × 390, en español e inglés. Las capturas se generan
+en `test-results/`, ignorado por Git. La variante web de React Native se usa
+para verificar componentes y estado; no se afirma equivalencia visual perfecta
+con el renderizador nativo.
+
+Las pruebas recorren filtros/errores/reintentos, favoritos persistentes,
+Around y búsqueda sin acentos, noticias, comunidad/suscripciones, alternativas
+de recomendaciones, preferencias del chat, edición de tienda, registro,
+login/logout y expiración. El transporte de prueba sólo se resuelve en web al
+iniciar Metro con `LOOKEATE_UI_TEST=1`. Los bundles nativos usan el cliente real.
+No se ejercitaron SecureStore, cámara, permisos, MFA ni sesiones reales de
+FastAPI en un teléfono; esa validación continúa pendiente.
+
+Las alertas altas residuales corresponden a `zod@3.25.76` y su consumidor
+`@expo/cli`. El advisory `GHSA-mrhx-c7xc-m3w5` exige una versión de otra rama
+mayor; no se forzó un override incompatible del SDK. Las otras alertas se
+concentran en herramientas transitivas de Expo (`glob`, `minimatch`,
+`deepmerge` y consumidores). Actualizar el SDK/herramientas con compatibilidad
+validada antes de distribución. El estado inicial tenía 17 alertas de
+producción, incluida una crítica; se resolvieron las actualizaciones compatibles.
 
 El alcance es el nuevo cliente mobile. El backend y el frontend web existentes
 no fueron modificados. No se crearon ni aprobaron artefactos OpenSpec.
@@ -38,9 +57,10 @@ ownership, guest promotion y privilegios del servidor no cambian. La aplicación
 no presenta usuarios anónimos como invitados autenticados: el backend actual no
 ofrece un flujo guest para consumir desde este cliente.
 
-El documento `documentation/identity_guest_environments_plan.md` referenciado
-por las instrucciones no está presente en este checkout. Se usaron los contratos
-implementados, los AGENTS y las skills locales como evidencia disponible.
+Se consultó `documentation/identity_guest_environments_plan.md` junto con los
+contratos implementados, los AGENTS y la skill de revisión de identidad. El
+alcance mantiene la sesión nativa existente y corrige el reinicio de navegación
+por identidad; no implementa nuevos estados guest ni cambios de servidor.
 
 ## Entornos y distribución
 

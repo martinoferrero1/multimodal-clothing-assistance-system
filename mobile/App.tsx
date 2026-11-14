@@ -11,6 +11,7 @@ import { Pressable, Text, View } from "react-native";
 import { AppProvider, useApp } from "./src/core/state";
 import { colors, s, serif } from "./src/ui/theme";
 import { HomeScreen, MoreScreen } from "./src/screens/home";
+import { AroundScreen } from "./src/screens/around";
 import { AuthScreen } from "./src/screens/auth";
 import { AssistantScreen, ChatScreen } from "./src/screens/chat";
 import { StyleScreen } from "./src/screens/style";
@@ -23,17 +24,14 @@ import {
 import { CommunityScreen, NewsScreen } from "./src/screens/community";
 import { SettingsScreen } from "./src/screens/settings";
 import { StoreRegisterScreen, StoreScreen } from "./src/screens/store";
-import type { RootRoutes, ScreenProps } from "./src/navigation-types";
+import type {
+  RootRoutes,
+  ScreenProps,
+  TabRoutes,
+} from "./src/navigation-types";
 
 const Stack = createNativeStackNavigator<RootRoutes>();
-type Tabs = {
-  Home: undefined;
-  Assistant: undefined;
-  Style: undefined;
-  Catalog: undefined;
-  More: undefined;
-};
-const Tab = createBottomTabNavigator<Tabs>();
+const Tab = createBottomTabNavigator<TabRoutes>();
 const icons = {
   Home: "home-outline",
   Assistant: "chatbubble-ellipses-outline",
@@ -63,14 +61,24 @@ function Main({ navigation }: ScreenProps<"Main">) {
           </Text>
         ),
         headerRight: () => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={l("Configuración", "Settings")}
-            onPress={() => navigation.navigate("Settings")}
-            style={{ padding: 14 }}
-          >
-            <Ionicons name="options-outline" size={22} color={colors.text} />
-          </Pressable>
+          <View style={{ flexDirection: "row" }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={l("Mis favoritos", "My favorites")}
+              onPress={() => navigation.navigate("Favorites")}
+              style={{ padding: 12 }}
+            >
+              <Ionicons name="heart-outline" size={22} color={colors.text} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={l("Configuración", "Settings")}
+              onPress={() => navigation.navigate("Settings")}
+              style={{ padding: 14 }}
+            >
+              <Ionicons name="options-outline" size={22} color={colors.text} />
+            </Pressable>
+          </View>
         ),
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.muted,
@@ -129,6 +137,7 @@ function Navigator() {
   const { l, auth } = useApp();
   return (
     <NavigationContainer
+      key={auth?.user.id ?? "anonymous"}
       theme={{
         ...DarkTheme,
         colors: {
@@ -142,7 +151,6 @@ function Navigator() {
       }}
     >
       <Stack.Navigator
-        key={auth?.user.id ?? "anonymous"}
         screenOptions={{
           contentStyle: s.fill,
           headerStyle: { backgroundColor: colors.bg },
@@ -187,6 +195,11 @@ function Navigator() {
           name="News"
           component={NewsScreen}
           options={{ title: l("Noticias", "News") }}
+        />
+        <Stack.Screen
+          name="Around"
+          component={AroundScreen}
+          options={{ title: "Lookeate Around" }}
         />
         <Stack.Screen
           name="Community"
